@@ -1,0 +1,5 @@
+isodir/*
+quack.iso
+kernel.elf
+**.o
+serial.txt
