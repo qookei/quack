@@ -1,4 +1,6 @@
-OBJS = boot/boot.o kernel/kernel.o kernel/io/serial.o kernel/io/ports.o kernel/cpu/gdt.o kernel/vsprintf.o kernel/trace/stacktrace.o
+OBJS = boot/boot.o kernel/kernel.o kernel/io/serial.o kernel/io/ports.o kernel/cpu/gdt.o kernel/vsprintf.o \
+	   kernel/trace/stacktrace.o kernel/interrupt/idt_load.o kernel/interrupt/isr.o kernel/interrupt/idt.o \
+	   kernel/interrupt/interrupt.o kernel/pic/pic.o
 
 CXX = i686-elf-g++
 CC = i686-elf-gcc

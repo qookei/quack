@@ -5,10 +5,10 @@
 #include <cpuid.h>
 #include "vsprintf.h"
 #include "trace/trace.h"
-
 #include "trace/stacktrace.h"
-
-using namespace quack;
+#include "interrupt/idt.h"
+#include "interrupt/isr.h"
+#include "pic/pic.h"
 
 /* Hardware text mode color constants. */
 enum vga_color {
@@ -86,8 +86,14 @@ void terminal_putchar(char c) {
 	if (c == '\n') {
 		terminal_row ++;
 		terminal_column = 0;
+
+		if (terminal_row == VGA_HEIGHT-1)
+			terminal_row = 0;
+		
 		return;
 	}
+
+
 	terminal_putentryat(c, terminal_color, terminal_column, terminal_row);
 	if (++terminal_column == VGA_WIDTH) {
 		terminal_column = 0;
@@ -117,20 +123,11 @@ int printf(const char *fmt, ...) {
 	return ret;
 }
 
-int i = 0;
+bool a(interrupt_cpu_state *state) {
 
-void __attribute__((noinline)) c(void) {
-	i++;
-	if (i <= 10) c();
-	else stack_trace(30);
-}
+	printf("kbd\n");
+	return true;
 
-void __attribute__((noinline)) b(void) {
-	c();
-}
-
-void __attribute__((noinline)) a(void) {
-	b();
 }
 
 extern "C" { 
@@ -146,14 +143,25 @@ void kernel_main(void) {
 
 	terminal_writestring("GDT ok\n");
 
+	idt_init();
+	asm volatile ("sti");
+	terminal_writestring("IDT ok\n");
+
+	pic_remap(0x20, 0x28);
+
 	uint32_t brand[12];
 	__cpuid(0x80000002 , brand[0], brand[1], brand[2], brand[3]);
 	__cpuid(0x80000003 , brand[4], brand[5], brand[6], brand[7]);
 	__cpuid(0x80000004 , brand[8], brand[9], brand[10], brand[11]);
 	
 	printf("Hello world! CPU brand: %s\n", (const char*)brand);
+
+	register_interrupt_handler(0x21, a);
+
 	
-	a();
+	while(1);
+	
+	asm volatile ("int $0x00");
 
 }
 

@@ -5,13 +5,9 @@
 
 #define PORT 0x3F8
 
-namespace quack {
-
-	void serial_init(void);
-	uint8_t serial_read_byte(void);
-	void serial_write_byte(uint8_t);
-
-}
+void serial_init(void);
+uint8_t serial_read_byte(void);
+void serial_write_byte(uint8_t);
 
 
 #endif
