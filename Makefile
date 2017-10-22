@@ -1,12 +1,13 @@
 OBJS = boot/boot2.o kernel/kernel.o kernel/io/serial.o kernel/io/ports.o kernel/cpu/gdt.o kernel/vsprintf.o \
 	   kernel/trace/stacktrace.o kernel/interrupt/idt_load.o kernel/interrupt/isr.o kernel/interrupt/idt.o \
-	   kernel/interrupt/interrupt.o kernel/pic/pic.o kernel/memcpy.o
+	   kernel/interrupt/interrupt.o kernel/pic/pic.o kernel/tty/tty.o kernel/tty/backends/vga_text.o \
+
 
 CXX = i686-elf-g++
 CC = i686-elf-gcc
 ASM = i686-elf-as
 ASM2 = nasm
-CXXFLAGS = -ffreestanding -O0 -Wall -Wextra -fno-exceptions -fno-rtti -g
+CXXFLAGS = -ffreestanding -O0 -Wall -Wextra -fno-exceptions -fno-rtti -g -std=c++14
 CFLAGS = -ffreestanding -O0 -nostdlib -g
 
 run: quack.iso
@@ -42,7 +43,7 @@ kernel.o: $(OBJS)
 	$(ASM) $< -o $@
 
 %.o: %.asm
-	$(ASM2) -felf32 $< -o $@
+	$(ASM2) -g -felf32 -F dwarf $< -o $@
 
 .PHONY: clean run
 

@@ -52,7 +52,7 @@ trace_elem trace_elems[] = {
 	{"isr8",0xc01011f8, 0x00000000},
 	{"isr9",0xc01011ff, 0x00000000},
 	{"kernel_main",0xc0100424, 0x00000073},
-	{"loader",0x100100010, 0x00000000},
+	{"loader",0x00100010, 0x00000000},
 	{"_loader",0xc0100010, 0x00000000},
 	{"setup_gdt",0xc010069e, 0x00000000},
 	{"serial_init",0xc0100497, 0x0000008d},

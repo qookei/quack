@@ -1,4 +1,13 @@
-## Initial commit 0.0.1
+
+## Unreleased
+
+- Moved the kernel to the higher half
+- Added a nice tty interface
+- VGA text mode scrolling(finally)
+- Interrupts
+- Basic, buggy keyboard handling
+
+## Initial commit
 
 - A function that prints stack traces
 - A working GDT
