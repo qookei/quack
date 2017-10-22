@@ -3,6 +3,9 @@
 
 #define isr_count 10
 
+extern int printf(const char *, ...);
+extern int kprintf(const char *, ...);
+
 static interrupt_handler_f *interrupt_handlers[IDT_size][isr_count] = {{0}};
 
 void pic_eoi(uint32_t r) {
@@ -16,11 +19,8 @@ void pic_eoi(uint32_t r) {
 		}
 		// send eoi to master
 		outb(0x20, 0x20);
-		
 	}
 }
-
-extern int printf(const char *, ...);
 
 extern "C" {
 
@@ -61,8 +61,6 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 	}
 	
 	
-	printf("int %x\n", r.interrupt_number);
-
 	pic_eoi(r.interrupt_number);
 }
 

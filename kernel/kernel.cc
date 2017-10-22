@@ -60,7 +60,7 @@ void terminal_initialize(void) {
 	terminal_row = 0;
 	terminal_column = 0;
 	terminal_color = vga_entry_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
-	terminal_buffer = (uint16_t*) 0xB8000;
+	terminal_buffer = (uint16_t*) 0xC00B8000;
 	for (size_t y = 0; y < VGA_HEIGHT; y++) {
 		for (size_t x = 0; x < VGA_WIDTH; x++) {
 			const size_t index = y * VGA_WIDTH + x;
@@ -82,7 +82,7 @@ void terminal_putentryat(char c, uint8_t color, size_t x, size_t y) {
 }
  
 void terminal_putchar(char c) {
-	serial_write_byte(c);
+	//serial_write_byte(c);
 	if (c == '\n') {
 		terminal_row ++;
 		terminal_column = 0;
@@ -113,6 +113,15 @@ void terminal_writestring(const char* data) {
 	terminal_write(data, strlen(data));
 }
 
+void serial_writestr(const char* data, size_t size) {
+	for (size_t i = 0; i < size; i++)
+		serial_write_byte(data[i]);
+}
+ 
+void serial_writestring(const char* data) {
+	serial_writestr(data, strlen(data));
+}
+
 int printf(const char *fmt, ...) {
 	char buf[1024] = {0};
 	va_list va;
@@ -123,9 +132,33 @@ int printf(const char *fmt, ...) {
 	return ret;
 }
 
+int kprintf(const char *fmt, ...) {
+	char buf[1024] = {0};
+	va_list va;
+	va_start(va, fmt);
+	int ret = vsprintf(buf, fmt, va);
+	va_end(va);
+	serial_writestring(buf);
+	return ret;
+}
+
+bool axc = false;
+char lastkey;
+
+const char lower_normal[] = { '\0', '?', '1', '2', '3', '4', '5', '6',     
+		'7', '8', '9', '0', '-', '=', '\b', '\t', 'q', 'w', 'e', 'r', 't', 'y', 
+				'u', 'i', 'o', 'p', '[', ']', '\n', '\0', 'a', 's', 'd', 'f', 'g', 
+				'h', 'j', 'k', 'l', ';', '\'', '`', '\0', '\\', 'z', 'x', 'c', 'v', 
+				'b', 'n', 'm', ',', '.', '/', '\0', '\0', '\0', ' '};
+
 bool a(interrupt_cpu_state *state) {
 
-	printf("kbd\n");
+	char c = inb(0x60);
+	if(!axc)
+	lastkey = lower_normal[c];
+
+	printf("keyboard %c %s\n", lastkey, axc?"release":"press");
+	axc = !axc;
 	return true;
 
 }
@@ -143,21 +176,22 @@ void kernel_main(void) {
 
 	terminal_writestring("GDT ok\n");
 
+	pic_remap(0x20, 0x28);
+
 	idt_init();
 	asm volatile ("sti");
 	terminal_writestring("IDT ok\n");
 
-	pic_remap(0x20, 0x28);
-
+	
 	uint32_t brand[12];
 	__cpuid(0x80000002 , brand[0], brand[1], brand[2], brand[3]);
 	__cpuid(0x80000003 , brand[4], brand[5], brand[6], brand[7]);
 	__cpuid(0x80000004 , brand[8], brand[9], brand[10], brand[11]);
-	
-	printf("Hello world! CPU brand: %s\n", (const char*)brand);
+
+	printf("Hello world! CPU brand: %s\n", (const char*)brand);	
+	kprintf("Hello world! CPU brand: %s\n", (const char*)brand);
 
 	register_interrupt_handler(0x21, a);
-
 	
 	while(1);
 	
