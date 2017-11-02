@@ -4,6 +4,7 @@
 - Moved the kernel to the higher half
 - Added a nice tty interface
 - VGA text mode scrolling(finally)
+- Some basic ANSI codes support(the code is terrible, but it works)
 - Interrupts
 - Basic, buggy keyboard handling
 

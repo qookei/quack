@@ -3,6 +3,7 @@
 
 #include "../tty.h"
 
+
 void vga_text_tty_dev(tty_op,uint32_t);
 
 #endif

@@ -1,6 +1,8 @@
 #include "vga_text.h"
 #include "../../io/ports.h"
 
+#define is_digit(c)	((c) >= '0' && (c) <= '9')
+
 enum vga_color {
 	VGA_COLOR_BLACK = 0,
 	VGA_COLOR_BLUE = 1,
@@ -84,8 +86,7 @@ void *memmove(void *dest, const void *src, size_t len) {
 
 
 void vga_text_putchar(char c) {
-	//serial_write_byte(c);
-
+	
 	if (c == '\n') {
 		terminal_column = 0;
 
@@ -95,8 +96,6 @@ void vga_text_putchar(char c) {
 			memset((void*)(0xC00B8000 + VGA_WIDTH * 2 * VGA_HEIGHT-1), 0, 0xA0);
 		}
 
-
-		
 		return;
 	}
 
@@ -113,10 +112,167 @@ void vga_text_putchar(char c) {
 
 	
 }
- 
+
+int k_atoi(char *p) {
+    int k = 0;
+    while (*p) {
+        k = (k<<3)+(k<<1)+(*p)-'0';
+        p++;
+     }
+     return k;
+}
+
+bool ansi_seq = false;
+
+char csi_num[32] = {0};
+uint32_t csi_nums[32] = {0};
+
+uint8_t csi_nums_idx = 0;
+uint8_t csi_num_idx = 31;
+
+extern int printf(const char*, ...);
+
 void vga_text_write(const char* data, size_t size) {
-	for (size_t i = 0; i < size; i++)
-		vga_text_putchar(data[i]);
+	
+	ansi_seq = data[0] == 0x1B;
+
+	if (!ansi_seq) {
+		for (size_t i = 0; i < size; i++)
+			vga_text_putchar(data[i]);
+	} else {
+		for (size_t i = 1; i < size; i++) {
+			if(i == 1) {
+				if (data[i] == 'c') {	// reset
+
+					for (size_t y = 0; y < VGA_HEIGHT; y++) {
+						for (size_t x = 0; x < VGA_WIDTH; x++) {
+							const size_t index = y * VGA_WIDTH + x;
+							terminal_buffer[index] = vga_entry(' ', terminal_color);
+						}
+					}
+
+					terminal_row = 0;
+					terminal_column = 0;
+					terminal_color = vga_entry_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+
+					break;
+				}
+
+				if (data[i] == '[') {	// oh boy, csi, hold onto your seats fuckers
+					uint32_t leftover = size - i;
+					if (leftover == 2) {	// we should use defaults for the command
+						i++;
+						switch(data[i]) {
+							case 'A':
+							case 'B':
+							case 'C':
+							case 'D':
+							case 'E':
+							case 'F':
+							case 'G':
+							case 'S':
+							case 'T':
+							case 'm': {
+								csi_nums[0] = 1;
+								break;
+							}
+
+							case 'J':
+							case 'K': {
+								csi_nums[0] = 0;
+								break;
+							}
+
+							case 'H':
+							case 'f': {
+								csi_nums[0] = 1;
+								csi_nums[1] = 1;
+								break;
+							}
+
+						}
+					} else {
+						csi_nums_idx = 0;
+						while (true) {
+							i++;
+							csi_num_idx = 0;
+							
+							while (is_digit(data[i])) {
+								csi_num[csi_num_idx++] = data[i++];
+								//terminal_buffer[0] = vga_entry(data[i++], 0x07);
+								
+							}
+							csi_num[csi_num_idx] = '\0';
+							csi_nums[csi_nums_idx++] = k_atoi(csi_num);
+							
+							if (data[i] == ';')
+								continue;
+							else
+								break;
+						}
+					}
+
+					switch (data[i]) {	// actual functions
+						case 'A': {
+							terminal_row -= csi_nums[0]; 
+							break;
+						}
+
+						case 'B': {
+							terminal_row += csi_nums[0]; 
+							break;
+						}
+
+						case 'C': {
+							terminal_column += csi_nums[0]; 
+							break;
+						}
+
+						case 'D': {
+							terminal_column -= csi_nums[0]; 
+							break;
+						}
+
+						case 'E': {
+							terminal_row = 0;
+							terminal_column += csi_nums[0]; 
+							break;
+						}
+
+						case 'F': {
+							terminal_row = 0;
+							terminal_column -= csi_nums[0]; 
+							break;
+						}
+
+						case 'G': {
+							terminal_column = csi_nums[0]; 
+							break;
+						}
+
+						case 'f':
+						case 'H': {
+							terminal_row = csi_nums[0] - 1; 
+							terminal_column = csi_nums[1] - 1; 
+							break;
+						}
+
+						case 'm': {
+
+							switch(csi_nums[0]) {
+								
+							}
+
+							break;
+						}
+
+					}
+				}
+			}
+		}
+	}
+
+	ansi_seq = false;
 }
 
 extern size_t strlen(const char*);

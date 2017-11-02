@@ -9,111 +9,10 @@
 #include "interrupt/idt.h"
 #include "interrupt/isr.h"
 #include "pic/pic.h"
+#include "multiboot.h"
+#include "paging/pmm.h"
 #include "tty/tty.h"
 #include "tty/backends/vga_text.h"
-
-// /* Hardware text mode color constants. */
-// enum vga_color {
-// 	VGA_COLOR_BLACK = 0,
-// 	VGA_COLOR_BLUE = 1,
-// 	VGA_COLOR_GREEN = 2,
-// 	VGA_COLOR_CYAN = 3,
-// 	VGA_COLOR_RED = 4,
-// 	VGA_COLOR_MAGENTA = 5,
-// 	VGA_COLOR_BROWN = 6,
-// 	VGA_COLOR_LIGHT_GREY = 7,
-// 	VGA_COLOR_DARK_GREY = 8,
-// 	VGA_COLOR_LIGHT_BLUE = 9,
-// 	VGA_COLOR_LIGHT_GREEN = 10,
-// 	VGA_COLOR_LIGHT_CYAN = 11,
-// 	VGA_COLOR_LIGHT_RED = 12,
-// 	VGA_COLOR_LIGHT_MAGENTA = 13,
-// 	VGA_COLOR_LIGHT_BROWN = 14,
-// 	VGA_COLOR_WHITE = 15,
-// };
- 
-// static inline uint8_t vga_entry_color(enum vga_color fg, enum vga_color bg) {
-// 	return fg | bg << 4;
-// }
- 
-// static inline uint16_t vga_entry(unsigned char uc, uint8_t color) {
-// 	return (uint16_t) uc | (uint16_t) color << 8;
-// }
- 
-// // size_t strlen(const char* str) {
-// // 	size_t len = 0;
-// // 	while (str[len])
-// // 		len++;
-// // 	return len;
-// // }
- 
-// static const size_t VGA_WIDTH = 80;
-// static const size_t VGA_HEIGHT = 25;
- 
-// size_t terminal_row;
-// size_t terminal_column;
-// uint8_t terminal_color;
-// uint16_t* terminal_buffer;
- 
-// void terminal_initialize(void) {
-//     outb(0x3D4, 0x0A);
-//     outb(0x3D5, 0x3F);
-    
-// 	terminal_row = 0;
-// 	terminal_column = 0;
-// 	terminal_color = vga_entry_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
-// 	terminal_buffer = (uint16_t*) 0xC00B8000;
-// 	for (size_t y = 0; y < VGA_HEIGHT; y++) {
-// 		for (size_t x = 0; x < VGA_WIDTH; x++) {
-// 			const size_t index = y * VGA_WIDTH + x;
-// 			terminal_buffer[index] = vga_entry(' ', terminal_color);
-// 		}
-// 	}
-
-// 	serial_init();
-
-// }
- 
-// void terminal_setcolor(uint8_t color) {
-// 	terminal_color = color;
-// }
- 
-// void terminal_putentryat(char c, uint8_t color, size_t x, size_t y) {
-// 	const size_t index = y * VGA_WIDTH + x;
-// 	terminal_buffer[index] = vga_entry(c, color);
-// }
- 
-// void terminal_putchar(char c) {
-// 	//serial_write_byte(c);
-// 	if (c == '\n') {
-// 		terminal_row ++;
-// 		terminal_column = 0;
-
-// 		if (terminal_row == VGA_HEIGHT-1)
-// 			terminal_row = 0;
-		
-// 		return;
-// 	}
-
-
-// 	terminal_putentryat(c, terminal_color, terminal_column, terminal_row);
-// 	if (++terminal_column == VGA_WIDTH) {
-// 		terminal_column = 0;
-// 		if (++terminal_row == VGA_HEIGHT)
-// 			terminal_row = 0;
-// 	}
-
-	
-// }
- 
-// void terminal_write(const char* data, size_t size) {
-// 	for (size_t i = 0; i < size; i++)
-// 		terminal_putchar(data[i]);
-// }
- 
-// void terminal_writestring(const char* data) {
-// 	terminal_write(data, strlen(data));
-// }
 
 void serial_writestr(const char* data, size_t size) {
 	for (size_t i = 0; i < size; i++)
@@ -123,6 +22,38 @@ void serial_writestr(const char* data, size_t size) {
 void serial_writestring(const char* data) {
 	serial_writestr(data, strlen(data));
 }
+
+void play_sound(uint32_t nFrequence) {
+	uint32_t Div;
+	uint8_t tmp;
+
+    //Set the PIT to the desired frequency
+	Div = 1193180 / nFrequence;
+	outb(0x43, 0xb6);
+	outb(0x42, (uint8_t) (Div) );
+	outb(0x42, (uint8_t) (Div >> 8));
+
+    //And play the sound using the PC speaker
+	tmp = inb(0x61);
+	if (tmp != (tmp | 3)) {
+		outb(0x61, tmp | 3);
+	}
+}
+
+static void nosound() {
+	uint8_t tmp = inb(0x61) & 0xFC;
+
+	outb(0x61, tmp);
+}
+
+void beepOn() {
+	outb(0x61, inb(0x61) | 0x03);
+}
+
+void beepOff(uint32_t time)  {
+	outb(0x61, inb(0x61) & ~0x03);
+}
+
 
 int printf(const char *fmt, ...) {
 	char buf[1024] = {0};
@@ -145,7 +76,29 @@ int kprintf(const char *fmt, ...) {
 }
 
 bool axc = false;
-char lastkey;
+char lastkey = '\0';
+
+bool __attribute__((noreturn)) page_fault(interrupt_cpu_state *state) {
+	uint32_t fault_addr;
+   	asm volatile("mov %%cr2, %0" : "=r" (fault_addr));
+
+	// The error code gives us details of what happened.
+	int present   = !(state->err_code & 0x1); // Page not present
+	int rw = state->err_code & 0x2;           // Write operation?
+	int us = state->err_code & 0x4;           // Processor was in user-mode?
+	int reserved = state->err_code & 0x8;     // Overwritten CPU-reserved bits of page entry?
+	int id = state->err_code & 0x10;          // Caused by an instruction fetch?
+
+	// Output an error message.
+	tty_putstr("Page fault (");
+	if (present) {tty_putstr("present");}
+	if (rw) {tty_putstr(",read-only");}
+	if (us) {tty_putstr(",user-mode");}
+	if (id) {tty_putstr(",instruction-fetch");}
+	if (reserved) {tty_putstr(",reserved");}
+	printf(") at 0x%x\n", fault_addr); 
+	asm volatile ("1:\nhlt\njmp 1b");
+}
 
 const char lower_normal[] = { '\0', '?', '1', '2', '3', '4', '5', '6',     
 		'7', '8', '9', '0', '-', '=', '\b', '\t', 'q', 'w', 'e', 'r', 't', 'y', 
@@ -155,11 +108,16 @@ const char lower_normal[] = { '\0', '?', '1', '2', '3', '4', '5', '6',
 
 bool a(interrupt_cpu_state *state) {
 
-	char c = inb(0x60);
+	uint8_t c = inb(0x60);
 	if(!axc)
-	lastkey = lower_normal[c];
+	lastkey = lower_normal[c - (axc?0x80:0x00)];
 
-	printf("keyboard %c %s\n", lastkey, axc?"release":"press");
+	if (axc) play_sound(1000);
+	else nosound();
+
+	printf("\033[40C");
+	
+	printf("keyboard 0x%x %s\n", c, axc?"release":"press");
 	axc = !axc;
 	return true;
 
@@ -169,14 +127,30 @@ extern "C" {
 
 void setup_gdt(void);
 
-void kernel_main(void) {
+void kernel_main(multiboot_info_t *d) {
 	/* Initialize terminal interface */
+
+
+	uint16_t div;
+	div = 1193180 / 500;
+	outb(0x43, 0xB6);
+	outb(0x41, div & 0xFF);
+	outb(0x42, div >> 8);
+	outb(0x40, 0xA9);
+	outb(0x40, 0x4);
+
 	tty_setdev(vga_text_tty_dev);
 	tty_init();
- 
-	/* Newline support is left as an exercise. */
-	setup_gdt();
 
+
+	if (((uint32_t)d) - 0xC0000000 > 0x400000) {
+		tty_putstr("[boot] mboot hdr out of page");
+		while(1);	
+	}
+
+	printf("[boot] mboot: 0x%x\n", ((uint32_t)d));
+
+	setup_gdt();
 	tty_putstr("GDT ok\n");
 
 	pic_remap(0x20, 0x28);
@@ -195,7 +169,16 @@ void kernel_main(void) {
 	//kprintf("Hello world! CPU brand: %s\n", (const char*)brand);
 
 	register_interrupt_handler(0x21, a);
-	
+	register_interrupt_handler(14, page_fault);
+
+	printf("[boot] params: %s\n", (const char*)(0xC0000000 + d->cmdline));
+	printf("[boot] fbuf: %s\n", (const char*)(0xC0000000 + d->cmdline));
+
+	pmm_init(d->mem_upper);
+
+	while(1)printf("alloc 0x%x\n", (uint32_t)pmm_alloc());
+
+
 	while(1);
 	
 	asm volatile ("int $0x00");

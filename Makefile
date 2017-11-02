@@ -1,7 +1,7 @@
 OBJS = boot/boot2.o kernel/kernel.o kernel/io/serial.o kernel/io/ports.o kernel/cpu/gdt.o kernel/vsprintf.o \
 	   kernel/trace/stacktrace.o kernel/interrupt/idt_load.o kernel/interrupt/isr.o kernel/interrupt/idt.o \
 	   kernel/interrupt/interrupt.o kernel/pic/pic.o kernel/tty/tty.o kernel/tty/backends/vga_text.o \
-
+	   kernel/paging/pmm.o
 
 CXX = i686-elf-g++
 CC = i686-elf-gcc
@@ -25,10 +25,10 @@ quack.iso: kernel.elf
 
 kernel.elf: kernel.o kernel/trace/trace.o
 	$(CC) -T linker.ld -o kernel.elf -lgcc $(CFLAGS) $^
-	#rm kernel/trace/trace.o kernel/trace/trace.cc
+	rm kernel/trace/trace.o kernel/trace/trace.cc
 
 kernel/trace/trace.o: kernel/trace/trace.cc
-	$(CXX) -c $< -o $@ $(CXXFLAGS)
+	$(CXX) -c $< -o $@ $(CXXFLAGS) -Wno-narrowing
 
 kernel/trace/trace.cc:
 	python utils/trace_map.py > kernel/trace/trace.cc

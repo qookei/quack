@@ -20,9 +20,11 @@ section .data
 align 0x1000
 page_dir:
     dd 0x00000083
-    times (KERNEL_PAGE_NUMBER - 1) dd 0                 ; Pages before kernel space.
+    dd 0x00400083
+    times (KERNEL_PAGE_NUMBER - 2) dd 0                 ; Pages before kernel space.
     dd 0x00000083
-    times (1024 - KERNEL_PAGE_NUMBER - 1) dd 0  ; Pages after the kernel image.
+    dd 0x00400083
+    times (1024 - KERNEL_PAGE_NUMBER - 2) dd 0          ; Pages after the kernel image.
  
  
  
@@ -51,6 +53,7 @@ _loader:
  
 higher_half:
     mov dword [page_dir], 0
+    mov dword [page_dir + 4], 0
     invlpg [0]
  
     mov esp, stack+STACKSIZE
@@ -58,7 +61,8 @@ higher_half:
  
     ; pass Multiboot info structure -- WARNING: This is a physical address and may not be
     ; in the first 4MB!
-    ; push ebx
+    add ebx, 0xC0000000
+    push ebx
  
     call  kernel_main
 l:    
