@@ -38,6 +38,7 @@ void *pmm_alloc() {
 void pmm_free(void *ptr) {
 	uint32_t page = (uint32_t)ptr;
 	page &= 0xFFFFF000;
+	if (page <= 0x800000) return;
 	//printf("0x%x\n", page);
 
 	pmm_push(page);

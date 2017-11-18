@@ -11,6 +11,7 @@
 #include "pic/pic.h"
 #include "multiboot.h"
 #include "paging/pmm.h"
+#include "paging/paging.h"
 #include "tty/tty.h"
 #include "tty/backends/vga_text.h"
 
@@ -96,7 +97,7 @@ bool __attribute__((noreturn)) page_fault(interrupt_cpu_state *state) {
 	if (us) {tty_putstr(",user-mode");}
 	if (id) {tty_putstr(",instruction-fetch");}
 	if (reserved) {tty_putstr(",reserved");}
-	printf(") at 0x%x\n", fault_addr); 
+	printf(") at 0x%08x\n", fault_addr); 
 	asm volatile ("1:\nhlt\njmp 1b");
 }
 
@@ -143,7 +144,7 @@ void kernel_main(multiboot_info_t *d) {
 	tty_init();
 
 
-	if (((uint32_t)d) - 0xC0000000 > 0x400000) {
+	if (((uint32_t)d) - 0xC0000000 > 0x800000) {
 		tty_putstr("[boot] mboot hdr out of page");
 		while(1);	
 	}
@@ -172,12 +173,11 @@ void kernel_main(multiboot_info_t *d) {
 	register_interrupt_handler(14, page_fault);
 
 	printf("[boot] params: %s\n", (const char*)(0xC0000000 + d->cmdline));
-	printf("[boot] fbuf: %s\n", (const char*)(0xC0000000 + d->cmdline));
+	printf("[boot] fbuf: 0x%x\n", d->framebuffer_addr);
 
 	pmm_init(d->mem_upper);
 
-	while(1)printf("alloc 0x%x\n", (uint32_t)pmm_alloc());
-
+	paging_init();
 
 	while(1);
 	
