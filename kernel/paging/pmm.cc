@@ -9,6 +9,7 @@ extern int printf(const char*, ...);
 
 void pmm_push(uint32_t val) {
 	if (pmm_stack_size > 1048576) return;
+	if ((val & 0xFFF) != 0) printf("Warning! Added an unaligned page to page frame pool! Address added: %08x\n", val);
 	pmm_stack[pmm_stack_pointer] = val;
 	pmm_stack_pointer++;
 	pmm_stack_size++;

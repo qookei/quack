@@ -1,0 +1,15 @@
+cpu: reset_on_triple_fault=0
+
+display_library: x
+
+megs: 256
+
+clock: sync=realtime, time0=local
+
+ata0-master: type=cdrom, path="quack.iso", status=inserted, biosdetect=auto, model="XD"
+
+boot: cdrom
+
+log: ./bochsout.txt
+
+mouse: enabled=0

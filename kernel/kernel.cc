@@ -110,16 +110,10 @@ const char lower_normal[] = { '\0', '?', '1', '2', '3', '4', '5', '6',
 bool a(interrupt_cpu_state *state) {
 
 	uint8_t c = inb(0x60);
-	if(!axc)
-	lastkey = lower_normal[c - (axc?0x80:0x00)];
-
-	if (axc) play_sound(1000);
-	else nosound();
-
-	printf("\033[40C");
 	
-	printf("keyboard 0x%x %s\n", c, axc?"release":"press");
-	axc = !axc;
+	if (c < 0x57)
+		printf("%c", lower_normal[c]);
+
 	return true;
 
 }

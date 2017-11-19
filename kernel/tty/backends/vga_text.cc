@@ -99,6 +99,19 @@ void vga_text_putchar(char c) {
 		return;
 	}
 
+	if (c == '\r') {
+		terminal_column = 0;
+		return;
+	}
+
+	if (c == '\b') {
+		terminal_column--;
+
+		vga_text_putentryat(0x0, terminal_color, terminal_column, terminal_row);
+
+		return;
+	}
+
 
 	vga_text_putentryat(c, terminal_color, terminal_column, terminal_row);
 	if (++terminal_column == VGA_WIDTH) {
@@ -158,7 +171,7 @@ void vga_text_write(const char* data, size_t size) {
 					break;
 				}
 
-				if (data[i] == '[') {	// oh boy, csi, hold onto your seats fuckers
+				if (data[i] == '[') {
 					uint32_t leftover = size - i;
 					if (leftover == 2) {	// we should use defaults for the command
 						i++;
