@@ -14,6 +14,7 @@
 #include "paging/paging.h"
 #include "tty/tty.h"
 #include "tty/backends/vga_text.h"
+#include "kheap/heap.h"
 
 void serial_writestr(const char* data, size_t size) {
 	for (size_t i = 0; i < size; i++)
@@ -63,6 +64,7 @@ int printf(const char *fmt, ...) {
 	int ret = vsprintf(buf, fmt, va);
 	va_end(va);
 	tty_putstr(buf);
+	serial_writestring(buf);
 	return ret;
 }
 
@@ -79,6 +81,8 @@ int kprintf(const char *fmt, ...) {
 bool axc = false;
 char lastkey = '\0';
 
+// extern void map_page(void*,void*,int);
+
 bool __attribute__((noreturn)) page_fault(interrupt_cpu_state *state) {
 	uint32_t fault_addr;
    	asm volatile("mov %%cr2, %0" : "=r" (fault_addr));
@@ -93,8 +97,11 @@ bool __attribute__((noreturn)) page_fault(interrupt_cpu_state *state) {
 	// Output an error message.
 	tty_putstr("Page fault (");
 	if (present) {tty_putstr("present");}
-	if (rw) {tty_putstr(",read-only");}
-	if (us) {tty_putstr(",user-mode");}
+	else {tty_putstr("not present");}
+	if (rw) {tty_putstr(",write");}
+	else {tty_putstr(",read");}
+	if (us) {tty_putstr(",in user-mode");}
+	else {tty_putstr(", in kernel-mode");}
 	if (id) {tty_putstr(",instruction-fetch");}
 	if (reserved) {tty_putstr(",reserved");}
 	printf(") at 0x%08x\n", fault_addr); 
@@ -118,6 +125,10 @@ bool a(interrupt_cpu_state *state) {
 
 }
 
+void fastmemcpy(uint32_t dst, uint32_t src, uint32_t size) {
+	asm volatile ("mov %0, %%ecx\nmov %1, %%edi\nmov %2, %%esi\nrep movsb" : : "r"(size), "r"(dst), "r"(src) : "%ecx","%edi","%esi");
+}
+
 extern "C" { 
 
 void setup_gdt(void);
@@ -136,23 +147,22 @@ void kernel_main(multiboot_info_t *d) {
 
 	tty_setdev(vga_text_tty_dev);
 	tty_init();
+	serial_init();
 
 
 	if (((uint32_t)d) - 0xC0000000 > 0x800000) {
-		tty_putstr("[boot] mboot hdr out of page");
+		tty_putstr("[kernel] mboot hdr out of page");
 		while(1);	
 	}
 
-	printf("[boot] mboot: 0x%x\n", ((uint32_t)d));
-
 	setup_gdt();
-	tty_putstr("GDT ok\n");
+	tty_putstr("[kernel] GDT ok\n");
 
 	pic_remap(0x20, 0x28);
 
 	idt_init();
 	asm volatile ("sti");
-	tty_putstr("IDT ok\n");
+	tty_putstr("[kernel] IDT ok\n");
 
 	
 	uint32_t brand[12];
@@ -160,18 +170,40 @@ void kernel_main(multiboot_info_t *d) {
 	__cpuid(0x80000003 , brand[4], brand[5], brand[6], brand[7]);
 	__cpuid(0x80000004 , brand[8], brand[9], brand[10], brand[11]);
 
-	printf("Hello world! CPU brand: %s\n", (const char*)brand);	
+	printf("[kernel] cpu brand: %s\n", (const char*)brand);	
 	//kprintf("Hello world! CPU brand: %s\n", (const char*)brand);
 
 	register_interrupt_handler(0x21, a);
 	register_interrupt_handler(14, page_fault);
 
-	printf("[boot] params: %s\n", (const char*)(0xC0000000 + d->cmdline));
-	printf("[boot] fbuf: 0x%x\n", d->framebuffer_addr);
+	printf("[kernel] params: %s\n", (const char*)(0xC0000000 + d->cmdline));
+	printf("[kernel] fbuf: 0x%x\n", d->framebuffer_addr);
 
 	pmm_init(d->mem_upper);
 
 	paging_init();
+
+	heap_init();
+	// void *page = (void *)pmm_alloc();
+	// map_page(page, (void*)0x0, 0x3);
+	// page = (void *)pmm_alloc();
+	// map_page(page, (void*)0x1000, 0x3);
+	
+	uint8_t *mem = (uint8_t *)kmalloc(0x30);
+
+	printf("kmalloc: allocated 256 bytes at %08p\n", mem);
+
+	for (int y = 0; y < 0x30; y += 0x8) {
+		printf("%08x: ", 0 + y);
+		for (int i = 0; i < 0x8 && i < 0x30 - y; i++) {
+			printf("%u", 0x30 - y);
+			printf("%02x  ", mem[i + y]);
+		}
+		printf("\n");
+	}
+	kfree(mem);
+
+	printf("> ");
 
 	while(1);
 	

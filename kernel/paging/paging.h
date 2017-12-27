@@ -5,19 +5,13 @@
 #include <stddef.h>
 #include "pmm.h"
 
-struct page_table {
-	uint32_t entries[1024] __attribute__((aligned(4096)));	
-};
-
-struct page_dir_internal {
-	page_table entries[1024] __attribute__((aligned(4096)));
-};
-
 struct page_directory {
-	page_table *entries[1024] __attribute__((aligned(4096)));
+	uint32_t *entries[1024] __attribute__((aligned(4096)));
 };
 
 void paging_init(void);
-
+uint32_t alloc_clean_page();
+void map_page(void *physaddr, void *virtualaddr, unsigned int flags);
+void unmap_page(void *virtualaddr);
 
 #endif

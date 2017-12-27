@@ -11,6 +11,23 @@ section .multiboot
     dd MAGIC
     dd FLAGS
     dd CHECKSUM
+    
+    ; keep it all 0 since this is not A.OUT
+
+    dd 0
+    dd 0
+    dd 0
+    dd 0
+    dd 0
+
+    ; video mode
+
+    dd 0
+    dd 1024
+    dd 768
+    dd 32
+
+
  
 KERNEL_VIRTUAL_BASE equ 0xC0000000
 KERNEL_PAGE_NUMBER equ (KERNEL_VIRTUAL_BASE >> 22)
@@ -55,6 +72,7 @@ higher_half:
     mov dword [page_dir], 0
     mov dword [page_dir + 4], 0
     invlpg [0]
+    invlpg [0x40000]
  
     mov esp, stack+STACKSIZE
     ; push eax

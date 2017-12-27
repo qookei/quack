@@ -3,3 +3,4 @@ quack.iso
 kernel.elf
 **.o
 serial.txt
+/bochsout.txt
