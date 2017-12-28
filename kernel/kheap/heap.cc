@@ -2,26 +2,27 @@
 
 memory_chunk *first;
 uint32_t mem_top;
-
-void heap_init() {
-	first 	= 0;
-	mem_top = 0;
-	void *page = (void *)pmm_alloc();
-	map_page(page, 0x0, 0x3);
-	for(int i = 0; i < 4096; i++) ((uint8_t*)(0x0))[i] = 0;
-	first->allocated = false;
-	first->size = 0x1000;
-	first->prev = 0;
-	first->next = 0;
-}
-
 extern int printf(const char*, ...);
 
-void expand_heap() {
+void heap_init() {
+	first 	= (memory_chunk *)0x1000;
+	mem_top = 0x1000;
 	void *page = (void *)pmm_alloc();
-	map_page(page, (void *)(mem_top + 0x1000), 0x3);
-	for(int i = 0; i < 4096; i++) ((uint8_t*)(mem_top + 0x1000))[i] = 0;
+	map_page(page, first, 0x3);
+	for(int i = 0; i < 4096; i++) ((uint8_t*)(first))[i] = 0;
+	first->allocated = false;
+	first->size = 0x1000 - sizeof(memory_chunk);
+	first->prev = 0;
+	first->next = 0;
+	printf("[kernel] heap ok\n");
+}
+
+
+void expand_heap() {
 	mem_top += 0x1000;
+	void *page = (void *)pmm_alloc();
+	map_page(page, (void *)(mem_top), 0x3);
+	for(int i = 0; i < 4096; i++) ((uint8_t*)(mem_top))[i] = 0;
 }
 
 void *kmalloc(size_t size) {
@@ -41,14 +42,22 @@ void *kmalloc(size_t size) {
 		memory_chunk *m = first;
 		while(m->next != 0) m = m->next;
 		
-		uint32_t expanded = m->size;
+		uint32_t expanded = 0;
 
-		while (expanded < size) {
+		for (int i = 0; i < size / 0x1000 + 1; i++) {
 			expand_heap();
 			expanded += 0x1000;
 		}
 
-		m->size = expanded;
+		memory_chunk *tmp = (memory_chunk *)((size_t)m + sizeof(memory_chunk) + m->size);
+		
+		tmp->allocated = false;
+		tmp->prev = m;
+		tmp->next = 0;
+		tmp->size = expanded - sizeof(memory_chunk);
+		tmp->prev->next = tmp;
+
+		// m->size = expanded;
 
 		//return kmalloc(size);						//restart alloc process with more mem
 		res = 0;
@@ -58,6 +67,12 @@ void *kmalloc(size_t size) {
 				break;
 			}
 		}
+	}
+
+	if (res == 0) {
+		// fuck
+		printf("apparently you did not allocate correctly\n");
+		return NULL;
 	}
 	
 	if (res->size >= size + sizeof(memory_chunk) + 1) {

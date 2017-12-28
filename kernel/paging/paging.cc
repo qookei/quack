@@ -14,17 +14,24 @@ static inline void tlb_flush_entry(uint32_t addr) {
 }
 
 
+uint32_t pt_f[1024] __attribute__((aligned(4096))) = {0};
+
 uint32_t alloc_clean_page() {
-	uint32_t pt_f[1024] __attribute__((aligned(4096))) = {0};
+
+	for(uint32_t i = 0; i < 1024; i++) pt_f[i] = 0;
 
 	pt_f[0] = (uint32_t)pmm_alloc() | 0x3;
 	dir_.entries[1023] = (uint32_t *)(((uint32_t)pt_f - 0xC0000000) | 0x3);
+
+	tlb_flush_entry(0xFFC00000);
 
 	uint8_t *pt = (uint8_t *)0xFFC00000;
 	
 	for(uint32_t i = 0; i < 4096; i++) pt[i] = 0;
 	
 	dir_.entries[1023] = (uint32_t *)(((uint32_t)&dir_.entries - 0xC0000000) | 0x3);
+	
+	tlb_flush_entry(0xFFC00000);
 	
 	return pt_f[0] & 0xFFFFF000;
 }
@@ -101,6 +108,6 @@ void paging_init(void) {
 
 	set_cr3(addr);
 
-	printf("Paging initialized\n");
+	printf("[kernel] paging ok\n");
 
 }

@@ -3,6 +3,6 @@
 
 #include "trace.h"
 
-void stack_trace(unsigned int);
+void stack_trace(unsigned int, unsigned int);
 
 #endif

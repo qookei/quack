@@ -3,7 +3,8 @@ extern kernel_main
  
 MODULEALIGN equ  1<<0
 MEMINFO     equ  1<<1
-FLAGS       equ  MODULEALIGN | MEMINFO
+VIDEO       equ  1<<2
+FLAGS       equ  MODULEALIGN | MEMINFO | VIDEO
 MAGIC       equ    0x1BADB002
 CHECKSUM    equ -(MAGIC + FLAGS)
 
@@ -22,10 +23,10 @@ section .multiboot
 
     ; video mode
 
+    dd 1
+    dd 80
+    dd 50
     dd 0
-    dd 1024
-    dd 768
-    dd 32
 
 
  

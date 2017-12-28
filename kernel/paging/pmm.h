@@ -7,5 +7,7 @@
 void pmm_init(uint32_t);
 void *pmm_alloc();
 void pmm_free(void*);
+size_t free_pages();
+size_t max_pages();
 
 #endif

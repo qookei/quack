@@ -25,37 +25,6 @@ void serial_writestring(const char* data) {
 	serial_writestr(data, strlen(data));
 }
 
-void play_sound(uint32_t nFrequence) {
-	uint32_t Div;
-	uint8_t tmp;
-
-    //Set the PIT to the desired frequency
-	Div = 1193180 / nFrequence;
-	outb(0x43, 0xb6);
-	outb(0x42, (uint8_t) (Div) );
-	outb(0x42, (uint8_t) (Div >> 8));
-
-    //And play the sound using the PC speaker
-	tmp = inb(0x61);
-	if (tmp != (tmp | 3)) {
-		outb(0x61, tmp | 3);
-	}
-}
-
-static void nosound() {
-	uint8_t tmp = inb(0x61) & 0xFC;
-
-	outb(0x61, tmp);
-}
-
-void beepOn() {
-	outb(0x61, inb(0x61) | 0x03);
-}
-
-void beepOff(uint32_t time)  {
-	outb(0x61, inb(0x61) & ~0x03);
-}
-
 
 int printf(const char *fmt, ...) {
 	char buf[1024] = {0};
@@ -98,13 +67,14 @@ bool __attribute__((noreturn)) page_fault(interrupt_cpu_state *state) {
 	tty_putstr("Page fault (");
 	if (present) {tty_putstr("present");}
 	else {tty_putstr("not present");}
-	if (rw) {tty_putstr(",write");}
-	else {tty_putstr(",read");}
-	if (us) {tty_putstr(",in user-mode");}
-	else {tty_putstr(", in kernel-mode");}
-	if (id) {tty_putstr(",instruction-fetch");}
-	if (reserved) {tty_putstr(",reserved");}
-	printf(") at 0x%08x\n", fault_addr); 
+	if (rw) {tty_putstr(", write");}
+	else {tty_putstr(", read");}
+	if (us) {tty_putstr(", user-mode");}
+	else {tty_putstr(", kernel-mode");}
+	if (id) {tty_putstr(", instruction-fetch");}
+	if (reserved) {tty_putstr(", reserved");}
+	printf(") at 0x%08x\n", fault_addr);
+	stack_trace(20, 0);
 	asm volatile ("1:\nhlt\njmp 1b");
 }
 
@@ -135,30 +105,32 @@ void setup_gdt(void);
 
 void kernel_main(multiboot_info_t *d) {
 	/* Initialize terminal interface */
+	if (((uint32_t)d) - 0xC0000000 > 0x800000) {
+		tty_putstr("[kernel] mboot hdr out of page");
+		return;
+	}
 
-
-	uint16_t div;
-	div = 1193180 / 500;
-	outb(0x43, 0xB6);
-	outb(0x41, div & 0xFF);
-	outb(0x42, div >> 8);
-	outb(0x40, 0xA9);
-	outb(0x40, 0x4);
 
 	tty_setdev(vga_text_tty_dev);
 	tty_init();
 	serial_init();
 
 
-	if (((uint32_t)d) - 0xC0000000 > 0x800000) {
-		tty_putstr("[kernel] mboot hdr out of page");
-		while(1);	
+	multiboot_memory_map_t* mmap = (multiboot_memory_map_t*)(d->mmap_addr + 0xC0000000);
+	while((uint32_t)mmap < (d->mmap_addr + 0xC0000000 + d->mmap_length)) {
+		
+		printf("%08p mem %08x - %x", mmap, mmap->addr, mmap->size);
+		printf(" | %u\n", mmap->type);
+
+		mmap = (multiboot_memory_map_t*) ((uint32_t)mmap + mmap->size + sizeof(mmap->size));
 	}
+
 
 	setup_gdt();
 	tty_putstr("[kernel] GDT ok\n");
 
 	pic_remap(0x20, 0x28);
+	tty_putstr("[kernel] PIC ok\n");
 
 	idt_init();
 	asm volatile ("sti");
@@ -189,21 +161,43 @@ void kernel_main(multiboot_info_t *d) {
 	// page = (void *)pmm_alloc();
 	// map_page(page, (void*)0x1000, 0x3);
 	
-	uint8_t *mem = (uint8_t *)kmalloc(0x30);
+	uint8_t *mem = (uint8_t *)kmalloc(30);
 
-	printf("kmalloc: allocated 256 bytes at %08p\n", mem);
+	printf("kmalloc: allocated 30 bytes at %08p\n", mem);
 
-	for (int y = 0; y < 0x30; y += 0x8) {
-		printf("%08x: ", 0 + y);
-		for (int i = 0; i < 0x8 && i < 0x30 - y; i++) {
-			printf("%u", 0x30 - y);
-			printf("%02x  ", mem[i + y]);
+	for (int y = 0; y < 30; y ++) {
+		
+		if (((y % 8 == 0 && 30 - y > 8) || y == 30 - 1) && y) {
+			printf(" | ");
+			for (int i = 0; i < 8; i++) {
+				char c = mem[y - 8 + i];
+				printf("%c", c >= ' ' && c <= '~' ? c : '.');
+			}
 		}
-		printf("\n");
+
+		if (y == 0 || y % 8 == 0) {
+			
+
+
+			if (y % 8 == 0 && y) printf("\n");
+			printf("%08x: ", 0 + y);
+
+		}
+
+		printf("%02x  ", mem[y]);
+
 	}
+
 	kfree(mem);
 
-	printf("> ");
+	uint32_t x = 100;
+
+	while(1) { 	
+		uint8_t* ptr = (uint8_t *)kmalloc(x * 4096);
+		printf("free pages: %u/%u(%u bytes free)\n", free_pages(), max_pages(), free_pages() * 4096);
+	}
+	// printf("\n> ");
+
 
 	while(1);
 	

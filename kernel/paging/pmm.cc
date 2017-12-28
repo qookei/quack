@@ -4,6 +4,7 @@ uint32_t pmm_stack[1048576]={0x0};
 
 uint32_t pmm_stack_pointer = 0;
 uint32_t pmm_stack_size = 0;
+uint32_t pmm_stack_max_size = 0;
 
 extern int printf(const char*, ...);
 
@@ -23,12 +24,22 @@ uint32_t pmm_pop() {
 }
 
 void pmm_init(uint32_t mem_sz) {
+
+	uint32_t old_sz = mem_sz * 1024;
+
 	mem_sz -= 8192;
 	mem_sz *= 1024;
 
+	if (old_sz - mem_sz > old_sz) {
+		asm volatile ("cli"); printf("insufficient memory, please add at least %u bytes!", (old_sz - mem_sz) - old_sz); while(1);
+	}
+
 	for (uint32_t i = 0; i < mem_sz; i += 4096) {
 		pmm_push(0x800000 + i);
+		pmm_stack_max_size ++;
 	}
+
+	printf("[kernel] pmm ok\n");
 }
 
 void *pmm_alloc() {
@@ -43,4 +54,12 @@ void pmm_free(void *ptr) {
 	//printf("0x%x\n", page);
 
 	pmm_push(page);
+}
+
+size_t free_pages() {
+	return pmm_stack_size;
+}
+
+size_t max_pages() {
+	return pmm_stack_max_size;
 }

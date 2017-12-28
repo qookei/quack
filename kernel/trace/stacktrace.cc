@@ -11,18 +11,21 @@ uint32_t find_correct_trace(uint32_t addr) {
 
 extern int printf(const char*, ...);
 
-void stack_trace(unsigned int max_frames) {
+void stack_trace(unsigned int max_frames, unsigned int skip) {
 	unsigned int *ebp = &max_frames - 2;
+    unsigned int skipped = 0;
     printf("Stack trace:\n");
     for(unsigned int frame = 0; frame < max_frames; ++frame) {
         unsigned int eip = ebp[1];
 
         ebp = reinterpret_cast<unsigned int *>(ebp[0]);
         //unsigned int *arguments = &ebp[2];
-       	        
-        int trace_id = find_correct_trace(eip);
-        printf("0x%x: %s+0x%x\n", eip, trace_elems[trace_id].func_name, eip - trace_elems[trace_id].addr);
-    
+       	
+        if (skipped++ >= skip) {
+            int trace_id = find_correct_trace(eip);
+            printf("0x%x: %s+0x%x\n", eip, trace_elems[trace_id].func_name, eip - trace_elems[trace_id].addr);
+        }
+
         if(ebp == 0)
         	break;
 
