@@ -6,40 +6,63 @@ uint32_t pmm_stack_pointer = 0;
 uint32_t pmm_stack_size = 0;
 uint32_t pmm_stack_max_size = 0;
 
-extern int printf(const char*, ...);
+extern int kprintf(const char*, ...);
+
+inline bool is_available(uint32_t page_begin, multiboot_info_t *mbt) {
+	multiboot_memory_map_t* mmap = (multiboot_memory_map_t*)(mbt->mmap_addr + 0xC0000000);
+	while((uint32_t)mmap < (mbt->mmap_addr + 0xC0000000 + mbt->mmap_length)) {
+		
+		uint32_t begin = (uint32_t)mmap->addr;
+		uint32_t end = begin + (uint32_t)mmap->len;
+
+		if (mmap->type != MULTIBOOT_MEMORY_AVAILABLE) {
+			if (page_begin >= begin && page_begin + 0x1000 <= end) return false;
+		}
+
+		mmap = (multiboot_memory_map_t*) ((uint32_t)mmap + mmap->size + sizeof(mmap->size));
+	}
+
+	return true;
+}
 
 void pmm_push(uint32_t val) {
 	if (pmm_stack_size > 1048576) return;
-	if ((val & 0xFFF) != 0) printf("Warning! Added an unaligned page to page frame pool! Address added: %08x\n", val);
+	if ((val & 0xFFF) != 0) kprintf("Warning! Added an unaligned page to page frame pool! Address added: %08x\n", val);
 	pmm_stack[pmm_stack_pointer] = val;
 	pmm_stack_pointer++;
 	pmm_stack_size++;
 }
 
 uint32_t pmm_pop() {
-	if(pmm_stack_size == 0) {asm volatile ("cli"); printf("out of physical memory!"); while(1);}
+	if(pmm_stack_size == 0) {asm volatile ("cli"); kprintf("out of physical memory!"); while(1);}
 	pmm_stack_pointer--;
 	pmm_stack_size--;
 	return pmm_stack[pmm_stack_pointer];
 }
 
-void pmm_init(uint32_t mem_sz) {
+void pmm_init(multiboot_info_t *mbt) {
+
+	uint32_t mem_sz = mbt->mem_upper;
 
 	uint32_t old_sz = mem_sz * 1024;
 
-	mem_sz -= 8192;
+	mem_sz -= 12288;
 	mem_sz *= 1024;
 
 	if (old_sz - mem_sz > old_sz) {
-		asm volatile ("cli"); printf("insufficient memory, please add at least %u bytes!", (old_sz - mem_sz) - old_sz); while(1);
+		asm volatile ("cli"); kprintf("insufficient memory, please add at least %u bytes!", (old_sz - mem_sz) - old_sz); while(1);
 	}
 
 	for (uint32_t i = 0; i < mem_sz; i += 4096) {
-		pmm_push(0x800000 + i);
-		pmm_stack_max_size ++;
-	}
+		if (is_available(0xC00000 + i, mbt)) {
+			pmm_push(0xC00000 + i);
+			pmm_stack_max_size ++;
+		} else {
+			kprintf("unavailable address %08x", 0xC00000 + i);
+		}
+	} 
 
-	printf("[kernel] pmm ok\n");
+	kprintf("[kernel] pmm ok\n");
 }
 
 void *pmm_alloc() {

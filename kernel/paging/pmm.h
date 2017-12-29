@@ -4,7 +4,9 @@
 #include <stdint.h>
 #include <stddef.h>
 
-void pmm_init(uint32_t);
+#include "../multiboot.h"
+
+void pmm_init(multiboot_info_t *);
 void *pmm_alloc();
 void pmm_free(void*);
 size_t free_pages();

@@ -14,6 +14,7 @@
 #include "paging/paging.h"
 #include "tty/tty.h"
 #include "tty/backends/vga_text.h"
+#include "tty/backends/vesa_text.h"
 #include "kheap/heap.h"
 
 void serial_writestr(const char* data, size_t size) {
@@ -73,9 +74,46 @@ bool __attribute__((noreturn)) page_fault(interrupt_cpu_state *state) {
 	else {tty_putstr(", kernel-mode");}
 	if (id) {tty_putstr(", instruction-fetch");}
 	if (reserved) {tty_putstr(", reserved");}
-	printf(") at 0x%08x\n", fault_addr);
+	kprintf(") at 0x%08x\n", fault_addr);
 	stack_trace(20, 0);
 	asm volatile ("1:\nhlt\njmp 1b");
+}
+
+void mem_dump(void *data, size_t nbytes, size_t bytes_per_line) {
+	uint8_t *mem = (uint8_t *)data;
+	for (size_t y = 0; y < nbytes; y ++) {
+		if (y == 0 || y % bytes_per_line == 0) {
+			if (y % bytes_per_line == 0 && y) {
+				printf("%c[%uG", 0x1B, 10 + bytes_per_line * 3);
+				printf("| ");
+				for (size_t i = 0; i < bytes_per_line; i++) {
+					char c = mem[y - bytes_per_line + i];
+					printf("%c", c >= ' ' && c <= '~' ? c : '.');
+				}
+				printf("\n");
+			}
+			printf("%08x: ", 0 + y);
+
+		}
+
+		printf("%02x ", mem[y]);
+
+	}
+
+	printf("%c[%uG", 0x1B, 10 + bytes_per_line * 3);
+	printf("| ");
+
+	size_t x = (nbytes / bytes_per_line) * bytes_per_line;
+	if (x == nbytes) {
+		x = nbytes - bytes_per_line;
+	}
+
+	for (size_t y = x; y < nbytes; y++) {
+		char c = mem[y];
+		printf("%c", c >= ' ' && c <= '~' ? c : '.');
+	}
+	
+	printf("\n");
 }
 
 const char lower_normal[] = { '\0', '?', '1', '2', '3', '4', '5', '6',     
@@ -99,42 +137,53 @@ void fastmemcpy(uint32_t dst, uint32_t src, uint32_t size) {
 	asm volatile ("mov %0, %%ecx\nmov %1, %%edi\nmov %2, %%esi\nrep movsb" : : "r"(size), "r"(dst), "r"(src) : "%ecx","%edi","%esi");
 }
 
+const char* mem_type_names[] = {"", "Available", "Reserved", "ACPI", "NVS", "Bad RAM"};
+
 extern "C" { 
 
 void setup_gdt(void);
 
 void kernel_main(multiboot_info_t *d) {
 	/* Initialize terminal interface */
-	if (((uint32_t)d) - 0xC0000000 > 0x800000) {
-		tty_putstr("[kernel] mboot hdr out of page");
-		return;
-	}
 
-
-	tty_setdev(vga_text_tty_dev);
-	tty_init();
 	serial_init();
 
 
-	multiboot_memory_map_t* mmap = (multiboot_memory_map_t*)(d->mmap_addr + 0xC0000000);
-	while((uint32_t)mmap < (d->mmap_addr + 0xC0000000 + d->mmap_length)) {
-		
-		printf("%08p mem %08x - %x", mmap, mmap->addr, mmap->size);
-		printf(" | %u\n", mmap->type);
-
-		mmap = (multiboot_memory_map_t*) ((uint32_t)mmap + mmap->size + sizeof(mmap->size));
-	}
-
 
 	setup_gdt();
-	tty_putstr("[kernel] GDT ok\n");
+	kprintf("[kernel] GDT ok\n");
 
 	pic_remap(0x20, 0x28);
-	tty_putstr("[kernel] PIC ok\n");
+	kprintf("[kernel] PIC ok\n");
 
 	idt_init();
 	asm volatile ("sti");
-	tty_putstr("[kernel] IDT ok\n");
+	kprintf("[kernel] IDT ok\n");
+
+	register_interrupt_handler(14, page_fault);
+
+	pmm_init(d);
+
+	paging_init();
+
+	heap_init();
+
+	if (d->framebuffer_addr == 0xB8000 || d->framebuffer_addr == 0x0) {
+		tty_setdev(vga_text_tty_dev); // vesa
+	} else {
+		vesa_text_tty_set_mboot(d);
+		tty_setdev(vesa_text_tty_dev);
+		// 
+	}
+
+	tty_init();
+
+	if (((uint32_t)d) - 0xC0000000 > 0x800000) {
+		kprintf("[kernel] mboot hdr out of page");
+		return;
+	}
+
+	
 
 	
 	uint32_t brand[12];
@@ -146,57 +195,38 @@ void kernel_main(multiboot_info_t *d) {
 	//kprintf("Hello world! CPU brand: %s\n", (const char*)brand);
 
 	register_interrupt_handler(0x21, a);
-	register_interrupt_handler(14, page_fault);
-
+	
 	printf("[kernel] params: %s\n", (const char*)(0xC0000000 + d->cmdline));
 	printf("[kernel] fbuf: 0x%x\n", d->framebuffer_addr);
 
-	pmm_init(d->mem_upper);
-
-	paging_init();
-
-	heap_init();
+	
 	// void *page = (void *)pmm_alloc();
 	// map_page(page, (void*)0x0, 0x3);
 	// page = (void *)pmm_alloc();
 	// map_page(page, (void*)0x1000, 0x3);
 	
-	uint8_t *mem = (uint8_t *)kmalloc(30);
+	// uint8_t *mem = (uint8_t *)kmalloc(128);
 
-	printf("kmalloc: allocated 30 bytes at %08p\n", mem);
+	// mem_dump(mem, 128, 16);
 
-	for (int y = 0; y < 30; y ++) {
+	// kfree(mem);
+
+	printf("free pages: %u/%u(%u bytes free)\n", free_pages(), max_pages(), free_pages() * 4096);
+
+	multiboot_memory_map_t* mmap = (multiboot_memory_map_t*)(d->mmap_addr + 0xC0000000);
+	while((uint32_t)mmap < (d->mmap_addr + 0xC0000000 + d->mmap_length)) {
 		
-		if (((y % 8 == 0 && 30 - y > 8) || y == 30 - 1) && y) {
-			printf(" | ");
-			for (int i = 0; i < 8; i++) {
-				char c = mem[y - 8 + i];
-				printf("%c", c >= ' ' && c <= '~' ? c : '.');
-			}
-		}
+		uint32_t addr = (uint32_t)mmap->addr;
+		uint32_t len = (uint32_t)mmap->len;
 
-		if (y == 0 || y % 8 == 0) {
-			
+		printf("%08x - %08x | %s\n", addr, addr + len, mem_type_names[mmap->type]);
 
-
-			if (y % 8 == 0 && y) printf("\n");
-			printf("%08x: ", 0 + y);
-
-		}
-
-		printf("%02x  ", mem[y]);
-
+		mmap = (multiboot_memory_map_t*) ((uint32_t)mmap + mmap->size + sizeof(mmap->size));
 	}
 
-	kfree(mem);
 
-	uint32_t x = 100;
 
-	while(1) { 	
-		uint8_t* ptr = (uint8_t *)kmalloc(x * 4096);
-		printf("free pages: %u/%u(%u bytes free)\n", free_pages(), max_pages(), free_pages() * 4096);
-	}
-	// printf("\n> ");
+	printf("\n> ");
 
 
 	while(1);

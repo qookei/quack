@@ -1,7 +1,8 @@
 OBJS = boot/boot2.o kernel/kernel.o kernel/io/serial.o kernel/io/ports.o kernel/cpu/gdt.o kernel/vsprintf.o \
 	   kernel/trace/stacktrace.o kernel/interrupt/idt_load.o kernel/interrupt/isr.o kernel/interrupt/idt.o \
 	   kernel/interrupt/interrupt.o kernel/pic/pic.o kernel/tty/tty.o kernel/tty/backends/vga_text.o \
-	   kernel/paging/pmm.o kernel/paging/paging.o kernel/kheap/heap.o
+	   kernel/paging/pmm.o kernel/paging/paging.o kernel/kheap/heap.o kernel/tty/backends/vesa_text.o \
+	   kernel/tty/backends/vesa_font.o
 
 CXX = i686-elf-g++
 CC = i686-elf-gcc

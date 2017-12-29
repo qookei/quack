@@ -1,5 +1,5 @@
-#ifndef VGA_TEXT_BACKEND_H
-#define VGA_TEXT_BACKEND_H
+#ifndef TTY_BACKEND_VGA
+#define TTY_BACKEND_VGA
 
 #include "../tty.h"
 

@@ -1,6 +1,6 @@
 import subprocess
 
-output = subprocess.check_output("i686-elf-nm -f posix kernel.o | c++filt -p | grep -F \" T \"", shell=True)
+output = subprocess.check_output("i686-elf-nm -f posix kernel.o | c++filt -p | grep -F \" T \" | grep -v \"loader\"", shell=True)
 
 lines = output.splitlines()
 

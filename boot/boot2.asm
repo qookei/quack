@@ -23,9 +23,9 @@ section .multiboot
 
     ; video mode
 
-    dd 1
-    dd 80
-    dd 50
+    dd 0
+    dd 0
+    dd 0
     dd 0
 
 
@@ -39,10 +39,12 @@ align 0x1000
 page_dir:
     dd 0x00000083
     dd 0x00400083
-    times (KERNEL_PAGE_NUMBER - 2) dd 0                 ; Pages before kernel space.
+    dd 0x00800083
+    times (KERNEL_PAGE_NUMBER - 3) dd 0                 ; Pages before kernel space.
     dd 0x00000083
     dd 0x00400083
-    times (1024 - KERNEL_PAGE_NUMBER - 2) dd 0          ; Pages after the kernel image.
+    dd 0x00800083
+    times (1024 - KERNEL_PAGE_NUMBER - 3) dd 0          ; Pages after the kernel image.
  
  
  

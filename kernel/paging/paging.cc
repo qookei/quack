@@ -2,7 +2,7 @@
 
 page_directory dir_;
 
-extern int printf(const char*, ...);
+extern int kprintf(const char*, ...);
 extern void *memcpy(void *, const void *, size_t);
 
 static void inline set_cr3(uint32_t addr) {
@@ -37,10 +37,8 @@ uint32_t alloc_clean_page() {
 }
 
 void map_page(void *physaddr, void *virtualaddr, unsigned int flags) {
-	uint32_t dbg_idx = 0;
-
 	if ((((uint32_t)physaddr) & 0xFFF) != 0 || (((uint32_t)virtualaddr)&0xFFF) != 0) {
-		printf("map_page with unaligned address(es)!\n");
+		kprintf("map_page with unaligned address(es)!\n");
 		return;
 	}
  
@@ -48,14 +46,13 @@ void map_page(void *physaddr, void *virtualaddr, unsigned int flags) {
     uint32_t ptindex = (uint32_t)virtualaddr >> 12 & 0x03FF;
 
     uint32_t *pd = (uint32_t *)0xFFFFF000;
-    if (!(pd[pdindex] & 0x1)) {
-    	pd[pdindex] = alloc_clean_page() | 0x3;
-	}
+    if (!(pd[pdindex] & 0x1)) pd[pdindex] = alloc_clean_page() | 0x3;
+	
 
     uint32_t *pt = ((uint32_t *)0xFFC00000) + (0x400 * pdindex);
 
     if(pt[ptindex] & 0x1) {
- 		printf("map_page on already mapped address!\n");
+ 		kprintf("map_page on already mapped address!\n");
 		return;
     }
     
@@ -66,7 +63,7 @@ void map_page(void *physaddr, void *virtualaddr, unsigned int flags) {
 
 void unmap_page(void *virtualaddr) {
 	if ((((uint32_t)virtualaddr)&0xFFF) != 0) {
-		printf("unmap_page with unaligned address!\n");
+		kprintf("unmap_page with unaligned address!\n");
 		return;
 	}
  
@@ -75,7 +72,7 @@ void unmap_page(void *virtualaddr) {
 
     uint32_t *pd = (uint32_t *)0xFFFFF000;
     if (!(pd[pdindex] & 0x1)) {
-    	printf("unmap_page on nonexistent page directory!\n");
+    	kprintf("unmap_page on nonexistent page directory!\n");
 	}
 
     uint32_t *pt = ((uint32_t *)0xFFC00000) + (0x400 * pdindex);
@@ -94,20 +91,22 @@ void paging_init(void) {
 
 	dir_.entries[i++] = (uint32_t *)0x0;
 	dir_.entries[i++] = (uint32_t *)0x0;
+	dir_.entries[i++] = (uint32_t *)0x0;
 	
-	for (uint32_t j = 0; j < kernel_addr - 2; j++)
+	for (uint32_t j = 0; j < kernel_addr - 3; j++)
 		dir_.entries[i++] = (uint32_t *)0x0;
 	
 	dir_.entries[i++] = (uint32_t *)0x00000083;
 	dir_.entries[i++] = (uint32_t *)0x00400083;
+	dir_.entries[i++] = (uint32_t *)0x00800083;
 	
-	for (uint32_t j = 0; j < 1024 - kernel_addr - 3; j++)
+	for (uint32_t j = 0; j < 1024 - kernel_addr - 4; j++)
 		dir_.entries[i++] = (uint32_t *)0x0;
 
 	dir_.entries[i++] = (uint32_t *)(addr | 0x3);
 
 	set_cr3(addr);
 
-	printf("[kernel] paging ok\n");
+	kprintf("[kernel] paging ok\n");
 
 }
