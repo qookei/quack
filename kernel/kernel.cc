@@ -16,6 +16,8 @@
 #include "tty/backends/vga_text.h"
 #include "tty/backends/vesa_text.h"
 #include "kheap/heap.h"
+#include "io/rtc.h"
+#include "kbd/ps2kbd.h"
 
 void serial_writestr(const char* data, size_t size) {
 	for (size_t i = 0; i < size; i++)
@@ -79,6 +81,31 @@ bool __attribute__((noreturn)) page_fault(interrupt_cpu_state *state) {
 	asm volatile ("1:\nhlt\njmp 1b");
 }
 
+uint32_t k = 0;
+uint8_t u = 0;
+
+extern uint8_t minute;
+extern uint8_t hour;
+extern uint8_t second;
+
+extern uint8_t day;
+extern uint8_t month;
+extern uint32_t year;
+
+const char* months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+
+bool timer(interrupt_cpu_state *state) {
+	read_rtc();
+	printf("%c[s", 0x1B);
+	printf("%c[%u;%uH", 0x1B, 1, 1);
+	printf("%c[%uG", 0x1B, 105);
+	printf("%02u %s. %04u [%02u:%02u:%02u]", day, months[month-1], year, hour, minute, second);
+	if (!u) k++;
+	printf("%c[u", 0x1B);
+	u++;
+	return true;
+}
+
 void mem_dump(void *data, size_t nbytes, size_t bytes_per_line) {
 	uint8_t *mem = (uint8_t *)data;
 	for (size_t y = 0; y < nbytes; y ++) {
@@ -92,7 +119,7 @@ void mem_dump(void *data, size_t nbytes, size_t bytes_per_line) {
 				}
 				printf("\n");
 			}
-			printf("%08x: ", 0 + y);
+			printf("%08x: ", (uint32_t)data + y);
 
 		}
 
@@ -133,6 +160,7 @@ bool a(interrupt_cpu_state *state) {
 
 }
 
+
 void fastmemcpy(uint32_t dst, uint32_t src, uint32_t size) {
 	asm volatile ("mov %0, %%ecx\nmov %1, %%edi\nmov %2, %%esi\nrep movsb" : : "r"(size), "r"(dst), "r"(src) : "%ecx","%edi","%esi");
 }
@@ -142,6 +170,8 @@ const char* mem_type_names[] = {"", "Available", "Reserved", "ACPI", "NVS", "Bad
 extern "C" { 
 
 void setup_gdt(void);
+
+extern uint8_t _rodata;
 
 void kernel_main(multiboot_info_t *d) {
 	/* Initialize terminal interface */
@@ -194,6 +224,8 @@ void kernel_main(multiboot_info_t *d) {
 	printf("[kernel] cpu brand: %s\n", (const char*)brand);	
 	//kprintf("Hello world! CPU brand: %s\n", (const char*)brand);
 
+	ps2_kbd_init();
+
 	register_interrupt_handler(0x21, a);
 	
 	printf("[kernel] params: %s\n", (const char*)(0xC0000000 + d->cmdline));
@@ -224,12 +256,15 @@ void kernel_main(multiboot_info_t *d) {
 		mmap = (multiboot_memory_map_t*) ((uint32_t)mmap + mmap->size + sizeof(mmap->size));
 	}
 
-
-
 	printf("\n> ");
 
+	uint32_t k = 0;
 
-	while(1);
+	register_interrupt_handler(0x20, timer);
+
+
+	while(1) {
+	}
 	
 	asm volatile ("int $0x00");
 

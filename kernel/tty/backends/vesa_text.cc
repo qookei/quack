@@ -19,8 +19,11 @@ void vesa_scroll_up(uint8_t lines);
 
 extern int kprintf(const char *fmt, ...);
 
-inline uint16_t rgb888_rgb565(uint8_t r, uint8_t g, uint8_t b) {
-	return ((r>>(8-5)) << 11) | ((g >> (8 - 6)) << 5) | (b >> (8 - 5));
+uint16_t rgb888_rgb565(uint8_t r, uint8_t g, uint8_t b) {
+	uint8_t _r = r >> (8 - 5);
+	uint8_t _g = g >> (8 - 6);
+	uint8_t _b = b >> (8 - 5);
+	return (_r << 11) | (_g << 5) | (_b);
 }
 
 uint32_t findIndexOf(uint16_t what, const uint16_t* where, uint32_t howMuchWhere) {
@@ -173,13 +176,14 @@ void vesa_text_init() {
 
 	cur_max_x = mboot->framebuffer_width / font.Width;
 	cur_max_y = mboot->framebuffer_height / font.Height;
+	kprintf("%u %u\n", cur_max_x, cur_max_y);
 
 }
 
 extern void* memcpy(void* dst, const void* src, size_t len);
 extern void* memmove(void* dst, const void* src, size_t len);
 
-void vesa_scroll_up(uint8_t lines) {
+void vesa_scroll_up2(uint8_t lines) {
 	
 	for (uint32_t i = lines; i < mboot->framebuffer_height; i++)
 		memmove(vesa_bbuf + (i - lines) * mboot->framebuffer_pitch, 
@@ -190,6 +194,8 @@ void vesa_scroll_up(uint8_t lines) {
 		for (uint32_t x = 0; x < mboot->framebuffer_width; x++) {
 			uint32_t xx = x * mboot->framebuffer_bpp / 8;
 			uint32_t yy = mboot->framebuffer_height - y;
+			kprintf("%u %u\n", x, yy);
+
 			switch(mboot->framebuffer_bpp){
 				case 32:
 				case 24:
@@ -207,6 +213,49 @@ void vesa_scroll_up(uint8_t lines) {
 	
 	
 	memcpy(vesa_vbuf, vesa_bbuf, mboot->framebuffer_height * mboot->framebuffer_pitch);
+}
+
+void vesa_scroll_up(uint8_t lines) {
+	uint32_t pitch = lines * mboot->framebuffer_pitch;
+	
+	uint32_t bpp = mboot->framebuffer_bpp / 8;
+	
+	for (uint32_t i = lines; i < mboot->framebuffer_height; i++) {
+		memcpy(vesa_bbuf + (i - lines) * mboot->framebuffer_pitch, vesa_bbuf + (i) * mboot->framebuffer_pitch, mboot->framebuffer_width * bpp);
+	}
+	
+	memcpy(vesa_vbuf, vesa_bbuf, mboot->framebuffer_height * mboot->framebuffer_pitch);
+	
+	for (uint32_t vert = mboot->framebuffer_height * mboot->framebuffer_pitch - pitch; vert < mboot->framebuffer_height * mboot->framebuffer_pitch; vert += mboot->framebuffer_pitch) {
+		for (uint32_t x = 0; x < mboot->framebuffer_width; x++) {
+			
+			switch (bpp) {
+				case 2: {
+					uint16_t col = rgb888_rgb565(VESA_BG, VESA_BG, VESA_BG);
+					vesa_vbuf[vert + x * bpp] = col >> 8;
+					vesa_vbuf[vert + x * bpp + 1] = col & 0xFF;
+					vesa_bbuf[vert + x * bpp] = col >> 8;
+					vesa_bbuf[vert + x * bpp + 1] = col & 0xFF;
+					break;
+				}
+				
+				case 4:
+				case 3: {
+					vesa_vbuf[vert + x * bpp] = VESA_BG;
+					vesa_vbuf[vert + x * bpp + 1] = VESA_BG;
+					vesa_vbuf[vert + x * bpp + 2] = VESA_BG;
+					vesa_bbuf[vert + x * bpp] = VESA_BG;
+					vesa_bbuf[vert + x * bpp + 1] = VESA_BG;
+					vesa_bbuf[vert + x * bpp + 2] = VESA_BG;
+					break;
+				}
+			}
+			
+		}
+	
+	}
+	
+	
 }
 
 void vesa_text_putchar(char c) {
@@ -227,7 +276,13 @@ void vesa_text_putchar(char c) {
 	}
 
 	if (c == '\b') {
-		cur_x--;
+		if (!cur_x) {
+			cur_x = cur_max_x - 1;
+			if (!(--cur_y)) cur_y = 0;
+		} else {
+			cur_x--;
+		}
+		
 
 		vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, 0xFF, 0xFF, 0xFF);
 		return;
@@ -236,7 +291,7 @@ void vesa_text_putchar(char c) {
 
 	vesa_putchar(c, cur_x * font.Width, cur_y * font.Height, 0xFF, 0xFF, 0xFF);
 	if (++cur_x == cur_max_x) {
-		cur_max_x = 0;
+		cur_x = 0;
 		if (++cur_y == cur_max_y){
 			cur_y = cur_max_y-1;
 			vesa_scroll_up(font.Height);
@@ -254,6 +309,9 @@ extern uint32_t csi_nums[32];
 
 extern uint8_t csi_nums_idx;
 extern uint8_t csi_num_idx;
+
+extern uint32_t cur_x_sav;
+extern uint32_t cur_y_sav;
 
 extern int printf(const char*, ...);
 
@@ -399,6 +457,19 @@ void vesa_text_write(const char* data, size_t size) {
 						case 'H': {
 							cur_x = csi_nums[0] - 1; 
 							cur_y = csi_nums[1] - 1; 
+							break;
+						}
+
+
+						case 's': {
+							cur_x_sav = cur_x;
+							cur_y_sav = cur_y;
+							break;
+						}
+
+						case 'u': {
+							cur_x = cur_x_sav;
+							cur_y = cur_y_sav;
 							break;
 						}
 

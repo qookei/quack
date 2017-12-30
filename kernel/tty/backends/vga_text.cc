@@ -143,6 +143,9 @@ uint32_t csi_nums[32] = {0};
 uint8_t csi_nums_idx = 0;
 uint8_t csi_num_idx = 31;
 
+uint32_t cur_x_sav = 0;
+uint32_t cur_y_sav = 0;
+
 extern int printf(const char*, ...);
 
 void vga_text_write(const char* data, size_t size) {
@@ -267,6 +270,18 @@ void vga_text_write(const char* data, size_t size) {
 						case 'H': {
 							terminal_row = csi_nums[0] - 1; 
 							terminal_column = csi_nums[1] - 1; 
+							break;
+						}
+
+						case 's': {
+							cur_x_sav = terminal_column;
+							cur_y_sav = terminal_row;
+							break;
+						}
+
+						case 'u': {
+							terminal_column = cur_x_sav;
+							terminal_row = cur_y_sav;
 							break;
 						}
 
