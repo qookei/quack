@@ -8,8 +8,8 @@ CXX = i686-elf-g++
 CC = i686-elf-gcc
 ASM = i686-elf-as
 ASM2 = nasm
-CXXFLAGS = -ffreestanding -O3 -Wall -Wextra -fno-exceptions -fno-rtti -g -std=c++14
-CFLAGS = -ffreestanding -O3 -nostdlib -g
+CXXFLAGS = -ffreestanding -O0 -Wall -Wextra -fno-exceptions -fno-rtti -g -std=c++14
+CFLAGS = -ffreestanding -O0 -nostdlib -g
 
 run: quack.iso
 	qemu-system-i386 -cdrom quack.iso -serial file:serial.txt -monitor stdio

@@ -264,6 +264,7 @@ void kernel_main(multiboot_info_t *d) {
 
 
 	while(1) {
+		
 	}
 	
 	asm volatile ("int $0x00");

@@ -8,19 +8,23 @@
 
 bool ps2_dual_channel;
 
-void inline ps2_wait_response (){
-	while (!(inb(PS2_STAT_PORT) & 0x1));
+void inline ps2_wait_response () {
+	while (!BITTEST(inb(PS2_STAT_PORT), 0));
+}
+
+void inline ps2_wait_ready () {
+	while (BITTEST(inb(PS2_STAT_PORT), 1));
 }
 
 extern int printf(const char*, ...);
 
 void ps2_kbd_init() {
 
-	//asm volatile ("cli");
+	asm volatile ("cli");
 
 	outb(PS2_COMM_PORT, 0xAD);								// disable ports
 	outb(PS2_COMM_PORT, 0xA7);
-	while (!(inb(PS2_STAT_PORT) & 0x1)) inb(PS2_DATA_PORT); // flush buffers
+	while (BITTEST(inb(PS2_STAT_PORT), 1)) inb(PS2_DATA_PORT); // flush buffers
 
 	printf("[ps2kbd] buffer flush ok\n");
 
@@ -28,10 +32,11 @@ void ps2_kbd_init() {
 	ps2_wait_response();
 	uint8_t config = inb(PS2_DATA_PORT);					// get config byte
 
-	config = config & 0b00110100;							// patch it around
+	config = config & 0b00110111;							// patch it around
 	ps2_dual_channel = !BITTEST(config, 5);
 
 	outb(PS2_COMM_PORT, 0x60);								// write it back
+	ps2_wait_ready();
 	outb(PS2_DATA_PORT, config);
 
 	printf("[ps2kbd] patch config ok, %02x\n", config);
@@ -47,6 +52,9 @@ void ps2_kbd_init() {
 
 		printf("[ps2kbd] controller selftest failure\n");
 		return;
+	} else {
+		printf("[ps2kbd] reponse is apparently %02x\n", resp);
+		
 	}
 
 	if (ps2_dual_channel) {
@@ -61,15 +69,16 @@ void ps2_kbd_init() {
 
 	printf("[ps2kbd] check for second port ok\n");
 
-	outb(PS2_DATA_PORT, 0xAB);
+	outb(PS2_COMM_PORT, 0xAB);
 	ps2_wait_response();
-	if (inb(PS2_DATA_PORT) != 0x00) {
-		printf("[ps2kbd] port1 failure\n");
+	resp = inb(PS2_DATA_PORT);
+	if (resp != 0x00) {
+		printf("[ps2kbd] port1 failure, %02x\n", resp);
 		return;
 	}
 
 	if (ps2_dual_channel) {
-		outb(PS2_DATA_PORT, 0xA9);
+		outb(PS2_COMM_PORT, 0xA9);
 		ps2_wait_response();
 		if (inb(PS2_DATA_PORT) != 0x00) {
 			printf("[ps2kbd] port2 failure\n");
@@ -83,20 +92,21 @@ void ps2_kbd_init() {
 	outb(PS2_COMM_PORT, 0xAE);
 	if (ps2_dual_channel) outb(PS2_COMM_PORT, 0xA8);
 
-	outb(PS2_COMM_PORT, 0x20);
-	ps2_wait_response();
-	config = inb(PS2_DATA_PORT) | 0x3;						// get config byte and patch it yet again 
+	//outb(PS2_COMM_PORT, 0x20);
+	//ps2_wait_response();
+	//config = inb(PS2_DATA_PORT) | 0x3;						// get config byte and patch it yet again 
 
-	outb(PS2_COMM_PORT, 0x60);								// write it back
-	outb(PS2_COMM_PORT, config);
+	// outb(PS2_COMM_PORT, 0x60);								// write it back
+	// ps2_wait_ready();
+	// outb(PS2_DATA_PORT, config);
 
-	printf("[ps2kbd] enable interrupts ok\n");
+	// printf("[ps2kbd] enable interrupts ok\n");
 
-	while (!(inb(PS2_STAT_PORT) & 0x2));
+	while (!BITTEST(inb(PS2_STAT_PORT), 2));
 	outb(PS2_DATA_PORT, 0xFF); 								// keyboard should work now, i hope
 
 	printf("[ps2kbd] done\n");
 
 
-	//asm volatile ("sti");
+	asm volatile ("sti");
 }
