@@ -18,7 +18,12 @@ void inline ps2_wait_ready () {
 
 extern int printf(const char*, ...);
 
+char ps2_keyboard_buffer[512] = {0};
+uint32_t ps2_keyboard_buffer_idx = 0;
+
 void ps2_kbd_init() {
+
+#ifdef PS2_KBD_INIT_CONT
 
 	asm volatile ("cli");
 
@@ -32,9 +37,10 @@ void ps2_kbd_init() {
 	ps2_wait_response();
 	uint8_t config = inb(PS2_DATA_PORT);					// get config byte
 
-	config = config & 0b00110111;							// patch it around
 	ps2_dual_channel = !BITTEST(config, 5);
 
+	config &= ~((1<<6));									// patch it around
+	
 	outb(PS2_COMM_PORT, 0x60);								// write it back
 	ps2_wait_ready();
 	outb(PS2_DATA_PORT, config);
@@ -109,4 +115,15 @@ void ps2_kbd_init() {
 
 
 	asm volatile ("sti");
+
+#endif
+
+
+}
+
+char getch() {
+	// wait for keyboard buffer to be not empty, then return the character and remove it from the buffer
+	while (ps2_keyboard_buffer_idx == 0);
+	while (ps2_keyboard_buffer[ps2_keyboard_buffer_idx - 1] == 0);
+	return ps2_keyboard_buffer[--ps2_keyboard_buffer_idx];
 }

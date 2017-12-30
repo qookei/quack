@@ -40,10 +40,12 @@ page_dir:
     dd 0x00000083
     dd 0x00400083
     dd 0x00800083
+    ;dd 0x00C00083
     times (KERNEL_PAGE_NUMBER - 3) dd 0                 ; Pages before kernel space.
     dd 0x00000083
     dd 0x00400083
     dd 0x00800083
+    ;dd 0x00C00083
     times (1024 - KERNEL_PAGE_NUMBER - 3) dd 0          ; Pages after the kernel image.
  
  

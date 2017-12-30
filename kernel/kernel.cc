@@ -256,11 +256,76 @@ void kernel_main(multiboot_info_t *d) {
 		mmap = (multiboot_memory_map_t*) ((uint32_t)mmap + mmap->size + sizeof(mmap->size));
 	}
 
-	printf("\n> ");
+	printf("\n");
 
 	uint32_t k = 0;
 
 	register_interrupt_handler(0x20, timer);
+
+
+printf("                `:+sdmNNmdyo:                                                                        \n");
+printf("              .smmNNNMMMMMMMNmo`                                                                     \n");
+printf("             /hhdddNMMMMMMMMMMMNy-                                                                   \n");
+printf("            :oohhdNMMNNMMMNMNMMMMNo                                                                  \n");
+printf("           .osddmmNNNNNNNNNNNNMMMMNh`                                                                \n");
+printf("           -+/oNNNNNNNNNNNNNNNMMMMMNy                                                                \n");
+printf("           `-/smNNNNMMMMMMMMMMMMMMMMN`                                                               \n");
+printf("         `-sy/shdmMMMMMMMMMMMMMMMMMMN/                                                               \n");
+printf("        .://+oyhhmNMMMMMMMMMMMMMMMMMN-                                                               \n");
+printf("     `.:/+oyhmNmsoshmMMMMMMMMMMMMMMMN.                                                               \n");
+printf("  ...:/oydmNh+-     .mMMMMMMMMMMMMMMs                                                                \n");
+printf(" /y+shddyo:`    `:o+sNMMMMMMMMMMMMMM`                                                                \n");
+printf("  .o+/-      `:odmNNNdmNNmNNNMMMMMMN                                                                 \n");
+printf("          `:+shdmmNNMMMMMMmmdydhhmMy                                                                 \n");
+printf("        ./o+syhmmNNMMMMMMMMMMMMMNdmyss+++++//:-`                                                     \n");
+printf("      ./+osohdmmNNMMMMMMMMMMMNNmmddmddddddhdhddddhyo/:.                                              \n");
+printf("    `/ssssyhdmmNmNMMMMMMMMNmmddddmmNNNmys+oosyyysyyyyydmmdy/.                                        \n");
+printf("   `:ossoshdmmmmmmNMMMMNNmddddmmmNNmh+//oo++ossossssoooo+oymNNmhso:.                                 \n");
+printf("   /ooo/+syddddhhddmmmdddddmmmNNNmh/--:://++o++++oooossso/::/sdNMMMMNh+-                             \n");
+printf("  :yso+/ossyyhhhdddddyyosyhdmNNmdh+-:/+++oossooosoooooooooo+/::/ohmMMMMMms-                          \n");
+printf("  sddyosoyysyhhhdmmdhssyhhdddho+/::--::/+oyhhhhhhyhyyyyssssssssoo+/+ymMMMMMh+-                       \n");
+printf("  hddyyhhhdmmmNNmNNNdsyydddds:-..-....-/+++oydmmmmmmmddhhhhhhhhhyyyso++shNMMMMNy/`                   \n");
+printf("  hddyydmNNNNNNMMMMMNmddddhs+:----:::-:///::::/oydmNNNNNNNmmmddddddhhyyo+/oymMMMMMh/                 \n");
+printf("  +mmhdmNNNNMMMMMMMMNNmmddhyo:----://:://::://///+oshmMMMMMNNNNmmmmddhhhhyso::odNMMMNs.              \n");
+printf("  `hNdmmNNNMMMMMMMMMMNNNNNdm+:::-:/::::::::::://++++ooshdNMMMMMMNNNNNmmmddyyso+//ohNMMN+             \n");
+printf("   .mNmmNNMMMMMMMMMMMMMMMMNdooo+///+/::/::////++o++o+o++osydNMMMMMMMMMNNNmdhyysoo++/+ymMyss+//.      \n");
+printf("    .dmNmNNMMMMMMMMMMMMMMNdsoooooooo+///////+++++++++++ooosssydNMMMMMMMMNNNmmdhhyysoo+/+ssohm-mh     \n");
+printf("      +mNNMMMMMMMMMMMMMMmhssooossssso+++++++++++oooo++oooossssssyhdNMMMMMMMNNNmmddhyysso+/:+oshd     \n");
+printf("       `omNNMMMMMMMMMMMNysosssyyssossooooooossossosoooooosyyyyyyyyyyydNMMMMMMMNNNmmddhyysoshddds+:   \n");
+printf("          :smMNMMMMMNNNmyysssoossooosososssssyyysssssssyyyhhhhhhhhhhhhhdNMMMMMMMNNmmddhssoo++++/:-`` \n");
+printf("             :smNNNNNNNmdhhhysssssossssssyhhhhhyyysssyyhhhhhhhhhdhhhhhhhdddddddddyshMMMNmmmy+.`      \n");
+printf("                -+hNNmmdddhyhyysyssyyyyyyyhhyhyhhhhhhhhhddddddddddddddddddhhyyyyyo++dMMNh+.          \n");
+printf("                   `:ohhhyyyyyysyyyyyhhhhhhhhhhhhhhhddddddddddddddddddddddhyyyyhyssoso:              \n");
+printf("                       -/syyyyyyhhhhhyhhhhhhhhdhhhhhddddddddddddddmmmmmdhhhyyyhhhys/`                \n");
+printf("                          ./oyyhhhhhhhhdddddddddddddddddmmmmmmmmmmmmmdhhhhhhhhhhhs-                  \n");
+printf("                              .-/oyhhhhhdhdddddddddmmmmmmmmmmmmmmmmdddddddhhyo+/-                    \n");
+printf("                                    `.://hdmysssysdmmmNNmmNNNmmmmhys+/:.`                            \n");
+printf("                                        :hmh`   shdm:  ``..---.`                                     \n");
+printf("                                       .ydm:    :odh                                                 \n");
+printf("                                      `shdm`   `+hm:                                                 \n");
+printf("                                      /hddh`   :ydy                                                  \n");
+printf("                        /::::::::://++sshmoo. -ydd-                                                  \n");
+printf("                     -+oossssyyyyyyysssys. `-:+hmd`                                                  \n");
+printf("                         ``..--/syooo++-...../sdmdh`                                                 \n");
+printf("                          `-+/++ooooosooooosyyys: `                                                  \n");
+printf("                               -yo++/////:--`                                                        \n");
+
+printf("%c[50;3H", 0x1B);
+printf("OS: quack");
+printf("%c[50;4H", 0x1B);
+printf("Kernel: quack 0.0.1");
+printf("%c[50;5H", 0x1B);
+printf("Uptime: ?");
+printf("%c[50;6H", 0x1B);
+printf("Packages: ?");
+printf("%c[50;7H", 0x1B);
+printf("Shell: ?");
+printf("%c[50;8H", 0x1B);
+printf("CPU: %s", (const char*)brand);
+printf("%c[50;9H", 0x1B);
+printf("GPU: ? using VBE");
+printf("%c[50;10H", 0x1B);
+printf("RAM: %uMiB/%uMiB", free_pages() * 4096 / 1024 / 1024, d->mem_upper / 1024);
 
 
 	while(1) {
