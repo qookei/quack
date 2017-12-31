@@ -4,6 +4,18 @@
  */
 
 #include "vsprintf.h"
+#include "tty/tty.h"
+
+int printf(const char *fmt, ...) {
+	char buf[1024] = {0};
+	va_list va;
+	va_start(va, fmt);
+	int ret = vsprintf(buf, fmt, va);
+	va_end(va);
+	tty_putstr(buf);
+	// serial_writestring(buf);
+	return ret;
+}
 
 /* we use this so that we can do without the ctype library */
 #define is_digit(c)	((c) >= '0' && (c) <= '9')

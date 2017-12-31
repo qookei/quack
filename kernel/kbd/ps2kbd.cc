@@ -4,9 +4,20 @@
 #define PS2_COMM_PORT 0x64
 #define PS2_STAT_PORT 0x64
 
+#define SC_MAX 0x57
+#define SC_CAPSLOCK 0x3A
+#define SC_ENTER 0x1C
+#define SC_BACKSPACE 0x0E
+#define SC_RIGHT_SHIFT 0x36
+#define SC_LEFT_SHIFT 0x2A
+#define SC_RIGHT_SHIFT_REL 0xB6
+#define SC_LEFT_SHIFT_REL 0xAA
+
 #define BITTEST(var,pos) ((var) & (1 << (pos)))
 
 bool ps2_dual_channel;
+
+bool caps, shift;
 
 void inline ps2_wait_response () {
 	while (!BITTEST(inb(PS2_STAT_PORT), 0));
@@ -131,10 +142,53 @@ const char lower_normal[] = { '\0', '?', '1', '2', '3', '4', '5', '6',
 				'h', 'j', 'k', 'l', ';', '\'', '`', '\0', '\\', 'z', 'x', 'c', 'v', 
 				'b', 'n', 'm', ',', '.', '/', '\0', '\0', '\0', ' '};
 
+const char upper_shift[] = { '\0', '?', '!', '@', '#', '$', '%', '^',     
+		'&', '*', '(', ')', '_', '+', '\b', '\t', 'Q', 'W', 'E', 'R', 'T', 'Y', 
+				'U', 'I', 'O', 'P', '{', '}', '\n', '\0', 'A', 'S', 'D', 'F', 'G', 
+				'H', 'J', 'K', 'L', ':', '"', '~', '\0', '|', 'Z', 'X', 'C', 'V', 
+				'B', 'N', 'M', '<', '>', '?', '\0', '\0', '\0', ' '};
+
+const char upper_caps[] = { '\0', '?', '1', '2', '3', '4', '5', '6',     
+		'7', '8', '9', '0', '-', '=', '\b', '\t', 'Q', 'W', 'E', 'R', 'T', 'Y', 
+				'U', 'I', 'O', 'P', '[', ']', '\n', '\0', 'A', 'S', 'D', 'F', 'G', 
+				'H', 'J', 'K', 'L', ';', '\'', '`', '\0', '\\', 'Z', 'X', 'C', 'V', 
+				'B', 'N', 'M', ',', '.', '/', '\0', '\0', '\0', ' '};
+
+const char lower_shift_caps[] = { '\0', '?', '!', '@', '#', '$', '%', '^',     
+		'&', '*', '(', ')', '_', '+', '\b', '\t', 'q', 'w', 'e', 'r', 't', 'y', 
+				'u', 'i', 'o', 'p', '{', '}', '\n', '\0', 'a', 's', 'd', 'f', 'g', 
+				'h', 'j', 'k', 'l', ':', '"', '~', '\0', '|', 'z', 'x', 'c', 'v', 
+				'b', 'n', 'm', '<', '>', '?', '\0', '\0', '\0', ' '};
+
 
 bool ps2_interrupt(interrupt_cpu_state *state) {
-	uint8_t byte = inb(0x60);
-	ps2_keyboard_buffer[ps2_keyboard_buffer_idx++] = lower_normal[byte];
+	uint8_t sc = inb(0x60);
+	
+	if (sc == SC_RIGHT_SHIFT_REL || sc == SC_LEFT_SHIFT_REL)
+		shift = false;
+	else if (sc == SC_RIGHT_SHIFT || sc == SC_LEFT_SHIFT)
+		shift = true;
+	else if (sc == SC_CAPSLOCK)
+		caps = !caps;
+	else if (sc < SC_MAX) {
+		
+		char c = 0;
+		
+		if (caps && !shift)
+			c = upper_caps[sc];
+		else if (!caps && shift)
+			c = upper_shift[sc];
+		else if (caps && shift)
+			c = lower_shift_caps[sc];
+		else
+			c = lower_normal[sc];
+	
+		if (ps2_keyboard_buffer_idx < 512) {
+			ps2_keyboard_buffer[ps2_keyboard_buffer_idx++] = c;
+		}
+	}
+
+
 	return true;
 }
 

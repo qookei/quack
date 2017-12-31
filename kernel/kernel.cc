@@ -18,6 +18,7 @@
 #include "kheap/heap.h"
 #include "io/rtc.h"
 #include "kbd/ps2kbd.h"
+#include "kshell/shell.h"
 
 void serial_writestr(const char* data, size_t size) {
 	for (size_t i = 0; i < size; i++)
@@ -28,17 +29,6 @@ void serial_writestring(const char* data) {
 	serial_writestr(data, strlen(data));
 }
 
-
-int printf(const char *fmt, ...) {
-	char buf[1024] = {0};
-	va_list va;
-	va_start(va, fmt);
-	int ret = vsprintf(buf, fmt, va);
-	va_end(va);
-	tty_putstr(buf);
-	serial_writestring(buf);
-	return ret;
-}
 
 int kprintf(const char *fmt, ...) {
 	char buf[1024] = {0};
@@ -76,7 +66,7 @@ bool __attribute__((noreturn)) page_fault(interrupt_cpu_state *state) {
 	else {tty_putstr(", kernel-mode");}
 	if (id) {tty_putstr(", instruction-fetch");}
 	if (reserved) {tty_putstr(", reserved");}
-	kprintf(") at 0x%08x\n", fault_addr);
+	printf(") at 0x%08x\n", fault_addr);
 	stack_trace(20, 0);
 	asm volatile ("1:\nhlt\njmp 1b");
 }
@@ -100,9 +90,11 @@ bool timer(interrupt_cpu_state *state) {
 	printf("%c[%u;%uH", 0x1B, 1, 1);
 	printf("%c[%uG", 0x1B, 105);
 	printf("%02u %s. %04u [%02u:%02u:%02u]", day, months[month-1], year, hour, minute, second);
-	if (!u) k++;
 	printf("%c[u", 0x1B);
-	u++;
+
+	outb(0x70, 0x0C);	// select register C
+	inb(0x71);		// just throw away contents
+
 	return true;
 }
 
@@ -222,11 +214,8 @@ void kernel_main(multiboot_info_t *d) {
 	__cpuid(0x80000004 , brand[8], brand[9], brand[10], brand[11]);
 
 	printf("[kernel] cpu brand: %s\n", (const char*)brand);	
-	//kprintf("Hello world! CPU brand: %s\n", (const char*)brand);
 
 	ps2_kbd_init();
-
-	// register_interrupt_handler(0x21, a);
 	
 	printf("[kernel] params: %s\n", (const char*)(0xC0000000 + d->cmdline));
 	printf("[kernel] fbuf: 0x%x\n", d->framebuffer_addr);
@@ -260,78 +249,24 @@ void kernel_main(multiboot_info_t *d) {
 
 	uint32_t k = 0;
 
-	register_interrupt_handler(0x20, timer);
+	
+	asm volatile ("cli");
+	
+	register_interrupt_handler(0x28, timer);
+
+	outb(0x70, 0x8B);
+	uint8_t prev = inb(0x71);
+	outb(0x70, 0x8B);
+	outb(0x71, prev | 0x40);
+	
+	asm volatile ("sti");
+	
 
 
-printf("                 `:+sdmNNmdyo:                                                                        \n");
-printf("               .smmNNNMMMMMMMNmo`                                                                     \n");
-printf("              /hhdddNMMMMMMMMMMMNy-                                                                   \n");
-printf("             :oohhdNMMNNMMMNMNMMMMNo                                                                  \n");
-printf("            .osddmmNNNNNNNNNNNNMMMMNh`                                                                \n");
-printf("            -+/oNNNNNNNNNNNNNNNMMMMMNy                                                                \n");
-printf("            `-/smNNNNMMMMMMMMMMMMMMMMN`                                                               \n");
-printf("          `-sy/shdmMMMMMMMMMMMMMMMMMMN/                                                               \n");
-printf("         .://+oyhhmNMMMMMMMMMMMMMMMMMN-                                                               \n");
-printf("      `.:/+oyhmNmsoshmMMMMMMMMMMMMMMMN.                                                               \n");
-printf("   ...:/oydmNh+-     .mMMMMMMMMMMMMMMs                                                                \n");
-printf("  /y+shddyo:`    `:o+sNMMMMMMMMMMMMMM`                                                                \n");
-printf("   .o+/-      `:odmNNNdmNNmNNNMMMMMMN                                                                 \n");
-printf("           `:+shdmmNNMMMMMMmmdydhhmMy                                                                 \n");
-printf("         ./o+syhmmNNMMMMMMMMMMMMMNdmyss+++++//:-`                                                     \n");
-printf("       ./+osohdmmNNMMMMMMMMMMMNNmmddmddddddhdhddddhyo/:.                                              \n");
-printf("     `/ssssyhdmmNmNMMMMMMMMNmmddddmmNNNmys+oosyyysyyyyydmmdy/.                                        \n");
-printf("    `:ossoshdmmmmmmNMMMMNNmddddmmmNNmh+//oo++ossossssoooo+oymNNmhso:.                                 \n");
-printf("    /ooo/+syddddhhddmmmdddddmmmNNNmh/--:://++o++++oooossso/::/sdNMMMMNh+-                             \n");
-printf("   :yso+/ossyyhhhdddddyyosyhdmNNmdh+-:/+++oossooosoooooooooo+/::/ohmMMMMMms-                          \n");
-printf("   sddyosoyysyhhhdmmdhssyhhdddho+/::--::/+oyhhhhhhyhyyyyssssssssoo+/+ymMMMMMh+-                       \n");
-printf("   hddyyhhhdmmmNNmNNNdsyydddds:-..-....-/+++oydmmmmmmmddhhhhhhhhhyyyso++shNMMMMNy/`                   \n");
-printf("   hddyydmNNNNNNMMMMMNmddddhs+:----:::-:///::::/oydmNNNNNNNmmmddddddhhyyo+/oymMMMMMh/                 \n");
-printf("   +mmhdmNNNNMMMMMMMMNNmmddhyo:----://:://::://///+oshmMMMMMNNNNmmmmddhhhhyso::odNMMMNs.              \n");
-printf("   `hNdmmNNNMMMMMMMMMMNNNNNdm+:::-:/::::::::::://++++ooshdNMMMMMMNNNNNmmmddyyso+//ohNMMN+             \n");
-printf("    .mNmmNNMMMMMMMMMMMMMMMMNdooo+///+/::/::////++o++o+o++osydNMMMMMMMMMNNNmdhyysoo++/+ymMyss+//.      \n");
-printf("     .dmNmNNMMMMMMMMMMMMMMNdsoooooooo+///////+++++++++++ooosssydNMMMMMMMMNNNmmdhhyysoo+/+ssohm-mh     \n");
-printf("       +mNNMMMMMMMMMMMMMMmhssooossssso+++++++++++oooo++oooossssssyhdNMMMMMMMNNNmmddhyysso+/:+oshd     \n");
-printf("        `omNNMMMMMMMMMMMNysosssyyssossooooooossossosoooooosyyyyyyyyyyydNMMMMMMMNNNmmddhyysoshddds+:   \n");
-printf("           :smMNMMMMMNNNmyysssoossooosososssssyyysssssssyyyhhhhhhhhhhhhhdNMMMMMMMNNmmddhssoo++++/:-`` \n");
-printf("              :smNNNNNNNmdhhhysssssossssssyhhhhhyyysssyyhhhhhhhhhdhhhhhhhdddddddddyshMMMNmmmy+.`      \n");
-printf("                 -+hNNmmdddhyhyysyssyyyyyyyhhyhyhhhhhhhhhddddddddddddddddddhhyyyyyo++dMMNh+.          \n");
-printf("                    `:ohhhyyyyyysyyyyyhhhhhhhhhhhhhhhddddddddddddddddddddddhyyyyhyssoso:              \n");
-printf("                        -/syyyyyyhhhhhyhhhhhhhhdhhhhhddddddddddddddmmmmmdhhhyyyhhhys/`                \n");
-printf("                           ./oyyhhhhhhhhdddddddddddddddddmmmmmmmmmmmmmdhhhhhhhhhhhs-                  \n");
-printf("                               .-/oyhhhhhdhdddddddddmmmmmmmmmmmmmmmmdddddddhhyo+/-                    \n");
-printf("                                     `.://hdmysssysdmmmNNmmNNNmmmmhys+/:.`                            \n");
-printf("                                         :hmh`   shdm:  ``..---.`                                     \n");
-printf("                                        .ydm:    :odh                                                 \n");
-printf("                                       `shdm`   `+hm:                                                 \n");
-printf("                                       /hddh`   :ydy                                                  \n");
-printf("                         /::::::::://++sshmoo. -ydd-                                                  \n");
-printf("                      -+oossssyyyyyyysssys. `-:+hmd`                                                  \n");
-printf("                          ``..--/syooo++-...../sdmdh`                                                 \n");
-printf("                           `-+/++ooooosooooosyyys: `                                                  \n");
-printf("                                -yo++/////:--`                                                        \n");
 
-printf("%c[51;3H", 0x1B);
-printf("OS: quack");
-printf("%c[51;4H", 0x1B);
-printf("Kernel: quack 0.0.1");
-printf("%c[51;5H", 0x1B);
-printf("Uptime: ?");
-printf("%c[51;6H", 0x1B);
-printf("Packages: ?");
-printf("%c[51;7H", 0x1B);
-printf("Shell: ?");
-printf("%c[51;8H", 0x1B);
-printf("CPU: %s", (const char*)brand);
-printf("%c[51;9H", 0x1B);
-printf("GPU: ? using VBE");
-printf("%c[51;10H", 0x1B);
-printf("RAM: %uMiB/%uMiB", free_pages() * 4096 / 1024 / 1024, d->mem_upper / 1024);
-
-	getch();
-	printf("%cc", 0x1B);
+	kshell_main();
 
 	while(1) {
-		
 	}
 	
 	asm volatile ("int $0x00");
