@@ -18,6 +18,8 @@ void inline ps2_wait_ready () {
 
 extern int printf(const char*, ...);
 
+bool ps2_interrupt(interrupt_cpu_state *state);
+
 char ps2_keyboard_buffer[512] = {0};
 uint32_t ps2_keyboard_buffer_idx = 0;
 
@@ -116,9 +118,24 @@ void ps2_kbd_init() {
 
 	asm volatile ("sti");
 
+
 #endif
 
+	register_interrupt_handler(0x21, ps2_interrupt);
 
+}
+
+const char lower_normal[] = { '\0', '?', '1', '2', '3', '4', '5', '6',     
+		'7', '8', '9', '0', '-', '=', '\b', '\t', 'q', 'w', 'e', 'r', 't', 'y', 
+				'u', 'i', 'o', 'p', '[', ']', '\n', '\0', 'a', 's', 'd', 'f', 'g', 
+				'h', 'j', 'k', 'l', ';', '\'', '`', '\0', '\\', 'z', 'x', 'c', 'v', 
+				'b', 'n', 'm', ',', '.', '/', '\0', '\0', '\0', ' '};
+
+
+bool ps2_interrupt(interrupt_cpu_state *state) {
+	uint8_t byte = inb(0x60);
+	ps2_keyboard_buffer[ps2_keyboard_buffer_idx++] = lower_normal[byte];
+	return true;
 }
 
 char getch() {

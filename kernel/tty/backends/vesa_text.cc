@@ -4,7 +4,7 @@
 #include "../../kheap/heap.h"
 
 
-#define VESA_BG 0x20
+#define VESA_BG /*0x20*/0x00
 
 multiboot_info_t* mboot;
 uint8_t* vesa_vbuf;
@@ -148,8 +148,6 @@ void vesa_text_init() {
 	uint32_t off = (uint32_t)mboot->framebuffer_addr & 0xFFF;	// since we ingored the lsb, get them and add them to new address
 	vesa_vbuf = (uint8_t*)(0xD0000000 + off);
 
-	uint8_t b = 32;
-
 	for(uint32_t y = 0; y < mboot->framebuffer_height; y++) {
 		for(uint32_t x = 0; x < mboot->framebuffer_width; x++) {
 			uint32_t xx = x * mboot->framebuffer_bpp / 8;
@@ -157,15 +155,15 @@ void vesa_text_init() {
 			switch(mboot->framebuffer_bpp){
 				case 32:
 				case 24:
-					vesa_vbuf[xx + y * mboot->framebuffer_pitch] = b;
-					vesa_vbuf[xx + y * mboot->framebuffer_pitch+1] = b;
-					vesa_vbuf[xx + y * mboot->framebuffer_pitch+2] = b;
-					vesa_bbuf[xx + y * mboot->framebuffer_pitch] = b;
-					vesa_bbuf[xx + y * mboot->framebuffer_pitch+1] = b;
-					vesa_bbuf[xx + y * mboot->framebuffer_pitch+2] = b;
+					vesa_vbuf[xx + y * mboot->framebuffer_pitch] = VESA_BG;
+					vesa_vbuf[xx + y * mboot->framebuffer_pitch+1] = VESA_BG;
+					vesa_vbuf[xx + y * mboot->framebuffer_pitch+2] = VESA_BG;
+					vesa_bbuf[xx + y * mboot->framebuffer_pitch] = VESA_BG;
+					vesa_bbuf[xx + y * mboot->framebuffer_pitch+1] = VESA_BG;
+					vesa_bbuf[xx + y * mboot->framebuffer_pitch+2] = VESA_BG;
 					break;
 				case 16:
-					uint16_t u = rgb888_rgb565(b,b,b);
+					uint16_t u = rgb888_rgb565(VESA_BG,VESA_BG,VESA_BG);
 					vesa_vbuf[xx + y * mboot->framebuffer_pitch] = u & 0xFF;
 					vesa_vbuf[xx + y * mboot->framebuffer_pitch+1] = u >> 8;
 					vesa_bbuf[xx + y * mboot->framebuffer_pitch] = u & 0xFF;
@@ -177,6 +175,7 @@ void vesa_text_init() {
 	cur_max_x = mboot->framebuffer_width / font.Width;
 	cur_max_y = mboot->framebuffer_height / font.Height;
 	kprintf("%u %u\n", cur_max_x, cur_max_y);
+	kprintf("%u\n", mboot->framebuffer_pitch * mboot->framebuffer_height);
 
 }
 
@@ -329,8 +328,6 @@ void vesa_text_write(const char* data, size_t size) {
 			if(i == 1) {
 				if (data[i] == 'c') {	// reset
 
-					uint8_t b = 32;
-
 					for(uint32_t y = 0; y < mboot->framebuffer_height; y++) {
 						for(uint32_t x = 0; x < mboot->framebuffer_width; x++) {
 							uint32_t xx = x * mboot->framebuffer_bpp / 8;
@@ -338,15 +335,15 @@ void vesa_text_write(const char* data, size_t size) {
 							switch(mboot->framebuffer_bpp){
 								case 32:
 								case 24:
-									vesa_vbuf[xx + y * mboot->framebuffer_pitch] = b;
-									vesa_vbuf[xx + y * mboot->framebuffer_pitch+1] = b;
-									vesa_vbuf[xx + y * mboot->framebuffer_pitch+2] = b;
-									vesa_bbuf[xx + y * mboot->framebuffer_pitch] = b;
-									vesa_bbuf[xx + y * mboot->framebuffer_pitch+1] = b;
-									vesa_bbuf[xx + y * mboot->framebuffer_pitch+2] = b;
+									vesa_vbuf[xx + y * mboot->framebuffer_pitch] = VESA_BG;
+									vesa_vbuf[xx + y * mboot->framebuffer_pitch+1] = VESA_BG;
+									vesa_vbuf[xx + y * mboot->framebuffer_pitch+2] = VESA_BG;
+									vesa_bbuf[xx + y * mboot->framebuffer_pitch] = VESA_BG;
+									vesa_bbuf[xx + y * mboot->framebuffer_pitch+1] = VESA_BG;
+									vesa_bbuf[xx + y * mboot->framebuffer_pitch+2] = VESA_BG;
 									break;
 								case 16:
-									uint16_t u = rgb888_rgb565(b,b,b);
+									uint16_t u = rgb888_rgb565(VESA_BG,VESA_BG,VESA_BG);
 									vesa_vbuf[xx + y * mboot->framebuffer_pitch] = u & 0xFF;
 									vesa_vbuf[xx + y * mboot->framebuffer_pitch+1] = u >> 8;
 									vesa_bbuf[xx + y * mboot->framebuffer_pitch] = u & 0xFF;

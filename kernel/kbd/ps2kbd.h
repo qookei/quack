@@ -7,6 +7,6 @@
 void ps2_kbd_init();
 
 
-
+char getch();
 
 #endif
