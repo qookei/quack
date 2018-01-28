@@ -7,6 +7,8 @@
 void ps2_kbd_init();
 
 
+void reset_buffer();
 char getch();
+char readch();
 
 #endif

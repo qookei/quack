@@ -2,7 +2,8 @@ OBJS = boot/boot2.o kernel/kernel.o kernel/io/serial.o kernel/io/ports.o kernel/
 	   kernel/trace/stacktrace.o kernel/interrupt/idt_load.o kernel/interrupt/isr.o kernel/interrupt/idt.o \
 	   kernel/interrupt/interrupt.o kernel/pic/pic.o kernel/tty/tty.o kernel/tty/backends/vga_text.o \
 	   kernel/paging/pmm.o kernel/paging/paging.o kernel/kheap/heap.o kernel/tty/backends/vesa_text.o \
-	   kernel/tty/backends/vesa_font.o kernel/io/rtc.o kernel/kbd/ps2kbd.o kernel/kshell/shell.o
+	   kernel/tty/backends/vesa_font.o kernel/io/rtc.o kernel/kbd/ps2kbd.o kernel/kshell/shell.o \
+	   kernel/tasking/tasking.o kernel/syscall/syscall.o kernel/cpu/gdt_new.o kernel/cpu/usermode_switch.o
 
 CXX = i686-elf-g++
 CC = i686-elf-gcc
@@ -14,6 +15,9 @@ CFLAGS = -ffreestanding -O0 -nostdlib -g
 run: quack.iso
 	qemu-system-i386 -cdrom quack.iso -serial file:serial.txt -monitor stdio
 
+iso: quack.iso
+
+
 debug-run: quack.iso
 	echo "To debug, start gdb(or any debugger which uses gdb), load the kernel executable and execute the command \"target remote localhost:1234\""
 	qemu-system-i386 -cdrom quack.iso -serial file:serial.txt -monitor stdio -s -S
@@ -22,6 +26,7 @@ quack.iso: kernel.elf
 	mkdir -p isodir/boot/grub
 	cp grub.cfg isodir/boot/grub/grub.cfg
 	cp kernel.elf isodir/boot/kernel.elf
+	cp test isodir/boot/test
 	grub-mkrescue -o quack.iso isodir
 
 kernel.elf: kernel.o kernel/trace/trace.o

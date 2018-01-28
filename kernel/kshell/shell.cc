@@ -3,28 +3,34 @@
 #include "../paging/pmm.h"
 #include "../kheap/heap.h"
 
+
+extern int kprintf(const char*, ...);
+
 #define COMMAND(command, x) (strncmp(command, x, strlen(x)) == 0)
 
 #define KSHELL_PROMPT "quack> "
 
 int quackfetch(char*);
 int free(char*);
+int reset(char*);
 
 const char* command_names[] = {
 	"quackfetch",
-	"free"
+	"free",
+	"reset"
 };
 
 int (*command_ptrs[])(char*) = {
 	quackfetch,
-	free
+	free,
+	reset
 };
 
-uint32_t ncommands = 2;
+uint32_t ncommands = 3;
 
 // commands
 
-int kshell_exec(char* command);
+int kshell_exec(char* command, multiboot_info_t *d);
 
 extern void mem_dump(void *data, size_t nbytes, size_t bytes_per_line);
 extern void* memset(void*, int, size_t);
@@ -42,7 +48,7 @@ int strncmp(const char *str1, const char *str2, size_t len) {
 	return str1[i] - str2[i];
 }
 
-void kshell_main() {
+void kshell_main(multiboot_info_t *d) {
 	
 	printf("Welcome to the kernel shell!\n");
 
@@ -52,6 +58,7 @@ void kshell_main() {
 	printf("%s", KSHELL_PROMPT);
 
 	while(1) {
+		kprintf("%s", KSHELL_PROMPT);
 		char c = getch();	// this is blocking so i don't have to worry about anything
 		if (c == '\b') {
 			if(buffer_idx > 0) {
@@ -62,7 +69,7 @@ void kshell_main() {
 			// exec command
 			if (buffer_idx > 0) {
 				printf("\n");
-				kshell_exec(buffer);
+				kshell_exec(buffer, d);
 
 				memset(buffer, 0, 256);
 				buffer_idx = 0;
@@ -83,7 +90,7 @@ void kshell_main() {
 
 uint8_t *mem;
 
-int kshell_exec(char* command) {
+int kshell_exec(char* command, multiboot_info_t *d) {
 
 	for (uint32_t i = 0; i < ncommands; i++) {
 		if (COMMAND(command, command_names[i])) {
@@ -96,6 +103,20 @@ int kshell_exec(char* command) {
 	return 1;
 
 }
+
+int reset(char* unused) {
+
+    printf("Goodbye.");
+
+	uint8_t tmp = 0x02;
+    while (tmp & 0x02)
+        tmp = inb(0x64);
+    outb(0x64, 0xFE);
+    asm volatile("reset_loop:\nhlt\njmp reset_loop");
+
+    return 0;
+}
+
 
 int free(char* args) {
 
@@ -168,7 +189,7 @@ int quackfetch(char* args) {
 	printf("%c[51;6H", 0x1B);
 	printf("Packages: ?");
 	printf("%c[51;7H", 0x1B);
-	printf("Shell: ?");
+	printf("Shell: kshell");
 	printf("%c[51;8H", 0x1B);
 	printf("CPU: %s", (const char*)brand);
 	printf("%c[51;9H", 0x1B);

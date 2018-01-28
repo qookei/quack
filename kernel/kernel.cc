@@ -19,6 +19,8 @@
 #include "io/rtc.h"
 #include "kbd/ps2kbd.h"
 #include "kshell/shell.h"
+#include "tasking/tasking.h"
+#include "syscall/syscall.h"
 
 void serial_writestr(const char* data, size_t size) {
 	for (size_t i = 0; i < size; i++)
@@ -57,18 +59,19 @@ bool __attribute__((noreturn)) page_fault(interrupt_cpu_state *state) {
 	int id = state->err_code & 0x10;          // Caused by an instruction fetch?
 
 	// Output an error message.
-	tty_putstr("Page fault (");
-	if (present) {tty_putstr("present");}
-	else {tty_putstr("not present");}
-	if (rw) {tty_putstr(", write");}
-	else {tty_putstr(", read");}
-	if (us) {tty_putstr(", user-mode");}
-	else {tty_putstr(", kernel-mode");}
-	if (id) {tty_putstr(", instruction-fetch");}
-	if (reserved) {tty_putstr(", reserved");}
+	printf("Page fault (");
+	if (present) {printf("present");}
+	else {printf("not present");}
+	if (rw) {printf(", write");}
+	else {printf(", read");}
+	if (us) {printf(", user-mode");}
+	else {printf(", kernel-mode");}
+	if (id) {printf(", instruction-fetch");}
+	if (reserved) {printf(", reserved");}
 	printf(") at 0x%08x\n", fault_addr);
 	stack_trace(20, 0);
 	asm volatile ("1:\nhlt\njmp 1b");
+
 }
 
 uint32_t k = 0;
@@ -85,15 +88,13 @@ extern uint32_t year;
 const char* months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 
 bool timer(interrupt_cpu_state *state) {
+
 	read_rtc();
 	printf("%c[s", 0x1B);
 	printf("%c[%u;%uH", 0x1B, 1, 1);
 	printf("%c[%uG", 0x1B, 105);
 	printf("%02u %s. %04u [%02u:%02u:%02u]", day, months[month-1], year, hour, minute, second);
 	printf("%c[u", 0x1B);
-
-	outb(0x70, 0x0C);	// select register C
-	inb(0x71);		// just throw away contents
 
 	return true;
 }
@@ -157,11 +158,18 @@ void fastmemcpy(uint32_t dst, uint32_t src, uint32_t size) {
 	asm volatile ("mov %0, %%ecx\nmov %1, %%edi\nmov %2, %%esi\nrep movsb" : : "r"(size), "r"(dst), "r"(src) : "%ecx","%edi","%esi");
 }
 
+extern void* memcpy(void*, const void*, size_t);
+
 const char* mem_type_names[] = {"", "Available", "Reserved", "ACPI", "NVS", "Bad RAM"};
+
+void gdt_new_setup(void);
+
+void gdt_set_tss_stack(uint32_t);
+
+void gdt_ltr(void);
 
 extern "C" { 
 
-void setup_gdt(void);
 
 extern uint8_t _rodata;
 
@@ -172,7 +180,7 @@ void kernel_main(multiboot_info_t *d) {
 
 
 
-	setup_gdt();
+	gdt_new_setup();
 	kprintf("[kernel] GDT ok\n");
 
 	pic_remap(0x20, 0x28);
@@ -184,11 +192,14 @@ void kernel_main(multiboot_info_t *d) {
 
 	register_interrupt_handler(14, page_fault);
 
+	asm volatile ("cli");
+	
 	pmm_init(d);
 
 	paging_init();
 
 	heap_init();
+
 
 	if (d->framebuffer_addr == 0xB8000 || d->framebuffer_addr == 0x0) {
 		tty_setdev(vga_text_tty_dev); // vesa
@@ -205,6 +216,7 @@ void kernel_main(multiboot_info_t *d) {
 		return;
 	}
 
+	asm volatile ("sti");
 	
 
 	
@@ -248,29 +260,68 @@ void kernel_main(multiboot_info_t *d) {
 	printf("\n");
 
 	uint32_t k = 0;
-
 	
-	asm volatile ("cli");
+	//init_tasking();
+
+	syscall_init();
+
+
+	printf("%08x\n", d->mods_count);
+	printf("%08x\n", 0xC0000000+d->mods_addr);
+
+	multiboot_module_t* p = (multiboot_module_t*) (0xC0000000 + d->mods_addr);
+
+	uint32_t sta = p->mod_start;
+	uint32_t end = p->mod_end - 1;
 	
-	register_interrupt_handler(0x28, timer);
+	printf("%08x - %08x\n", sta, end);
 
-	outb(0x70, 0x8B);
-	uint8_t prev = inb(0x71);
-	outb(0x70, 0x8B);
-	outb(0x71, prev | 0x40);
-	
-	asm volatile ("sti");
-	
+	uint32_t pd = create_page_directory(d);
+	printf("pd: %08x\n", pd);
+	set_cr3(pd);
 
+	void* new_stack = pmm_alloc();
+	map_page(new_stack, (void*)0xA0000000, 0x7);
 
 
-	kshell_main();
-
-	while(1) {
+	for (uint32_t i = 0; i <= (end - sta) / 0x1000; i++) {
+		map_page((void*)(sta & 0xFFFFF000 + i * 0x1000), (void*)(i*0x1000), 0x7);
 	}
+
+	uint32_t stack;
+
+	asm volatile ("mov %%esp, %0" : "=r"(stack));
+
+	gdt_set_tss_stack(stack);
+	gdt_ltr();
+
+	asm volatile ("mov %0, %%edi; mov %1, %%esi; call jump_usermode" : : "r"(0x0), "r"(0xA0000000) : "memory");
+
+	// when we reach this point were in usermode
+	// if we ever get here
+
+	while(1);
+
+	// set_cr3(def_cr3());
 	
-	asm volatile ("int $0x00");
+	// destroy_page_directory((void*)pd);
+
+	// kshell_main(d);
+	
+	// asm volatile ("int $0x00");
 
 }
 
+}
+
+
+void kernel_idle() {
+
+	process_t* proc = create_process("kshell", (uint32_t)kshell_main);
+	add_process(proc);
+	//process_t* proc2 = create_process("clock", (uint32_t)timer);
+	//add_process(proc2);
+
+	while(1) {
+	}
 }

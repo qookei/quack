@@ -1,12 +1,32 @@
 #include "isr.h"
 #include "../trace/stacktrace.h"
 
+#include "../paging/paging.h"
+
 #define isr_count 10
 
 extern int printf(const char *, ...);
 extern int kprintf(const char *, ...);
 
 static interrupt_handler_f *interrupt_handlers[IDT_size][isr_count] = {{0}};
+
+bool isr_in_kdir = false;
+uint32_t isr_old_cr3;
+
+void enter_kernel_directory() {
+	if (!isr_in_kdir) {
+		isr_old_cr3 = get_cr3();
+		set_cr3(def_cr3());
+		isr_in_kdir = true;
+	}
+}
+
+void leave_kernel_directory() {
+	if (isr_in_kdir) {
+		set_cr3(isr_old_cr3);	
+		isr_in_kdir = false;
+	}
+}
 
 void pic_eoi(uint32_t r) {
 	if (r > 0x1F) {
@@ -25,6 +45,9 @@ void pic_eoi(uint32_t r) {
 extern "C" {
 
 void dispatch_interrupt(interrupt_cpu_state r) {
+	
+	enter_kernel_directory();
+
 	bool handled = false;
 	
 	for (size_t i = 0; i < isr_count; ++i) {
@@ -41,7 +64,7 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 					"Reserved", "Triple fault"};
 	
 	if (r.interrupt_number < 32 && !handled) {
-		
+	
 		if (r.interrupt_number == 0x08) {
 			// double fault
 			// were doomed
@@ -62,6 +85,8 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 	
 	
 	pic_eoi(r.interrupt_number);
+	leave_kernel_directory();
+
 }
 
 }

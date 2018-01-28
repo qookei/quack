@@ -183,14 +183,32 @@ isr31:
 	push 0
 	push 31
 	jmp service_interrupt
+
+
+; IRQs
+
+EXTERN tasking_enabled
+EXTERN tasking_ticks
+EXTERN preempt
 		
 global isr32
 isr32:
+	; push eax
+	; push edx
+	; mov eax, 0x20
+	; mov edx, 0x20
+	; out dx, ax
+	; pop eax
+	; pop edx
+	; cmp byte [tasking_enabled], 0
+	; jne preempt_do
 	push 0
 	push 32
 	jmp service_interrupt
+; preempt_do:
+; 	call preempt
+; 	iret
 
-; IRQs
 		
 global isr33
 isr33:
@@ -281,6 +299,13 @@ isr47:
 	push 0
 	push 47
 	jmp service_interrupt
+
+global isr48
+isr48:
+	push 0
+	push 48
+	jmp service_interrupt
+
 
 [EXTERN dispatch_interrupt]
 

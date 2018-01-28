@@ -192,9 +192,21 @@ bool ps2_interrupt(interrupt_cpu_state *state) {
 	return true;
 }
 
+extern void* memset(void*, int, size_t);
+
+void reset_buffer() {
+	ps2_keyboard_buffer_idx = 0;
+	memset(ps2_keyboard_buffer, 0, 512);
+}
+
 char getch() {
 	// wait for keyboard buffer to be not empty, then return the character and remove it from the buffer
 	while (ps2_keyboard_buffer_idx == 0);
 	while (ps2_keyboard_buffer[ps2_keyboard_buffer_idx - 1] == 0);
+	return ps2_keyboard_buffer[--ps2_keyboard_buffer_idx];
+}
+
+char readch() {
+	if (ps2_keyboard_buffer_idx == 0) return 0;
 	return ps2_keyboard_buffer[--ps2_keyboard_buffer_idx];
 }

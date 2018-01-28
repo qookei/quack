@@ -6,14 +6,18 @@
 #include "vsprintf.h"
 #include "tty/tty.h"
 
+extern void serial_writestring(const char*);
+
 int printf(const char *fmt, ...) {
+	// asm volatile ("cli");
 	char buf[1024] = {0};
 	va_list va;
 	va_start(va, fmt);
 	int ret = vsprintf(buf, fmt, va);
 	va_end(va);
 	tty_putstr(buf);
-	// serial_writestring(buf);
+	serial_writestring(buf);
+	// asm volatile ("sti");
 	return ret;
 }
 
