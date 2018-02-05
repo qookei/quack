@@ -1,3 +1,6 @@
+; esi - usermode stack
+; edi - usermode code
+
 GLOBAL jump_usermode
 jump_usermode:
      mov ax,0x23

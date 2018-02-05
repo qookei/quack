@@ -34,6 +34,8 @@ bool ps2_interrupt(interrupt_cpu_state *state);
 char ps2_keyboard_buffer[512] = {0};
 uint32_t ps2_keyboard_buffer_idx = 0;
 
+// #define PS2_KBD_INIT_CONT
+
 void ps2_kbd_init() {
 
 #ifdef PS2_KBD_INIT_CONT
@@ -111,17 +113,17 @@ void ps2_kbd_init() {
 	outb(PS2_COMM_PORT, 0xAE);
 	if (ps2_dual_channel) outb(PS2_COMM_PORT, 0xA8);
 
-	//outb(PS2_COMM_PORT, 0x20);
-	//ps2_wait_response();
-	//config = inb(PS2_DATA_PORT) | 0x3;						// get config byte and patch it yet again 
+	outb(PS2_COMM_PORT, 0x20);
+	ps2_wait_response();
+	config = inb(PS2_DATA_PORT) | 0x3;						// get config byte and patch it yet again 
 
-	// outb(PS2_COMM_PORT, 0x60);								// write it back
-	// ps2_wait_ready();
-	// outb(PS2_DATA_PORT, config);
+	outb(PS2_COMM_PORT, 0x60);								// write it back
+	ps2_wait_ready();
+	outb(PS2_DATA_PORT, config);
 
-	// printf("[ps2kbd] enable interrupts ok\n");
+	printf("[ps2kbd] enable interrupts ok\n");
 
-	while (!BITTEST(inb(PS2_STAT_PORT), 2));
+	while (BITTEST(inb(PS2_STAT_PORT), 1));
 	outb(PS2_DATA_PORT, 0xFF); 								// keyboard should work now, i hope
 
 	printf("[ps2kbd] done\n");
@@ -194,7 +196,12 @@ bool ps2_interrupt(interrupt_cpu_state *state) {
 
 extern void* memset(void*, int, size_t);
 
-void reset_buffer() {
+void ps2_kbd_reset_buffer() {
+
+	uint8_t tmp = 0x01;
+    while (tmp & 0x01)
+        tmp = inb(0x60);
+
 	ps2_keyboard_buffer_idx = 0;
 	memset(ps2_keyboard_buffer, 0, 512);
 }

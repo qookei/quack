@@ -228,6 +228,8 @@ void kernel_main(multiboot_info_t *d) {
 	printf("[kernel] cpu brand: %s\n", (const char*)brand);	
 
 	ps2_kbd_init();
+
+	ps2_kbd_reset_buffer();
 	
 	printf("[kernel] params: %s\n", (const char*)(0xC0000000 + d->cmdline));
 	printf("[kernel] fbuf: 0x%x\n", d->framebuffer_addr);
@@ -243,6 +245,8 @@ void kernel_main(multiboot_info_t *d) {
 	// mem_dump(mem, 128, 16);
 
 	// kfree(mem);
+
+	getch();
 
 	printf("free pages: %u/%u(%u bytes free)\n", free_pages(), max_pages(), free_pages() * 4096);
 
@@ -266,62 +270,52 @@ void kernel_main(multiboot_info_t *d) {
 	syscall_init();
 
 
-	printf("%08x\n", d->mods_count);
-	printf("%08x\n", 0xC0000000+d->mods_addr);
+	// printf("%08x\n", d->mods_count);
+	// printf("%08x\n", 0xC0000000+d->mods_addr);
 
-	multiboot_module_t* p = (multiboot_module_t*) (0xC0000000 + d->mods_addr);
+	// multiboot_module_t* p = (multiboot_module_t*) (0xC0000000 + d->mods_addr);
 
-	uint32_t sta = p->mod_start;
-	uint32_t end = p->mod_end - 1;
+	// uint32_t sta = p->mod_start;
+	// uint32_t end = p->mod_end - 1;
+	// uint32_t cmd = p->cmdline;
+
+	// printf("%08x - %08x\n", sta, end);
+
+	// printf("%08x - %s\n", cmd, (char*)(cmd+0xC0000000));
+
+	// uint32_t pd = create_page_directory(d);
+	// printf("pd: %08x\n", pd);
+	// set_cr3(pd);
+
+	// void* new_stack = pmm_alloc();
+	// map_page(new_stack, (void*)0xA0000000, 0x7);
+
+
+	// for (uint32_t i = 0; i <= (end - sta) / 0x1000; i++) {
+	// 	map_page((void*)(sta & 0xFFFFF000 + i * 0x1000), (void*)(i*0x1000), 0x7);
+	// }
+
 	
-	printf("%08x - %08x\n", sta, end);
+	// getch();
 
-	uint32_t pd = create_page_directory(d);
-	printf("pd: %08x\n", pd);
-	set_cr3(pd);
+	// uint32_t stack;
 
-	void* new_stack = pmm_alloc();
-	map_page(new_stack, (void*)0xA0000000, 0x7);
+	// asm volatile ("mov %%esp, %0" : "=r"(stack));
 
+	// gdt_set_tss_stack(stack);
+	// gdt_ltr();
 
-	for (uint32_t i = 0; i <= (end - sta) / 0x1000; i++) {
-		map_page((void*)(sta & 0xFFFFF000 + i * 0x1000), (void*)(i*0x1000), 0x7);
-	}
+	// asm volatile ("mov %0, %%edi; mov %1, %%esi; call jump_usermode" : : "r"(0x0), "r"(0xA0001000) : "memory");
 
-	uint32_t stack;
+	asm volatile ("cli");
 
-	asm volatile ("mov %%esp, %0" : "=r"(stack));
+	tasking_init();
+	tasking_enabled = 0;
 
-	gdt_set_tss_stack(stack);
-	gdt_ltr();
+	asm volatile ("sti");
+	tasking_enabled = 1;
 
-	asm volatile ("mov %0, %%edi; mov %1, %%esi; call jump_usermode" : : "r"(0x0), "r"(0xA0000000) : "memory");
-
-	// when we reach this point were in usermode
-	// if we ever get here
-
-	while(1);
-
-	// set_cr3(def_cr3());
-	
-	// destroy_page_directory((void*)pd);
-
-	// kshell_main(d);
-	
-	// asm volatile ("int $0x00");
-
+	while(1) printf("hai world!\n");
 }
 
-}
-
-
-void kernel_idle() {
-
-	process_t* proc = create_process("kshell", (uint32_t)kshell_main);
-	add_process(proc);
-	//process_t* proc2 = create_process("clock", (uint32_t)timer);
-	//add_process(proc2);
-
-	while(1) {
-	}
 }

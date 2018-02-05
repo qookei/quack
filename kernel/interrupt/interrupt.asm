@@ -188,27 +188,41 @@ isr31:
 ; IRQs
 
 EXTERN tasking_enabled
-EXTERN tasking_ticks
-EXTERN preempt
-		
+EXTERN tasking_switch
+
 global isr32
 isr32:
-	; push eax
-	; push edx
-	; mov eax, 0x20
-	; mov edx, 0x20
-	; out dx, ax
-	; pop eax
-	; pop edx
-	; cmp byte [tasking_enabled], 0
-	; jne preempt_do
-	push 0
-	push 32
-	jmp service_interrupt
-; preempt_do:
-; 	call preempt
-; 	iret
-
+	push ds
+    push 0x10
+    pop ds
+    cmp dword [tasking_enabled], 0
+    pop ds
+    je .tasking_abort
+    push gs
+    push fs
+    push es
+    push ds
+    push ebp
+    push edi
+    push esi
+    push edx
+    push ecx
+    push ebx
+    push eax
+    mov al, 0x20
+    out 0x20, al
+    mov ax, 0x10
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    call tasking_switch
+.tasking_abort:
+    push eax
+    mov al, 0x20    ; acknowledge interrupt to PIC0
+    out 0x20, al
+    pop eax
+    iretd
 		
 global isr33
 isr33:

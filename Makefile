@@ -3,7 +3,8 @@ OBJS = boot/boot2.o kernel/kernel.o kernel/io/serial.o kernel/io/ports.o kernel/
 	   kernel/interrupt/interrupt.o kernel/pic/pic.o kernel/tty/tty.o kernel/tty/backends/vga_text.o \
 	   kernel/paging/pmm.o kernel/paging/paging.o kernel/kheap/heap.o kernel/tty/backends/vesa_text.o \
 	   kernel/tty/backends/vesa_font.o kernel/io/rtc.o kernel/kbd/ps2kbd.o kernel/kshell/shell.o \
-	   kernel/tasking/tasking.o kernel/syscall/syscall.o kernel/cpu/gdt_new.o kernel/cpu/usermode_switch.o
+	   kernel/tasking/tasking.o kernel/syscall/syscall.o kernel/cpu/gdt_new.o kernel/cpu/usermode_switch.o \
+	   kernel/tasking/tasking_enter.o
 
 CXX = i686-elf-g++
 CC = i686-elf-gcc

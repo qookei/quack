@@ -19,7 +19,7 @@ typedef struct memory_chunk memory_chunk;
 
 void heap_init();
 void *kmalloc(size_t);
-// void *krealloc(void *,size_t); unimpl for now
+void *krealloc(void *,size_t);
 void kfree(void *);
 
 #endif

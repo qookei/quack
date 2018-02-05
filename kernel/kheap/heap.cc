@@ -3,13 +3,13 @@
 memory_chunk *first;
 uint32_t mem_top;
 extern int kprintf(const char*, ...);
+extern void* memcpy(void*, const void*, size_t);
 
 void heap_init() {
 	first 	= (memory_chunk *)0x1000;
 	mem_top = 0x1000;
 	void *page = (void *)pmm_alloc();
 	map_page(page, first, 0x3);
-	//for(int i = 0; i < 4096; i++) ((uint8_t*)(first))[i] = 0;
 	first->allocated = false;
 	first->size = 0x1000 - sizeof(memory_chunk);
 	first->prev = 0;
@@ -22,13 +22,9 @@ void expand_heap() {
 	mem_top += 0x1000;
 	void *page = (void *)pmm_alloc();
 	map_page(page, (void *)(mem_top), 0x3);
-	//for(int i = 0; i < 4096; i++) ((uint8_t*)(mem_top))[i] = 0;
 }
 
 void *kmalloc(size_t size) {
-
-	//printf("kekle\n");
-
 	memory_chunk *res = 0;
 	for (memory_chunk *chunk = first; chunk != 0 && res == 0; chunk = chunk->next) {
 		if (chunk->size > size && !chunk->allocated) {
@@ -44,7 +40,7 @@ void *kmalloc(size_t size) {
 		
 		uint32_t expanded = 0;
 
-		for (int i = 0; i < size / 0x1000 + 1; i++) {
+		for (int i = 0; i < size + sizeof(memory_chunk); i += 0x1000) {
 			expand_heap();
 			expanded += 0x1000;
 		}
@@ -57,9 +53,6 @@ void *kmalloc(size_t size) {
 		tmp->size = expanded - sizeof(memory_chunk);
 		tmp->prev->next = tmp;
 
-		// m->size = expanded;
-
-		//return kmalloc(size);						//restart alloc process with more mem
 		res = 0;
 		for (memory_chunk *chunk = first; chunk != 0 && res == 0; chunk = chunk->next) {
 			if (chunk->size > size && !chunk->allocated) {
@@ -67,6 +60,7 @@ void *kmalloc(size_t size) {
 				break;
 			}
 		}
+		kprintf("%08x\n", (uint32_t)res);
 	}
 	
 	if (res->size >= size + sizeof(memory_chunk) + 1) {
@@ -89,6 +83,21 @@ void *kmalloc(size_t size) {
 	return (void *)(((size_t)res)+sizeof(memory_chunk));
 }
 
+void *krealloc(void *ptr, size_t size) {
+	uint32_t addr = (uint32_t)ptr;
+	memory_chunk *chunk = (memory_chunk *)((size_t)addr - sizeof(memory_chunk));
+	uint32_t old_size = chunk->size;
+	
+	if (old_size >= size)
+		return ptr;
+	
+	void *_new = kmalloc(size);
+	memcpy(_new, ptr, old_size);
+	
+	kfree(ptr);
+	
+	return _new;
+}
 
 void kfree(void *ptr) {
 	memory_chunk *chunk = (memory_chunk *)((size_t)ptr - sizeof(memory_chunk));

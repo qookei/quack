@@ -96,6 +96,25 @@ void unmap_page(void *virtualaddr) {
     tlb_flush_entry((uint32_t)virtualaddr);
 }
 
+void *get_phys(void * virtualaddr) {
+    unsigned long pdindex = (unsigned long)virtualaddr >> 22;
+    unsigned long ptindex = (unsigned long)virtualaddr >> 12 & 0x03FF;
+ 
+    unsigned long * pd = (unsigned long *)0xFFFFF000;
+    if (!(pd[pdindex] & 0x1)) {
+    	kprintf("get_phys on unmapped address");
+    	return NULL;
+	}
+ 
+    unsigned long * pt = ((unsigned long *)0xFFC00000) + (0x400 * pdindex);
+    if (!(pt[ptindex] & 0x1)) {
+    	kprintf("get_phys on unmapped address");
+    	return NULL;
+    }
+ 
+    return (void *)((pt[ptindex] & ~0xFFF) + ((unsigned long)virtualaddr & 0xFFF));
+}
+
 uint32_t create_page_directory(multiboot_info_t* mboot) {
 	uint32_t kernel_addr = (0xC0000000 >> 22);
 

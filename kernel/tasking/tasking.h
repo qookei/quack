@@ -7,43 +7,67 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define PROCESS_ALIVE 0
-#define PROCESS_ZOMBIE 1
-#define PROCESS_DEAD 2
+#define MAX_TASKS 0xF
 
-#define SIGTERM 15
-#define SIGILL 4
+#define SIGABRT                 0
+#define SIGFPE                  1
+#define SIGILL                  2
+#define SIGINT                  3
+#define SIGSEGV                 4
+#define SIGTERM                 5
 
-typedef struct process {
+#define SIG_ERR                 0xffffffff
 
-    char *name;
-    uint32_t pid;
+typedef struct {
+
+    uint32_t eax;
+    uint32_t ebx;
+    uint32_t ecx;
+    uint32_t edx;
+    uint32_t esi;
+    uint32_t edi;
+    uint32_t ebp;
     uint32_t esp;
-    uint32_t stack;
     uint32_t eip;
-    uint32_t cr3;
-    uint32_t state;
-    void (*notify)(uint32_t);
-    void *waiting_for;
-    bool not_executed;
-    struct process *next, *prev;
+    uint32_t cs;
+    uint32_t ds;
+    uint32_t es;
+    uint32_t fs;
+    uint32_t gs;
+    uint32_t ss;
+    uint32_t eflags;
 
-} process_t;
+} task_regs_t;
 
+typedef struct {
 
-void init_tasking();
-void print_tasks();
-uint32_t add_process(process_t *);
-void __init__();
-void preempt_now();
-void __kill__();
-void __notify__(uint32_t);
-process_t *create_process(char *, uint32_t);
-process_t *get_process(uint32_t);
-process_t *get_current_process();
-extern "C" void preempt();
-void notify(uint32_t);
-void kill(process_t *);
+    int status;
+    int parent;
 
+    int return_value;
+
+    uint32_t page_directory;
+
+    task_regs_t regs;
+
+    // size_t heap_base;
+    // size_t heap_size;
+
+    // uint32_t sigabrt_hnd;
+    // uint32_t sigfpe_hnd;
+    // uint32_t sigill_hnd;
+    // uint32_t sigint_hnd;
+    // uint32_t sigsegv_hnd;
+    // uint32_t sigterm_hnd;
+
+} task_t;
+
+extern task_t **tasks;
+extern int current_task;
+extern "C" {extern int tasking_enabled;}
+
+void tasking_init();
+void tasking_shedule();
+void tasking_kill(int, int);
 
 #endif
