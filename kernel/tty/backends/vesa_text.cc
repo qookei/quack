@@ -3,8 +3,13 @@
 
 #include "../../kheap/heap.h"
 
+uint8_t text_R = 0xAA;
+uint8_t text_G = 0xAA;
+uint8_t text_B = 0xAA;
 
-#define VESA_BG /*0x20*/0x00
+uint8_t VESA_BG_R = 0x00;
+uint8_t VESA_BG_G = 0x00;
+uint8_t VESA_BG_B = 0x00;
 
 multiboot_info_t* mboot;
 uint8_t* vesa_vbuf;
@@ -99,7 +104,7 @@ void vesa_putchar(uint16_t c, uint32_t x, uint32_t y, uint8_t r, uint8_t g, uint
 				} else {
 					switch(mboot->framebuffer_bpp) {
 						case 16: {
-							uint16_t col = rgb888_rgb565(VESA_BG, VESA_BG, VESA_BG);
+							uint16_t col = rgb888_rgb565(VESA_BG_R, VESA_BG_G, VESA_BG_B);
 							vesa_bbuf[poff + 1] = col >> 8;
 							vesa_bbuf[poff] = col & 0xFF;
 							vesa_vbuf[poff + 1] = col >> 8;
@@ -109,12 +114,12 @@ void vesa_putchar(uint16_t c, uint32_t x, uint32_t y, uint8_t r, uint8_t g, uint
 						
 						case 32:
 						case 24: {
-							vesa_bbuf[poff] = VESA_BG;
-							vesa_bbuf[poff + 1] = VESA_BG;
-							vesa_bbuf[poff + 2] = VESA_BG;
-							vesa_vbuf[poff] = VESA_BG;
-							vesa_vbuf[poff + 1] = VESA_BG;
-							vesa_vbuf[poff + 2] = VESA_BG;
+							vesa_bbuf[poff] = VESA_BG_R;
+							vesa_bbuf[poff + 1] = VESA_BG_G;
+							vesa_bbuf[poff + 2] = VESA_BG_B;
+							vesa_vbuf[poff] = VESA_BG_R;
+							vesa_vbuf[poff + 1] = VESA_BG_G;
+							vesa_vbuf[poff + 2] = VESA_BG_B;
 							break;
 						}
 					}
@@ -155,15 +160,15 @@ void vesa_text_init() {
 			switch(mboot->framebuffer_bpp){
 				case 32:
 				case 24:
-					vesa_vbuf[xx + y * mboot->framebuffer_pitch] = VESA_BG;
-					vesa_vbuf[xx + y * mboot->framebuffer_pitch+1] = VESA_BG;
-					vesa_vbuf[xx + y * mboot->framebuffer_pitch+2] = VESA_BG;
-					vesa_bbuf[xx + y * mboot->framebuffer_pitch] = VESA_BG;
-					vesa_bbuf[xx + y * mboot->framebuffer_pitch+1] = VESA_BG;
-					vesa_bbuf[xx + y * mboot->framebuffer_pitch+2] = VESA_BG;
+					vesa_vbuf[xx + y * mboot->framebuffer_pitch] = VESA_BG_R;
+					vesa_vbuf[xx + y * mboot->framebuffer_pitch+1] = VESA_BG_G;
+					vesa_vbuf[xx + y * mboot->framebuffer_pitch+2] = VESA_BG_B;
+					vesa_bbuf[xx + y * mboot->framebuffer_pitch] = VESA_BG_R;
+					vesa_bbuf[xx + y * mboot->framebuffer_pitch+1] = VESA_BG_G;
+					vesa_bbuf[xx + y * mboot->framebuffer_pitch+2] = VESA_BG_B;
 					break;
 				case 16:
-					uint16_t u = rgb888_rgb565(VESA_BG,VESA_BG,VESA_BG);
+					uint16_t u = rgb888_rgb565(VESA_BG_R,VESA_BG_G,VESA_BG_B);
 					vesa_vbuf[xx + y * mboot->framebuffer_pitch] = u & 0xFF;
 					vesa_vbuf[xx + y * mboot->framebuffer_pitch+1] = u >> 8;
 					vesa_bbuf[xx + y * mboot->framebuffer_pitch] = u & 0xFF;
@@ -198,12 +203,12 @@ void vesa_scroll_up2(uint8_t lines) {
 			switch(mboot->framebuffer_bpp){
 				case 32:
 				case 24:
-					vesa_bbuf[xx + yy * mboot->framebuffer_pitch] = VESA_BG;
-					vesa_bbuf[xx + yy * mboot->framebuffer_pitch+1] = VESA_BG;
-					vesa_bbuf[xx + yy * mboot->framebuffer_pitch+2] = VESA_BG;
+					vesa_bbuf[xx + yy * mboot->framebuffer_pitch] = VESA_BG_R;
+					vesa_bbuf[xx + yy * mboot->framebuffer_pitch+1] = VESA_BG_G;
+					vesa_bbuf[xx + yy * mboot->framebuffer_pitch+2] = VESA_BG_B;
 					break;
 				case 16:
-					uint16_t u = rgb888_rgb565(VESA_BG, VESA_BG, VESA_BG);
+					uint16_t u = rgb888_rgb565(VESA_BG_R, VESA_BG_G, VESA_BG_B);
 					vesa_bbuf[xx + yy * mboot->framebuffer_pitch] = u & 0xFF;
 					vesa_bbuf[xx + yy * mboot->framebuffer_pitch+1] = u >> 8;
 			}
@@ -230,7 +235,7 @@ void vesa_scroll_up(uint8_t lines) {
 			
 			switch (bpp) {
 				case 2: {
-					uint16_t col = rgb888_rgb565(VESA_BG, VESA_BG, VESA_BG);
+					uint16_t col = rgb888_rgb565(VESA_BG_R, VESA_BG_G, VESA_BG_B);
 					vesa_vbuf[vert + x * bpp] = col >> 8;
 					vesa_vbuf[vert + x * bpp + 1] = col & 0xFF;
 					vesa_bbuf[vert + x * bpp] = col >> 8;
@@ -240,12 +245,12 @@ void vesa_scroll_up(uint8_t lines) {
 				
 				case 4:
 				case 3: {
-					vesa_vbuf[vert + x * bpp] = VESA_BG;
-					vesa_vbuf[vert + x * bpp + 1] = VESA_BG;
-					vesa_vbuf[vert + x * bpp + 2] = VESA_BG;
-					vesa_bbuf[vert + x * bpp] = VESA_BG;
-					vesa_bbuf[vert + x * bpp + 1] = VESA_BG;
-					vesa_bbuf[vert + x * bpp + 2] = VESA_BG;
+					vesa_vbuf[vert + x * bpp] = VESA_BG_R;
+					vesa_vbuf[vert + x * bpp + 1] = VESA_BG_G;
+					vesa_vbuf[vert + x * bpp + 2] = VESA_BG_B;
+					vesa_bbuf[vert + x * bpp] = VESA_BG_R;
+					vesa_bbuf[vert + x * bpp + 1] = VESA_BG_G;
+					vesa_bbuf[vert + x * bpp + 2] = VESA_BG_B;
 					break;
 				}
 			}
@@ -283,12 +288,12 @@ void vesa_text_putchar(char c) {
 		}
 		
 
-		vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, 0xFF, 0xFF, 0xFF);
+		vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 		return;
 	}
 
 
-	vesa_putchar(c, cur_x * font.Width, cur_y * font.Height, 0xFF, 0xFF, 0xFF);
+	vesa_putchar(c, cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 	if (++cur_x == cur_max_x) {
 		cur_x = 0;
 		if (++cur_y == cur_max_y){
@@ -316,6 +321,30 @@ extern int printf(const char*, ...);
 
 #define is_digit(c) (c >= '0' && c <= '9')
 
+bool inc_intensity = 0;
+
+uint8_t colors_default[] = {
+	0,   0,     0,
+	170, 0,     0,
+	0,   170,   0,
+	170, 85,    0,
+	0,   0,   170,
+	170, 0,   170,
+	0,   170, 170,
+	170, 170, 170,
+};
+
+uint8_t colors_intense[] = {
+	85,  85,   85,
+	255, 85,   85,
+	85,  255,  85,
+	255, 255,  85,
+	85,  85,  255,
+	255, 85,  255,
+	85,  255, 255,
+	255, 255, 255,
+};
+
 void vesa_text_write(const char* data, size_t size) {
 	
 	ansi_seq = data[0] == 0x1B;
@@ -335,15 +364,15 @@ void vesa_text_write(const char* data, size_t size) {
 							switch(mboot->framebuffer_bpp){
 								case 32:
 								case 24:
-									vesa_vbuf[xx + y * mboot->framebuffer_pitch] = VESA_BG;
-									vesa_vbuf[xx + y * mboot->framebuffer_pitch+1] = VESA_BG;
-									vesa_vbuf[xx + y * mboot->framebuffer_pitch+2] = VESA_BG;
-									vesa_bbuf[xx + y * mboot->framebuffer_pitch] = VESA_BG;
-									vesa_bbuf[xx + y * mboot->framebuffer_pitch+1] = VESA_BG;
-									vesa_bbuf[xx + y * mboot->framebuffer_pitch+2] = VESA_BG;
+									vesa_vbuf[xx + y * mboot->framebuffer_pitch] = VESA_BG_R;
+									vesa_vbuf[xx + y * mboot->framebuffer_pitch+1] = VESA_BG_G;
+									vesa_vbuf[xx + y * mboot->framebuffer_pitch+2] = VESA_BG_B;
+									vesa_bbuf[xx + y * mboot->framebuffer_pitch] = VESA_BG_R;
+									vesa_bbuf[xx + y * mboot->framebuffer_pitch+1] = VESA_BG_G;
+									vesa_bbuf[xx + y * mboot->framebuffer_pitch+2] = VESA_BG_B;
 									break;
 								case 16:
-									uint16_t u = rgb888_rgb565(VESA_BG,VESA_BG,VESA_BG);
+									uint16_t u = rgb888_rgb565(VESA_BG_R,VESA_BG_G,VESA_BG_B);
 									vesa_vbuf[xx + y * mboot->framebuffer_pitch] = u & 0xFF;
 									vesa_vbuf[xx + y * mboot->framebuffer_pitch+1] = u >> 8;
 									vesa_bbuf[xx + y * mboot->framebuffer_pitch] = u & 0xFF;
@@ -473,7 +502,52 @@ void vesa_text_write(const char* data, size_t size) {
 						case 'm': {
 
 							switch(csi_nums[0]) {
+								case 1: inc_intensity = 1; break;
+								case 0: inc_intensity = 0; break;
+
+								case 30:
+								case 31:
+								case 32:
+								case 33:
+								case 34:
+								case 35:
+								case 36:
+								case 37: {
+									uint32_t col = csi_nums[0] - 30;
+									if (!inc_intensity) {
+										text_R = colors_default[col * 3 + 0];
+										text_G = colors_default[col * 3 + 1];
+										text_B = colors_default[col * 3 + 2];
+									} else {
+										text_R = colors_intense[col * 3 + 0];
+										text_G = colors_intense[col * 3 + 1];
+										text_B = colors_intense[col * 3 + 2];
+									}
+									break;
+								}
+
+								case 40:
+								case 41:
+								case 42:
+								case 43:
+								case 44:
+								case 45:
+								case 46:
+								case 47: {
+									uint32_t col = csi_nums[0] - 40;
+									if (!inc_intensity) {
+										VESA_BG_R = colors_default[col * 3 + 0];
+										VESA_BG_G = colors_default[col * 3 + 1];
+										VESA_BG_B = colors_default[col * 3 + 2];
+									} else {
+										VESA_BG_R = colors_intense[col * 3 + 0];
+										VESA_BG_G = colors_intense[col * 3 + 1];
+										VESA_BG_B = colors_intense[col * 3 + 2];
+									}
+									break;
+								}
 								
+
 							}
 
 							break;

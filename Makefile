@@ -38,7 +38,7 @@ kernel/trace/trace.o: kernel/trace/trace.cc
 	$(CXX) -c $< -o $@ $(CXXFLAGS) -Wno-narrowing
 
 kernel/trace/trace.cc:
-	python utils/trace_map.py > kernel/trace/trace.cc
+	python2 utils/trace_map.py > kernel/trace/trace.cc
 
 kernel.o: $(OBJS)
 	$(CC) -T linker.ld -r -o kernel.o -lgcc $(CFLAGS) $^

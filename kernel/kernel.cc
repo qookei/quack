@@ -218,8 +218,6 @@ void kernel_main(multiboot_info_t *d) {
 
 	asm volatile ("sti");
 	
-
-	
 	uint32_t brand[12];
 	__cpuid(0x80000002 , brand[0], brand[1], brand[2], brand[3]);
 	__cpuid(0x80000003 , brand[4], brand[5], brand[6], brand[7]);
@@ -233,18 +231,6 @@ void kernel_main(multiboot_info_t *d) {
 	
 	printf("[kernel] params: %s\n", (const char*)(0xC0000000 + d->cmdline));
 	printf("[kernel] fbuf: 0x%x\n", d->framebuffer_addr);
-
-	
-	// void *page = (void *)pmm_alloc();
-	// map_page(page, (void*)0x0, 0x3);
-	// page = (void *)pmm_alloc();
-	// map_page(page, (void*)0x1000, 0x3);
-	
-	// uint8_t *mem = (uint8_t *)kmalloc(128);
-
-	// mem_dump(mem, 128, 16);
-
-	// kfree(mem);
 
 	getch();
 
@@ -263,59 +249,68 @@ void kernel_main(multiboot_info_t *d) {
 
 	printf("\n");
 
+	for (int i = 0; i < 8; i++) {
+		printf("\e[%um", 40 + i);
+		printf(" ");
+	}
+	printf("\e[1m");
+	for (int i = 0; i < 8; i++) {
+		printf("\e[%um", 40 + i);
+		printf(" ");
+	}
+	printf("\e[0m");
+	printf("\e40m");
+	printf("\e37m");
+	printf("\n");
+
 	uint32_t k = 0;
 	
-	//init_tasking();
-
 	syscall_init();
 
 
-	// printf("%08x\n", d->mods_count);
-	// printf("%08x\n", 0xC0000000+d->mods_addr);
+	printf("%08x\n", d->mods_count);
+	printf("%08x\n", 0xC0000000+d->mods_addr);
 
-	// multiboot_module_t* p = (multiboot_module_t*) (0xC0000000 + d->mods_addr);
+	multiboot_module_t* p = (multiboot_module_t*) (0xC0000000 + d->mods_addr);
 
-	// uint32_t sta = p->mod_start;
-	// uint32_t end = p->mod_end - 1;
-	// uint32_t cmd = p->cmdline;
+	uint32_t sta = p->mod_start;
+	uint32_t end = p->mod_end - 1;
+	uint32_t cmd = p->cmdline;
 
-	// printf("%08x - %08x\n", sta, end);
+	printf("%08x - %08x\n", sta, end);
 
-	// printf("%08x - %s\n", cmd, (char*)(cmd+0xC0000000));
+	printf("%08x - %s\n", cmd, (char*)(cmd+0xC0000000));
 
-	// uint32_t pd = create_page_directory(d);
-	// printf("pd: %08x\n", pd);
-	// set_cr3(pd);
+	uint32_t pd = create_page_directory(d);
+	printf("pd: %08x\n", pd);
+	set_cr3(pd);
 
-	// void* new_stack = pmm_alloc();
-	// map_page(new_stack, (void*)0xA0000000, 0x7);
+	void* new_stack = pmm_alloc();
+	map_page(new_stack, (void*)0xA0000000, 0x7);
 
 
-	// for (uint32_t i = 0; i <= (end - sta) / 0x1000; i++) {
-	// 	map_page((void*)(sta & 0xFFFFF000 + i * 0x1000), (void*)(i*0x1000), 0x7);
-	// }
+	for (uint32_t i = 0; i <= (end - sta) / 0x1000; i++) {
+		map_page((void*)(sta & 0xFFFFF000 + i * 0x1000), (void*)(i*0x1000), 0x7);
+	}
 
-	
-	// getch();
+	uint32_t stack;
 
-	// uint32_t stack;
+	asm volatile ("mov %%esp, %0" : "=r"(stack));
 
-	// asm volatile ("mov %%esp, %0" : "=r"(stack));
+	gdt_set_tss_stack(stack);
+	gdt_ltr();
 
-	// gdt_set_tss_stack(stack);
-	// gdt_ltr();
+	asm volatile ("mov %0, %%edi; mov %1, %%esi; call jump_usermode" : : "r"(0x0), "r"(0xA0001000) : "memory");
 
-	// asm volatile ("mov %0, %%edi; mov %1, %%esi; call jump_usermode" : : "r"(0x0), "r"(0xA0001000) : "memory");
+	// asm volatile ("cli");
 
-	asm volatile ("cli");
+	// tasking_init();
+	// tasking_enabled = 0;
 
-	tasking_init();
-	tasking_enabled = 0;
+	// asm volatile ("sti");
+	// tasking_enabled = 1;
 
-	asm volatile ("sti");
-	tasking_enabled = 1;
-
-	while(1) printf("hai world!\n");
+	while(1);
 }
 
 }

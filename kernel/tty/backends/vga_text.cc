@@ -37,7 +37,11 @@ size_t terminal_row;
 size_t terminal_column;
 uint8_t terminal_color;
 uint16_t* terminal_buffer;
- 
+
+uint8_t bg;
+uint8_t fg;
+
+
 void vga_text_init(void) {
     outb(0x3D4, 0x0A);
     outb(0x3D5, 0x3F);
@@ -45,6 +49,9 @@ void vga_text_init(void) {
 	terminal_row = 0;
 	terminal_column = 0;
 	terminal_color = vga_entry_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+	fg = VGA_COLOR_LIGHT_GREY;
+	bg = VGA_COLOR_BLACK;
+	
 	terminal_buffer = (uint16_t*) 0xC00B8000;
 	for (size_t y = 0; y < VGA_HEIGHT; y++) {
 		for (size_t x = 0; x < VGA_WIDTH; x++) {
@@ -146,7 +153,30 @@ uint8_t csi_num_idx = 31;
 uint32_t cur_x_sav = 0;
 uint32_t cur_y_sav = 0;
 
+bool intensity;
+
 extern int printf(const char*, ...);
+
+uint8_t vga_colors_default[] = {
+	VGA_COLOR_BLACK,
+	VGA_COLOR_RED,
+	VGA_COLOR_GREEN,
+	VGA_COLOR_BROWN,
+	VGA_COLOR_BLUE,
+	VGA_COLOR_MAGENTA,
+	VGA_COLOR_LIGHT_GREY,
+};
+
+uint8_t vga_colors_intense[] = {
+	VGA_COLOR_DARK_GREY,
+	VGA_COLOR_LIGHT_RED,
+	VGA_COLOR_LIGHT_GREEN,
+	VGA_COLOR_LIGHT_BROWN,
+	VGA_COLOR_LIGHT_BLUE,
+	VGA_COLOR_LIGHT_MAGENTA,
+	VGA_COLOR_LIGHT_CYAN,
+	VGA_COLOR_WHITE,
+};
 
 void vga_text_write(const char* data, size_t size) {
 	
@@ -288,8 +318,50 @@ void vga_text_write(const char* data, size_t size) {
 						case 'm': {
 
 							switch(csi_nums[0]) {
-								
+								case 1:
+									intensity = 1;
+									break;
+								case 0:
+									intensity = 0;
+									break;
+
+								case 30:
+								case 31:
+								case 32:
+								case 33:
+								case 34:
+								case 35:
+								case 36:
+								case 37: {
+									uint32_t col = csi_nums[0] - 30;
+									if (!intensity) {
+										fg = vga_colors_default[col];
+									} else {
+										fg = vga_colors_intense[col];
+									}
+									break;
+								}
+
+								case 40:
+								case 41:
+								case 42:
+								case 43:
+								case 44:
+								case 45:
+								case 46:
+								case 47: {
+									uint32_t col = csi_nums[0] - 40;
+									if (!intensity) {
+										bg = vga_colors_default[col];
+									} else {
+										bg = vga_colors_intense[col];
+									}
+									break;
+								}
+									
 							}
+
+							terminal_color = vga_entry_color((vga_color)fg, (vga_color)bg);
 
 							break;
 						}

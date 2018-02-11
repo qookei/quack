@@ -76,9 +76,14 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 	
 		}
 		
-		printf("Unhandled exception!\n");
-		printf("eax: 0x%x ebx: 0x%x ecx: 0x%x edx: 0x%x ebp: 0x%x esi: 0x%x edi: 0x%x\n", r.eax, r.ebx, r.ecx, r.edx, r.ebp, r.esi, r.edi);
-		printf("int_no: 0x%x(%s) err_code: 0x%x eip: 0x%x cs: 0x%x eflags: 0x%x esp: 0x%x ss: 0x%x\n", r.interrupt_number, int_names[r.interrupt_number], r.err_code, r.eip, r.cs, r.eflags, r.esp, r.ss);
+		printf("\e[H");
+		printf("\e[1m");
+		printf("\e[47m");
+		printf("\e[31m");
+		printf("Kernel Panic!\nUnhandled exception!\n");
+		printf("eax: %08x ebx:    %08x ecx: %08x edx: %08x ebp: %08x\n", r.eax, r.ebx, r.ecx, r.edx, r.ebp);
+		printf("eip: %08x eflags: %08x esp: %08x edi: %08x esi: %08x\n", r.eip, r.eflags, r.esp, r.edi, r.esi);
+		printf("exception:  %s\nerror code: %08x\n", int_names[r.interrupt_number], r.err_code);
 		stack_trace(20, 0);
 		while(1) asm volatile ("hlt");
 	}
