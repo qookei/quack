@@ -218,10 +218,14 @@ isr32:
     mov gs, ax
     call tasking_switch
 .tasking_abort:
+
+	; this part is causing problems because it uses the user code/data
+	; how fix?
     push eax
     mov al, 0x20    ; acknowledge interrupt to PIC0
     out 0x20, al
     pop eax
+
     iretd
 		
 global isr33

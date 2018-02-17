@@ -24,7 +24,7 @@ void stack_trace(unsigned int max_frames, unsigned int skip) {
         if (skipped++ >= skip) {
             int trace_id = find_correct_trace(eip);
             if (trace_id == -1) {
-                printf("<%08x> %s+0x%x\n", eip, "?", eip);
+                printf("<%08x> ?+?\n", eip);
             } else 
                 printf("<%08x> %s+0x%x\n", eip, trace_elems[trace_id].func_name, eip - trace_elems[trace_id].addr);
         }

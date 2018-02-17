@@ -59,7 +59,11 @@ bool __attribute__((noreturn)) page_fault(interrupt_cpu_state *state) {
 	int id = state->err_code & 0x10;          // Caused by an instruction fetch?
 
 	// Output an error message.
-	printf("Page fault (");
+	printf("\e[H");
+	printf("\e[1m");
+	printf("\e[47m");
+	printf("\e[31m");
+	printf("Kernel Panic! Page fault (");
 	if (present) {printf("present");}
 	else {printf("not present");}
 	if (rw) {printf(", write");}
@@ -69,6 +73,11 @@ bool __attribute__((noreturn)) page_fault(interrupt_cpu_state *state) {
 	if (id) {printf(", instruction-fetch");}
 	if (reserved) {printf(", reserved");}
 	printf(") at 0x%08x\n", fault_addr);
+	printf("faulting pid = %u\n", current_task);
+	printf("eax: %08x ebx:    %08x ecx: %08x edx: %08x ebp: %08x\n", state->eax, state->ebx, state->ecx, state->edx, state->ebp);
+	printf("eip: %08x eflags: %08x esp: %08x edi: %08x esi: %08x\n", state->eip, state->eflags, state->esp, state->edi, state->esi);
+	printf("cs: %04x ds: %04x\n", state->cs, state->ds);
+			
 	stack_trace(20, 0);
 	asm volatile ("1:\nhlt\njmp 1b");
 
@@ -216,7 +225,7 @@ void kernel_main(multiboot_info_t *d) {
 		return;
 	}
 
-	asm volatile ("sti");
+	//asm volatile ("sti");
 	
 	uint32_t brand[12];
 	__cpuid(0x80000002 , brand[0], brand[1], brand[2], brand[3]);
@@ -230,11 +239,8 @@ void kernel_main(multiboot_info_t *d) {
 	ps2_kbd_reset_buffer();
 	
 	printf("[kernel] params: %s\n", (const char*)(0xC0000000 + d->cmdline));
-	printf("[kernel] fbuf: 0x%x\n", d->framebuffer_addr);
 
-	getch();
-
-	printf("free pages: %u/%u(%u bytes free)\n", free_pages(), max_pages(), free_pages() * 4096);
+	printf("free memory: %u out of %u bytes free\n", free_pages() * 4096, max_pages() * 4096);
 
 	multiboot_memory_map_t* mmap = (multiboot_memory_map_t*)(d->mmap_addr + 0xC0000000);
 	while((uint32_t)mmap < (d->mmap_addr + 0xC0000000 + d->mmap_length)) {
@@ -259,8 +265,8 @@ void kernel_main(multiboot_info_t *d) {
 		printf(" ");
 	}
 	printf("\e[0m");
-	printf("\e40m");
-	printf("\e37m");
+	printf("\e[40m");
+	printf("\e[37m");
 	printf("\n");
 
 	uint32_t k = 0;
@@ -282,6 +288,7 @@ void kernel_main(multiboot_info_t *d) {
 	printf("%08x - %s\n", cmd, (char*)(cmd+0xC0000000));
 
 	uint32_t pd = create_page_directory(d);
+
 	printf("pd: %08x\n", pd);
 	set_cr3(pd);
 
@@ -290,8 +297,10 @@ void kernel_main(multiboot_info_t *d) {
 
 
 	for (uint32_t i = 0; i <= (end - sta) / 0x1000; i++) {
-		map_page((void*)(sta & 0xFFFFF000 + i * 0x1000), (void*)(i*0x1000), 0x7);
+		map_page((void*)(sta & 0xFFFFF000 + (i * 0x1000)), (void*)((i*0x1000) + 0x1000), 0x7);
 	}
+
+	set_cr3(def_cr3());
 
 	uint32_t stack;
 
@@ -300,17 +309,51 @@ void kernel_main(multiboot_info_t *d) {
 	gdt_set_tss_stack(stack);
 	gdt_ltr();
 
-	asm volatile ("mov %0, %%edi; mov %1, %%esi; call jump_usermode" : : "r"(0x0), "r"(0xA0001000) : "memory");
+	// asm volatile ("mov %0, %%edi; mov %1, %%esi; call jump_usermode" : : "r"(0x0), "r"(0xA0001000) : "memory");
 
-	// asm volatile ("cli");
+	tasking_enabled = 0;
 
-	// tasking_init();
-	// tasking_enabled = 0;
+	//asm volatile ("cli");
 
-	// asm volatile ("sti");
-	// tasking_enabled = 1;
 
-	while(1);
+
+	// kurde balans
+	tasking_init();
+
+	task_t *task = (task_t *)kmalloc(sizeof(task_t));
+
+	task->status = 0;
+	task->parent = 0;
+	task->return_value = 0;
+	task->page_directory = pd;
+	task->regs.eax = 0;
+	task->regs.ebx = 0;
+	task->regs.ecx = 0;
+	task->regs.edx = 0;
+	task->regs.esi = 0;
+	task->regs.edi = 0;
+	task->regs.esp = 0xA0001000;
+	task->regs.eip = 0x1000;
+	task->regs.cs = 0x1B;
+	task->regs.ds = 0x23;
+	task->regs.es = 0x23;
+	task->regs.fs = 0x23;
+	task->regs.gs = 0x23;
+	task->regs.ss = 0x23;
+	task->regs.eflags = 0x202;
+
+	int pid = tasking_create(task);
+
+	printf("pid: %u\n", pid);
+	
+	tasking_enabled = 1;
+	asm volatile ("sti");
+
+
+	uint32_t i;
+
+	while(1)
+		i++;
 }
 
 }

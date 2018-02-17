@@ -2,6 +2,7 @@
 #include "../trace/stacktrace.h"
 
 #include "../paging/paging.h"
+#include "../tasking/tasking.h"
 
 #define isr_count 10
 
@@ -21,9 +22,10 @@ void enter_kernel_directory() {
 	}
 }
 
+
 void leave_kernel_directory() {
 	if (isr_in_kdir) {
-		set_cr3(isr_old_cr3);	
+		set_cr3(isr_old_cr3 = tasks[current_task]->page_directory);	
 		isr_in_kdir = false;
 	}
 }
@@ -46,6 +48,7 @@ extern "C" {
 
 void dispatch_interrupt(interrupt_cpu_state r) {
 	
+
 	enter_kernel_directory();
 
 	bool handled = false;
@@ -57,6 +60,7 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 		}
 	}
 	
+	
 	const char* int_names[] = {"Division by zero", "Debug", "NMI", "Breakpoint", "Overflow", "Bound range exceeded", "Invalid opcode", "Device not available", "Double fault",
 					"Coprocessor segment overrun", "Invalid TSS", "Segment not present", "Stack segment fault", "General protection fault", "Page fault",
 					"Reserved", "x87 Floating point exception", "Alignment check", "Machine check", "SIMD Floating point exception", "Virtualization exception",
@@ -64,7 +68,7 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 					"Reserved", "Triple fault"};
 	
 	if (r.interrupt_number < 32 && !handled) {
-	
+		
 		if (r.interrupt_number == 0x08) {
 			// double fault
 			// were doomed
@@ -76,16 +80,24 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 	
 		}
 		
-		printf("\e[H");
-		printf("\e[1m");
-		printf("\e[47m");
-		printf("\e[31m");
-		printf("Kernel Panic!\nUnhandled exception!\n");
-		printf("eax: %08x ebx:    %08x ecx: %08x edx: %08x ebp: %08x\n", r.eax, r.ebx, r.ecx, r.edx, r.ebp);
-		printf("eip: %08x eflags: %08x esp: %08x edi: %08x esi: %08x\n", r.eip, r.eflags, r.esp, r.edi, r.esi);
-		printf("exception:  %s\nerror code: %08x\n", int_names[r.interrupt_number], r.err_code);
-		stack_trace(20, 0);
-		while(1) asm volatile ("hlt");
+		if (r.cs != 0x08) {
+			uint32_t p = current_task;
+			current_task++;
+			tasking_kill(p);
+			tasking_shedule();
+		} else {
+			printf("\e[H");
+			printf("\e[1m");
+			printf("\e[47m");
+			printf("\e[31m");
+			printf("Kernel Panic!\nUnhandled exception!\n");
+			printf("eax: %08x ebx:    %08x ecx: %08x edx: %08x ebp: %08x\n", r.eax, r.ebx, r.ecx, r.edx, r.ebp);
+			printf("eip: %08x eflags: %08x esp: %08x edi: %08x esi: %08x\n", r.eip, r.eflags, r.esp, r.edi, r.esi);
+			printf("cs: %04x ds: %04x\n", r.cs, r.ds);
+			printf("exception:  %s\nerror code: %08x\n", int_names[r.interrupt_number], r.err_code);
+			stack_trace(20, 0);
+			while(1) asm volatile ("hlt");
+		}
 	}
 	
 	

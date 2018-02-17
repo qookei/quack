@@ -8,10 +8,15 @@ int current_task = 0;
 extern void* memset(void*, int, size_t);
 extern void* memcpy(void*, const void*, size_t);
 
+extern int kprintf(const char*, ...);
+
 const task_regs_t default_regs = {0,0,0,0,0,0,0,0,0,0x1b,0x23,0x23,0x23,0x23,0x23,0x202};
 
 void f() {
-    
+    asm volatile("sti");
+    while (1) {
+        kprintf("this pid %u\n", current_task);
+    }
 }
 
 void tasking_init() {
@@ -19,26 +24,27 @@ void tasking_init() {
     memset(tasks, 0, MAX_TASKS * sizeof(task_t *));
 
     tasks[0] = (task_t *)kmalloc(sizeof(task_t));
-    tasks[0]->regs = default_regs;
-    tasks[0]->regs.eip = (uint32_t)&f;
     tasks[0]->page_directory = def_cr3();
+    // tasks[0]->regs.eip = (uint32_t)(&f);
+    current_task = 0;
 }
 
 
-int tasking_create(task_t task) {
+int tasking_create(task_t *task) {
     int pid;
-    while (tasks[pid] != NULL || tasks[pid] != EMPTY_PID) pid++;
-    // for (pid = 0; pid < MAX_TASKS; pid++)
-    //     if (tasks[pid] == NULL) break;
+    for (pid = 0; pid < MAX_TASKS; pid++)
+        if (tasks[pid] == NULL) break;
 
-    tasks[pid] = (task_t *)kmalloc(sizeof(task_t));
-    *tasks[pid] = task;
+    tasks[pid] = task;
     return pid;
 }
+
 
 extern "C" {
 
 int tasking_enabled;
+
+extern void tasking_enter(task_regs_t*, uint32_t);
 
 void tasking_switch(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx, uint32_t esi, 
                     uint32_t edi, uint32_t ebp, uint32_t ds, uint32_t es, uint32_t fs, 
@@ -65,21 +71,20 @@ void tasking_switch(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx, uint
     
     current_task++;
     tasking_shedule();
+    tasking_enter(&tasks[current_task]->regs, tasks[current_task]->page_directory);
 }
 
 }
 
 
 void tasking_shedule() {
-    int c;
-    for (;;) {
-        if (tasks[current_task] == NULL) {
-            current_task = 0;
-        } else if (tasks[current_task] == EMPTY_PID) {
-            current_task++;
-        } else {
-            current_task++;
-        }
-    }
+        
+    if (tasks[current_task] == NULL) {
+        current_task = 0;
+    }    
 
+}
+
+void tasking_kill(uint32_t pid) {
+    tasks[pid] = NULL;
 }

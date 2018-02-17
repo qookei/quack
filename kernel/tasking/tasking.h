@@ -67,7 +67,8 @@ extern int current_task;
 extern "C" {extern int tasking_enabled;}
 
 void tasking_init();
+int tasking_create(task_t*);
 void tasking_shedule();
-void tasking_kill(int, int);
+void tasking_kill(uint32_t);
 
 #endif

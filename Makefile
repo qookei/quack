@@ -18,6 +18,8 @@ run: quack.iso
 
 iso: quack.iso
 
+strip-iso: strip-quack.iso
+
 
 debug-run: quack.iso
 	echo "To debug, start gdb(or any debugger which uses gdb), load the kernel executable and execute the command \"target remote localhost:1234\""
@@ -29,6 +31,14 @@ quack.iso: kernel.elf
 	cp kernel.elf isodir/boot/kernel.elf
 	cp test isodir/boot/test
 	grub-mkrescue -o quack.iso isodir
+
+strip-quack.iso: kernel.elf
+	mkdir -p isodir/boot/grub
+	cp grub.cfg isodir/boot/grub/grub.cfg
+	i686-elf-strip kernel.elf
+	cp kernel.elf isodir/boot/kernel.elf
+	cp test isodir/boot/test
+	grub-mkrescue -o strip-quack.iso isodir
 
 kernel.elf: kernel.o kernel/trace/trace.o
 	$(CC) -T linker.ld -o kernel.elf -lgcc $(CFLAGS) $^
@@ -55,7 +65,9 @@ kernel.o: $(OBJS)
 .PHONY: clean run
 
 clean:
-	rm $(OBJS)
-	rm kernel.elf
-	rm kernel.o
-	rm quack.iso
+	-rm $(OBJS)
+	-rm kernel.elf
+	-rm kernel.o
+	-rm quack.iso
+	-rm strip-quack.iso
+	-rm kernel/trace/trace.o kernel/trace/trace.cc
