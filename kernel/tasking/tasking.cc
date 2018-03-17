@@ -1,90 +1,186 @@
 #include "tasking.h"
-#define EMPTY_PID (task_t*)0xFFFFFFFF
+#include "../io/ports.h"
+#include "../multiboot.h"
+#define loadcr3(cr3) asm volatile("mov %0, %%eax; mov %%eax, %%cr3" : : "r"(cr3) : "%eax");
 
-task_t **tasks;
+#define getreg(x,y) asm volatile ("mov %%" x ", %0" : "=r"(y) : :);
 
-int current_task = 0;
-
+extern int printf(const char* , ...);
+extern int kprintf(const char* , ...);
 extern void* memset(void*, int, size_t);
 extern void* memcpy(void*, const void*, size_t);
 
-extern int kprintf(const char*, ...);
+extern multiboot_info_t *mbootinfo;
 
-const task_regs_t default_regs = {0,0,0,0,0,0,0,0,0,0x1b,0x23,0x23,0x23,0x23,0x23,0x202};
+task_t tasks[256];
 
-void f() {
-    asm volatile("sti");
-    while (1) {
-        kprintf("this pid %u\n", current_task);
-    }
-}
+uint32_t ctask = -1;
+uint32_t ntask = 0;
+
+uint8_t arr[] = {
+    0xb8, 0x02, 0x00, 0x00, 0x00, 0xbe, 0x41, 0x00, 0x00, 0x00, 0xcd, 0x30, 0xeb, 0xfc
+};
+
+uint8_t arr2[] = {
+    0xb8, 0x02, 0x00, 0x00, 0x00, 0xbe, 0x42, 0x00, 0x00, 0x00, 0xcd, 0x30, 0xeb, 0xfc
+};
+
+extern uint32_t loadexec(uint32_t i);
 
 void tasking_init() {
-    tasks = (task_t **)kmalloc(MAX_TASKS * sizeof(task_t *));
-    memset(tasks, 0, MAX_TASKS * sizeof(task_t *));
+	uint32_t a;
+    // getreg("esp");
+    // tasks[0].esp = a;
+    // tasks[0].cr3 = def_cr3();
+    // ntask++;
 
-    tasks[0] = (task_t *)kmalloc(sizeof(task_t));
-    tasks[0]->page_directory = def_cr3();
-    // tasks[0]->regs.eip = (uint32_t)(&f);
-    current_task = 0;
+    // void* map = pmm_alloc();
+    // map_page(map, (void*)0xA0000000, 0x3);
+
+    // uint32_t* stack = (uint32_t*)(0xA0000000 + 0x1000);
+    // *--stack = 0x10;
+    // *--stack = (0xA0001000);
+    // *--stack = 0x202;
+    // *--stack = 0x08;
+    // *--stack = (uint32_t)f;
+    // *--stack = 0x10;
+    // *--stack = 0;
+    // *--stack = 0;
+    // *--stack = 0;
+    // *--stack = 0;
+    // *--stack = 0;
+    // *--stack = 0;
+    // *--stack = 0;
+
+
+    // tasks[1].esp = (uint32_t)stack;
+    // tasks[1].cr3 = def_cr3();
+    // ntask++;
+
+    void* page = pmm_alloc();
+
+    getreg("cr3", a);
+
+    uint32_t oldcr3 = a;
+
+    uint32_t x = create_page_directory(mbootinfo);
+    set_cr3(x);
+
+    map_page(page, (void*)0xA00000, 0x7);
+
+    for(int i = 0; i < 15; i++) {
+        ((uint8_t*)0xA00000)[i] = arr[i];
+    }
+
+    kprintf("after\n");
+
+    set_cr3(oldcr3);
+
+    new_task(0xA00000, 0x1b, 0x23, x, true);
+
+
+    getreg("cr3", a);
+
+    oldcr3 = a;
+
+    void* page2 = pmm_alloc();
+
+    uint32_t y = create_page_directory(mbootinfo);
+    set_cr3(y);
+
+    map_page(page2, (void*)0xA00000, 0x7);
+
+    for(int i = 0; i < 15; i++) {
+        ((uint8_t*)0xA00000)[i] = arr2[i];
+    }
+
+    kprintf("after\n");
+
+    set_cr3(oldcr3);
+
+    new_task(0xA00000, 0x1b, 0x23, y, true);
+
+
+
+
 }
 
+extern uint32_t current_pd;
 
-int tasking_create(task_t *task) {
-    int pid;
-    for (pid = 0; pid < MAX_TASKS; pid++)
-        if (tasks[pid] == NULL) break;
 
-    tasks[pid] = task;
-    return pid;
+
+uint32_t new_task(uint32_t addr, uint16_t cs, uint16_t ds, uint32_t pd, bool user) { 
+
+    uint32_t a;
+    getreg("cr3", a);
+
+    uint32_t oldcr3 = a;
+
+    loadcr3(pd); 
+    uint32_t po = current_pd;
+
+    current_pd = pd;
+
+    void* map = pmm_alloc();
+    map_page(map, (void*)0xA0000000, user ? 0x7 : 0x3);
+
+    tasks[ntask].cr3 = pd;
+    
+    tasks[ntask].st.seg = ds;
+    tasks[ntask].st.ebx = 0;
+    tasks[ntask].st.ebx = 0;
+    tasks[ntask].st.ecx = 0;
+    tasks[ntask].st.edx = 0;
+    tasks[ntask].st.esi = 0;
+    tasks[ntask].st.edi = 0;
+    tasks[ntask].st.ebp = 0;
+
+    tasks[ntask].st.esp = 0xA0000000;
+    tasks[ntask].st.eip = addr;
+    tasks[ntask].st.cs = cs;
+    tasks[ntask].st.eflags = 0x202;
+    tasks[ntask].st.ss = ds;
+
+    ntask++;
+
+    set_cr3(oldcr3);
+
+    return ntask - 1;
 }
-
 
 extern "C" {
 
-int tasking_enabled;
+// extern void tasking_enter(void);
 
-extern void tasking_enter(task_regs_t*, uint32_t);
-
-void tasking_switch(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx, uint32_t esi, 
-                    uint32_t edi, uint32_t ebp, uint32_t ds, uint32_t es, uint32_t fs, 
-                    uint32_t gs, uint32_t eip, uint32_t cs, uint32_t eflags, uint32_t esp, uint32_t ss) {
-
+uint32_t tasking_handler(uint32_t esp) {
+    
     set_cr3(def_cr3());
 
-    tasks[current_task]->regs.eax = eax;
-    tasks[current_task]->regs.ebx = ebx;
-    tasks[current_task]->regs.ecx = ecx;
-    tasks[current_task]->regs.edx = edx;
-    tasks[current_task]->regs.esi = esi;
-    tasks[current_task]->regs.edi = edi;
-    tasks[current_task]->regs.ebp = ebp;
-    tasks[current_task]->regs.ds = ds;
-    tasks[current_task]->regs.es = es;
-    tasks[current_task]->regs.fs = fs;
-    tasks[current_task]->regs.gs = gs;
-    tasks[current_task]->regs.eip = eip;
-    tasks[current_task]->regs.cs = cs;
-    tasks[current_task]->regs.eflags = eflags;
-    tasks[current_task]->regs.esp = esp;
-    tasks[current_task]->regs.ss = ss;
-    
-    current_task++;
-    tasking_shedule();
-    tasking_enter(&tasks[current_task]->regs, tasks[current_task]->page_directory);
+    outb(0x20, 0xA0);
+
+    if (ctask == -1) {
+        ctask = 0;
+        asm volatile ("mov %0, %%eax; mov %1, %%ebx; jmp tasking_enter" : : "r"(tasks[ctask].cr3), "r"(&tasks[ctask].st) : "%eax", "%ebx");
+    }
+
+    if (ntask < 1) return esp;
+
+    memcpy(&tasks[ctask].st, (cpu_state_t*)esp, sizeof(cpu_state_t));
+
+    // printf("esp: %08x\n", tasks[ctask].st.esp);
+    // printf("esp: %08x\n", tasks[ctask].st.esp);
+    // printf("esp: %08x\n", tasks[ctask].st.esp);
+    // printf("esp: %08x\n", tasks[ctask].st.esp);
+
+    ctask++;
+    if (ctask >= ntask) ctask = 0;
+
+    //printf("ctask: %u\n", ctask);
+
+    asm volatile ("mov %0, %%eax; mov %1, %%ebx; jmp tasking_enter" : : "r"(tasks[ctask].cr3), "r"(&tasks[ctask].st) : "%eax", "%ebx");
+
+    // never get here
+    return esp;
 }
 
-}
-
-
-void tasking_shedule() {
-        
-    if (tasks[current_task] == NULL) {
-        current_task = 0;
-    }    
-
-}
-
-void tasking_kill(uint32_t pid) {
-    tasks[pid] = NULL;
 }

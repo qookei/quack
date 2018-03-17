@@ -47,7 +47,14 @@ char lastkey = '\0';
 
 // extern void map_page(void*,void*,int);
 
+// extern "C" {extern void tasking_enter(task_regs_t*, uint32_t);}
+
 bool __attribute__((noreturn)) page_fault(interrupt_cpu_state *state) {
+
+	// if (tasks[current_task]->regs.cs != 0x08) {
+	// 	return true;
+	// }
+
 	uint32_t fault_addr;
    	asm volatile("mov %%cr2, %0" : "=r" (fault_addr));
 
@@ -59,7 +66,7 @@ bool __attribute__((noreturn)) page_fault(interrupt_cpu_state *state) {
 	int id = state->err_code & 0x10;          // Caused by an instruction fetch?
 
 	// Output an error message.
-	printf("\e[H");
+	// printf("\e[H");
 	printf("\e[1m");
 	printf("\e[47m");
 	printf("\e[31m");
@@ -73,7 +80,7 @@ bool __attribute__((noreturn)) page_fault(interrupt_cpu_state *state) {
 	if (id) {printf(", instruction-fetch");}
 	if (reserved) {printf(", reserved");}
 	printf(") at 0x%08x\n", fault_addr);
-	printf("faulting pid = %u\n", current_task);
+	//printf("faulting pid = %u\n", current_task);
 	printf("eax: %08x ebx:    %08x ecx: %08x edx: %08x ebp: %08x\n", state->eax, state->ebx, state->ecx, state->edx, state->ebp);
 	printf("eip: %08x eflags: %08x esp: %08x edi: %08x esi: %08x\n", state->eip, state->eflags, state->esp, state->edi, state->esi);
 	printf("cs: %04x ds: %04x\n", state->cs, state->ds);
@@ -162,6 +169,38 @@ bool a(interrupt_cpu_state *state) {
 
 }
 
+void pit_freq(uint32_t frequency) {
+    uint16_t x = 1193182 / frequency;
+    if ((1193182 % frequency) > (frequency / 2))
+        x++;
+        
+    outb(0x40, (uint8_t)(x & 0x00ff));
+    outb(0x40, (uint8_t)(x / 0x0100));
+}
+
+multiboot_info_t *mbootinfo;
+
+uint32_t loadexec(uint32_t i) {
+	multiboot_module_t* p = (multiboot_module_t*) (0xC0000000 + mbootinfo->mods_addr + (i * sizeof(multiboot_module_t)));
+
+	uint32_t sta = p->mod_start;
+	uint32_t end = p->mod_end - 1;
+
+	printf("%08x\n", sta);
+	printf("%08x\n", end);
+
+	uint32_t pd = create_page_directory(mbootinfo);
+
+	printf("pd: %08x\n", pd);
+	set_cr3(pd);
+
+	for (uint32_t i = 0; i <= (end - sta) / 0x1000; i++) {
+		map_page((void*)(sta & 0xFFFFF000 + (i * 0x1000)), (void*)((i*0x1000) + 0x1000), 0x7);
+	}
+
+	set_cr3(def_cr3());
+	return pd;
+}
 
 void fastmemcpy(uint32_t dst, uint32_t src, uint32_t size) {
 	asm volatile ("mov %0, %%ecx\nmov %1, %%edi\nmov %2, %%esi\nrep movsb" : : "r"(size), "r"(dst), "r"(src) : "%ecx","%edi","%esi");
@@ -225,6 +264,8 @@ void kernel_main(multiboot_info_t *d) {
 		return;
 	}
 
+	mbootinfo = d;
+
 	//asm volatile ("sti");
 	
 	uint32_t brand[12];
@@ -273,35 +314,6 @@ void kernel_main(multiboot_info_t *d) {
 	
 	syscall_init();
 
-
-	printf("%08x\n", d->mods_count);
-	printf("%08x\n", 0xC0000000+d->mods_addr);
-
-	multiboot_module_t* p = (multiboot_module_t*) (0xC0000000 + d->mods_addr);
-
-	uint32_t sta = p->mod_start;
-	uint32_t end = p->mod_end - 1;
-	uint32_t cmd = p->cmdline;
-
-	printf("%08x - %08x\n", sta, end);
-
-	printf("%08x - %s\n", cmd, (char*)(cmd+0xC0000000));
-
-	uint32_t pd = create_page_directory(d);
-
-	printf("pd: %08x\n", pd);
-	set_cr3(pd);
-
-	void* new_stack = pmm_alloc();
-	map_page(new_stack, (void*)0xA0000000, 0x7);
-
-
-	for (uint32_t i = 0; i <= (end - sta) / 0x1000; i++) {
-		map_page((void*)(sta & 0xFFFFF000 + (i * 0x1000)), (void*)((i*0x1000) + 0x1000), 0x7);
-	}
-
-	set_cr3(def_cr3());
-
 	uint32_t stack;
 
 	asm volatile ("mov %%esp, %0" : "=r"(stack));
@@ -309,51 +321,79 @@ void kernel_main(multiboot_info_t *d) {
 	gdt_set_tss_stack(stack);
 	gdt_ltr();
 
-	// asm volatile ("mov %0, %%edi; mov %1, %%esi; call jump_usermode" : : "r"(0x0), "r"(0xA0001000) : "memory");
+	pit_freq(4000);
 
-	tasking_enabled = 0;
-
-	//asm volatile ("cli");
-
-
-
-	// kurde balans
 	tasking_init();
 
-	task_t *task = (task_t *)kmalloc(sizeof(task_t));
-
-	task->status = 0;
-	task->parent = 0;
-	task->return_value = 0;
-	task->page_directory = pd;
-	task->regs.eax = 0;
-	task->regs.ebx = 0;
-	task->regs.ecx = 0;
-	task->regs.edx = 0;
-	task->regs.esi = 0;
-	task->regs.edi = 0;
-	task->regs.esp = 0xA0001000;
-	task->regs.eip = 0x1000;
-	task->regs.cs = 0x1B;
-	task->regs.ds = 0x23;
-	task->regs.es = 0x23;
-	task->regs.fs = 0x23;
-	task->regs.gs = 0x23;
-	task->regs.ss = 0x23;
-	task->regs.eflags = 0x202;
-
-	int pid = tasking_create(task);
-
-	printf("pid: %u\n", pid);
-	
-	tasking_enabled = 1;
 	asm volatile ("sti");
+	
+	// init_tasking();
+
+	//task_t *task = (task_t *)kmalloc(sizeof(task_t));
+
+	// task->status = 0;
+	// task->parent = 0;
+	// task->return_value = 0;
+	// task->page_directory = loadexec(d, 0);
+	// task->regs.eax = 0;
+	// task->regs.ebx = 0;
+	// task->regs.ecx = 0;
+	// task->regs.edx = 0;
+	// task->regs.esi = 0;
+	// task->regs.edi = 0;
+	// task->regs.esp = 0xA0001000;
+	// task->regs.eip = 0x1000;
+	// task->regs.cs = 0x1B;
+	// task->regs.ds = 0x23;
+	// task->regs.es = 0x23;
+	// task->regs.fs = 0x23;
+	// task->regs.gs = 0x23;
+	// task->regs.ss = 0x23;
+	// task->regs.eflags = 0x202;
+
+	// task_t *task2 = (task_t *)kmalloc(sizeof(task_t));
+
+	// task2->status = 0;
+	// task2->parent = 0;
+	// task2->return_value = 0;
+	// task2->page_directory = loadexec(d, 1);
+	// task2->regs.eax = 0;
+	// task2->regs.ebx = 0;
+	// task2->regs.ecx = 0;
+	// task2->regs.edx = 0;
+	// task2->regs.esi = 0;
+	// task2->regs.edi = 0;
+	// task2->regs.esp = 0xA0001000;
+	// task2->regs.eip = 0x1000;
+	// task2->regs.cs = 0x1B;
+	// task2->regs.ds = 0x23;
+	// task2->regs.es = 0x23;
+	// task2->regs.fs = 0x23;
+	// task2->regs.gs = 0x23;
+	// task2->regs.ss = 0x23;
+	// task2->regs.eflags = 0x202;
+
+	// int pid = tasking_create(task);
+	// printf("pid: %u\n", pid);
 
 
-	uint32_t i;
+	// pid = tasking_create(task2);
+	// printf("pid: %u\n", pid);
 
-	while(1)
-		i++;
+
+
+	// uint32_t i;
+
+	// while(1) {
+	// 	asm volatile ("cli");
+	// 	i++;
+	// 	printf("debug, were kernel");
+	// 	asm volatile ("sti");
+	// };
+
+	while(true) {
+		// printf("xd\n");
+	}
 }
 
 }

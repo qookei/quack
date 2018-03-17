@@ -13,7 +13,10 @@ void set_cr3(uint32_t addr) {
 }
 
 uint32_t get_cr3() {
-	return current_pd;
+	uint32_t a;
+	asm volatile("mov %%cr3, %0" : "=r"(a) : : );
+	return a;
+	// return current_pd;
 }
 
 uint32_t def_cr3() {
@@ -126,11 +129,7 @@ uint32_t create_page_directory(multiboot_info_t* mboot) {
 	uint32_t addr = 0xE0000000;
 	uint32_t *new_dir = (uint32_t *)addr;
 
-	new_dir[i++] = 0x0;
-	new_dir[i++] = 0x0;
-	new_dir[i++] = 0x0;
-	
-	for (uint32_t j = 0; j < kernel_addr - 3; j++)
+	for (uint32_t j = 0; j < kernel_addr; j++)
 		new_dir[i++] = 0x0;
 	
 	new_dir[i++] = 0x00000083;

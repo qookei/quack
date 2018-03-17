@@ -29,6 +29,7 @@ void syscall_init() {
 extern size_t strlen(const char*);
 extern void* memcpy(void*, const void*, size_t);
 extern void* memset(void*, int, size_t);
+extern int kprintf(const char*, ...);
 
 bool do_syscall(interrupt_cpu_state *state) {
 

@@ -79,7 +79,6 @@ isr13:
 	
 global isr14
 isr14:
-	push 0
 	push 14
 	jmp service_interrupt
 	
@@ -187,46 +186,43 @@ isr31:
 
 ; IRQs
 
-EXTERN tasking_enabled
-EXTERN tasking_switch
+EXTERN tasking_handler
+EXTERN __esp
 
 global isr32
 isr32:
-	push ds
-    push 0x10
-    pop ds
-    cmp dword [tasking_enabled], 0
-    pop ds
-    je .tasking_abort
-    push gs
-    push fs
-    push es
-    push ds
-    push ebp
+
+	push ebp
     push edi
     push esi
     push edx
     push ecx
     push ebx
     push eax
-    mov al, 0x20
-    out 0x20, al
-    mov ax, 0x10
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-    call tasking_switch
-.tasking_abort:
 
-	; this part is causing problems because it uses the user code/data
-	; how fix?
+    mov ax, ds
     push eax
-    mov al, 0x20    ; acknowledge interrupt to PIC0
-    out 0x20, al
-    pop eax
 
-    iretd
+    push esp
+    call tasking_handler
+    mov esp, eax
+
+	pop eax
+	mov ds, ax
+	mov es, ax
+	mov fs, ax
+	mov gs, ax
+	
+
+    pop eax
+    pop ebx
+    pop ecx
+    pop edx
+    pop esi
+    pop edi
+    pop ebp
+    
+    iret
 		
 global isr33
 isr33:

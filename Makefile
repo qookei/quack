@@ -10,7 +10,7 @@ CXX = i686-elf-g++
 CC = i686-elf-gcc
 ASM = i686-elf-as
 ASM2 = nasm
-CXXFLAGS = -ffreestanding -O0 -Wall -Wextra -fno-exceptions -fno-rtti -g -std=c++14
+CXXFLAGS = -ffreestanding -O0 -Wall -Wextra -fno-exceptions -fno-rtti -std=c++14 -g
 CFLAGS = -ffreestanding -O0 -nostdlib -g
 
 run: quack.iso
@@ -30,6 +30,7 @@ quack.iso: kernel.elf
 	cp grub.cfg isodir/boot/grub/grub.cfg
 	cp kernel.elf isodir/boot/kernel.elf
 	cp test isodir/boot/test
+	cp test2 isodir/boot/test2
 	grub-mkrescue -o quack.iso isodir
 
 strip-quack.iso: kernel.elf
@@ -38,6 +39,7 @@ strip-quack.iso: kernel.elf
 	i686-elf-strip kernel.elf
 	cp kernel.elf isodir/boot/kernel.elf
 	cp test isodir/boot/test
+	cp test2 isodir/boot/test2
 	grub-mkrescue -o strip-quack.iso isodir
 
 kernel.elf: kernel.o kernel/trace/trace.o

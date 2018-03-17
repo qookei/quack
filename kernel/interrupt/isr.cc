@@ -25,7 +25,7 @@ void enter_kernel_directory() {
 
 void leave_kernel_directory() {
 	if (isr_in_kdir) {
-		set_cr3(isr_old_cr3 = tasks[current_task]->page_directory);	
+		set_cr3(isr_old_cr3/* = get_current_process()->cr3*/);	
 		isr_in_kdir = false;
 	}
 }
@@ -45,6 +45,8 @@ void pic_eoi(uint32_t r) {
 }
 
 extern "C" {
+
+// extern void tasking_enter(task_regs_t*, uint32_t);
 
 void dispatch_interrupt(interrupt_cpu_state r) {
 	
@@ -67,7 +69,7 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 					"Reserved", "Reserved", "Reserved", "Reserved", "Reserved", "Reserved", "Reserved", "Reserved", "Reserved", "Security exception",
 					"Reserved", "Triple fault"};
 	
-	if (r.interrupt_number < 32 && !handled) {
+	if (r.interrupt_number < 32 && !handled /*|| (tasks[current_task]->regs.cs != 0x08 && r.interrupt_number == 14)*/) {
 		
 		if (r.interrupt_number == 0x08) {
 			// double fault
@@ -80,13 +82,16 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 	
 		}
 		
-		if (r.cs != 0x08) {
-			uint32_t p = current_task;
-			current_task++;
-			tasking_kill(p);
-			tasking_shedule();
-		} else {
-			printf("\e[H");
+		// if (tasks[current_task]->regs.cs != 0x08) {
+		// 	// tasking_kill(current_task);
+		// 	// current_task = 0;
+		// 	// tasking_schedule();
+		// 	// printf("Process terminated\n");
+		// 	// leave_kernel_directory();
+		// 	// tasking_enter(&tasks[current_task]->regs, tasks[current_task]->page_directory);
+			
+		// } else {
+			// printf("\e[H");
 			printf("\e[1m");
 			printf("\e[47m");
 			printf("\e[31m");
@@ -97,7 +102,7 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 			printf("exception:  %s\nerror code: %08x\n", int_names[r.interrupt_number], r.err_code);
 			stack_trace(20, 0);
 			while(1) asm volatile ("hlt");
-		}
+		// }
 	}
 	
 	

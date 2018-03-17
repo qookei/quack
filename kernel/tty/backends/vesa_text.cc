@@ -36,7 +36,7 @@ uint32_t findIndexOf(uint16_t what, const uint16_t* where, uint32_t howMuchWhere
 	for (index = 0; index < howMuchWhere; index++)
 		if (where[index] == what) return index;
 	
-	return -1;
+	return 0;
 }
 
 uint32_t cur_x = 0, cur_y = 0;
