@@ -1,6 +1,9 @@
 #include "tasking.h"
 #include "../io/ports.h"
 #include "../multiboot.h"
+#define CLI() asm volatile("cli");
+#define STI() asm volatile("sti");
+
 #define loadcr3(cr3) asm volatile("mov %0, %%eax; mov %%eax, %%cr3" : : "r"(cr3) : "%eax");
 
 #define getreg(x,y) asm volatile ("mov %%" x ", %0" : "=r"(y) : :);
@@ -12,104 +15,87 @@ extern void* memcpy(void*, const void*, size_t);
 
 extern multiboot_info_t *mbootinfo;
 
-task_t tasks[256];
+task_t* task_head = NULL;
+task_t* current_task = NULL;
 
-uint32_t ctask = -1;
-uint32_t ntask = 0;
-
-uint8_t arr[] = {
-    0xb8, 0x02, 0x00, 0x00, 0x00, 0xbe, 0x41, 0x00, 0x00, 0x00, 0xcd, 0x30, 0xeb, 0xfc
-};
-
-uint8_t arr2[] = {
-    0xb8, 0x02, 0x00, 0x00, 0x00, 0xbe, 0x42, 0x00, 0x00, 0x00, 0xcd, 0x30, 0xeb, 0xfc
-};
 
 extern uint32_t loadexec(uint32_t i);
 
+void create_proc_from_mod(uint32_t i) {
+
+    uint32_t oldcr3;
+    getreg("cr3", oldcr3);
+
+    uint32_t x = loadexec(i);
+
+    new_task(0x1000, 0x1b, 0x23, x, true);
+
+}
+
 void tasking_init() {
-	uint32_t a;
-    // getreg("esp");
-    // tasks[0].esp = a;
-    // tasks[0].cr3 = def_cr3();
-    // ntask++;
+    create_proc_from_mod(1);
+    create_proc_from_mod(0);
+    create_proc_from_mod(1);
+    create_proc_from_mod(1);
+    create_proc_from_mod(1);
+    create_proc_from_mod(1);
+    create_proc_from_mod(1);
+    // create_proc_from_mod(1);
+    current_task = task_head;
+}
 
-    // void* map = pmm_alloc();
-    // map_page(map, (void*)0xA0000000, 0x3);
+task_t *new_node() {
+    task_t *t = (task_t*)kmalloc(sizeof(task_t));
+    memset(t, 0, sizeof(task_t));
+    return t;
+}
 
-    // uint32_t* stack = (uint32_t*)(0xA0000000 + 0x1000);
-    // *--stack = 0x10;
-    // *--stack = (0xA0001000);
-    // *--stack = 0x202;
-    // *--stack = 0x08;
-    // *--stack = (uint32_t)f;
-    // *--stack = 0x10;
-    // *--stack = 0;
-    // *--stack = 0;
-    // *--stack = 0;
-    // *--stack = 0;
-    // *--stack = 0;
-    // *--stack = 0;
-    // *--stack = 0;
+void insert(task_t *t) {
+    task_t* temp = task_head;
+    if(task_head == NULL) {
+        task_head = t;
+        return;
+    }
+    while(temp->next != NULL) temp = temp->next; // Go To last Node
+    temp->next = t;
+    t->prev = temp;
+}
 
-
-    // tasks[1].esp = (uint32_t)stack;
-    // tasks[1].cr3 = def_cr3();
-    // ntask++;
-
-    void* page = pmm_alloc();
-
-    getreg("cr3", a);
-
-    uint32_t oldcr3 = a;
-
-    uint32_t x = create_page_directory(mbootinfo);
-    set_cr3(x);
-
-    map_page(page, (void*)0xA00000, 0x7);
-
-    for(int i = 0; i < 15; i++) {
-        ((uint8_t*)0xA00000)[i] = arr[i];
+void kill_task(uint32_t pid) {
+    task_t *t = task_head;
+    while(t->next != NULL && t->pid != pid) {
+        t = t->next;
     }
 
-    kprintf("after\n");
+    // probably something to do wiith null here
+    kprintf("kill1\n");
+    if (t->prev != NULL)
+        t->prev->next = t->next;
+    kprintf("kill2\n");
+    if (t->next != NULL)
+        t->next->prev = t->prev;
+    kprintf("kill3\n");
+    kfree(t);
+}
 
-    set_cr3(oldcr3);
-
-    new_task(0xA00000, 0x1b, 0x23, x, true);
-
-
-    getreg("cr3", a);
-
-    oldcr3 = a;
-
-    void* page2 = pmm_alloc();
-
-    uint32_t y = create_page_directory(mbootinfo);
-    set_cr3(y);
-
-    map_page(page2, (void*)0xA00000, 0x7);
-
-    for(int i = 0; i < 15; i++) {
-        ((uint8_t*)0xA00000)[i] = arr2[i];
-    }
-
-    kprintf("after\n");
-
-    set_cr3(oldcr3);
-
-    new_task(0xA00000, 0x1b, 0x23, y, true);
-
-
-
-
+void kill_task_raw(task_t *t) {
+    if (t->prev != NULL)
+    t->prev->next = t->next;
+    if (t->next != NULL)
+    t->next->prev = t->prev;
+    kfree(t);
 }
 
 extern uint32_t current_pd;
 
+uint32_t pid;
 
 
-uint32_t new_task(uint32_t addr, uint16_t cs, uint16_t ds, uint32_t pd, bool user) { 
+uint32_t new_task(uint32_t addr, uint16_t cs, uint16_t ds, uint32_t pd, bool user) {
+
+    task_t *t = (task_t*)kmalloc(sizeof(task_t));
+
+    printf("----- %p\n", t);
 
     uint32_t a;
     getreg("cr3", a);
@@ -124,33 +110,43 @@ uint32_t new_task(uint32_t addr, uint16_t cs, uint16_t ds, uint32_t pd, bool use
     void* map = pmm_alloc();
     map_page(map, (void*)0xA0000000, user ? 0x7 : 0x3);
 
-    tasks[ntask].cr3 = pd;
-    
-    tasks[ntask].st.seg = ds;
-    tasks[ntask].st.ebx = 0;
-    tasks[ntask].st.ebx = 0;
-    tasks[ntask].st.ecx = 0;
-    tasks[ntask].st.edx = 0;
-    tasks[ntask].st.esi = 0;
-    tasks[ntask].st.edi = 0;
-    tasks[ntask].st.ebp = 0;
-
-    tasks[ntask].st.esp = 0xA0000000;
-    tasks[ntask].st.eip = addr;
-    tasks[ntask].st.cs = cs;
-    tasks[ntask].st.eflags = 0x202;
-    tasks[ntask].st.ss = ds;
-
-    ntask++;
-
     set_cr3(oldcr3);
 
-    return ntask - 1;
+    t->cr3 = pd;
+    
+    t->pid = pid++;
+
+    t->st.seg = ds;
+    t->st.ebx = 0;
+    t->st.ebx = 0;
+    t->st.ecx = 0;
+    t->st.edx = 0;
+    t->st.esi = 0;
+    t->st.edi = 0;
+    t->st.ebp = 0;
+
+    t->st.esp = 0xA0001000;
+    t->st.eip = addr;
+    t->st.cs = cs;
+    t->st.eflags = 0x202;
+    t->st.ss = ds;
+    
+    insert(t);
+
+}
+
+void tasking_schedule_next() {
+    current_task = current_task->next;
+    if (current_task == NULL)
+        current_task = task_head;
+    // kprintf("current pid: %u\n", current_task->pid);
 }
 
 extern "C" {
 
 // extern void tasking_enter(void);
+
+uint32_t counter;
 
 uint32_t tasking_handler(uint32_t esp) {
     
@@ -158,28 +154,15 @@ uint32_t tasking_handler(uint32_t esp) {
 
     outb(0x20, 0xA0);
 
-    if (ctask == -1) {
-        ctask = 0;
-        asm volatile ("mov %0, %%eax; mov %1, %%ebx; jmp tasking_enter" : : "r"(tasks[ctask].cr3), "r"(&tasks[ctask].st) : "%eax", "%ebx");
-    }
+    memcpy(&(current_task->st), (cpu_state_t*)esp, sizeof(cpu_state_t));
 
-    if (ntask < 1) return esp;
+    tasking_schedule_next();
 
-    memcpy(&tasks[ctask].st, (cpu_state_t*)esp, sizeof(cpu_state_t));
+    kprintf("counter: %u\ncurrent pid: %u\ncurrent task ptr: %08p\n", counter++, current_task->pid, current_task);
+    // printf("counter: %u\n", counter-1);
 
-    // printf("esp: %08x\n", tasks[ctask].st.esp);
-    // printf("esp: %08x\n", tasks[ctask].st.esp);
-    // printf("esp: %08x\n", tasks[ctask].st.esp);
-    // printf("esp: %08x\n", tasks[ctask].st.esp);
+    asm volatile ("mov %0, %%eax; mov %1, %%ebx; jmp tasking_enter" : : "r"(current_task->cr3), "r"(&(current_task->st)) : "%eax", "%ebx");
 
-    ctask++;
-    if (ctask >= ntask) ctask = 0;
-
-    //printf("ctask: %u\n", ctask);
-
-    asm volatile ("mov %0, %%eax; mov %1, %%ebx; jmp tasking_enter" : : "r"(tasks[ctask].cr3), "r"(&tasks[ctask].st) : "%eax", "%ebx");
-
-    // never get here
     return esp;
 }
 

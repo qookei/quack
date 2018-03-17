@@ -48,6 +48,8 @@ extern "C" {
 
 // extern void tasking_enter(task_regs_t*, uint32_t);
 
+extern task_t *current_task;
+
 void dispatch_interrupt(interrupt_cpu_state r) {
 	
 
@@ -69,6 +71,18 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 					"Reserved", "Reserved", "Reserved", "Reserved", "Reserved", "Reserved", "Reserved", "Reserved", "Reserved", "Security exception",
 					"Reserved", "Triple fault"};
 	
+
+	if (r.interrupt_number < 32 && !handled && current_task->st.cs != 0x08) {
+		kill_task(current_task->pid);
+		tasking_schedule_next();
+
+	    printf("Process crashed!\n");
+
+	    asm volatile ("mov %0, %%eax; mov %1, %%ebx; jmp tasking_enter" : : "r"(current_task->cr3), "r"(&current_task->st) : "%eax", "%ebx");
+
+	}
+
+
 	if (r.interrupt_number < 32 && !handled /*|| (tasks[current_task]->regs.cs != 0x08 && r.interrupt_number == 14)*/) {
 		
 		if (r.interrupt_number == 0x08) {

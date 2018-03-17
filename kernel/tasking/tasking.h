@@ -32,20 +32,27 @@ typedef struct {
 
 } cpu_state_t;
 
-typedef struct {
+typedef struct task{
 
     char *name;
     uint32_t cr3;
+    uint32_t pid;
 
     cpu_state_t st;
+
+    task* next;
+    task* prev;
 
 } task_t;
 
 
 void tasking_init();
 extern "C" {void tasking_switch();}
+void tasking_schedule_next();
 
 uint32_t new_task(uint32_t, uint16_t, uint16_t, uint32_t, bool);
+void kill_task(uint32_t);
+void kill_task_raw(task_t*);
 
 
 #endif  // TASKING_H

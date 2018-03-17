@@ -49,11 +49,15 @@ char lastkey = '\0';
 
 // extern "C" {extern void tasking_enter(task_regs_t*, uint32_t);}
 
+extern task_t* current_task;
+
 bool __attribute__((noreturn)) page_fault(interrupt_cpu_state *state) {
 
 	// if (tasks[current_task]->regs.cs != 0x08) {
 	// 	return true;
 	// }
+
+	
 
 	uint32_t fault_addr;
    	asm volatile("mov %%cr2, %0" : "=r" (fault_addr));
@@ -64,6 +68,15 @@ bool __attribute__((noreturn)) page_fault(interrupt_cpu_state *state) {
 	int us = state->err_code & 0x4;           // Processor was in user-mode?
 	int reserved = state->err_code & 0x8;     // Overwritten CPU-reserved bits of page entry?
 	int id = state->err_code & 0x10;          // Caused by an instruction fetch?
+
+	if (us) {
+		kill_task(current_task->pid);
+		tasking_schedule_next();
+
+	    printf("Process crashed!\n");
+
+	    asm volatile ("mov %0, %%eax; mov %1, %%ebx; jmp tasking_enter" : : "r"(current_task->cr3), "r"(&current_task->st) : "%eax", "%ebx");
+	}
 
 	// Output an error message.
 	// printf("\e[H");
@@ -80,6 +93,7 @@ bool __attribute__((noreturn)) page_fault(interrupt_cpu_state *state) {
 	if (id) {printf(", instruction-fetch");}
 	if (reserved) {printf(", reserved");}
 	printf(") at 0x%08x\n", fault_addr);
+
 	//printf("faulting pid = %u\n", current_task);
 	printf("eax: %08x ebx:    %08x ecx: %08x edx: %08x ebp: %08x\n", state->eax, state->ebx, state->ecx, state->edx, state->ebp);
 	printf("eip: %08x eflags: %08x esp: %08x edi: %08x esi: %08x\n", state->eip, state->eflags, state->esp, state->edi, state->esi);
