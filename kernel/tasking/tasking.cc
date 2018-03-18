@@ -36,13 +36,10 @@ void tasking_init() {
     create_proc_from_mod(1);
     create_proc_from_mod(0);
     create_proc_from_mod(1);
-    create_proc_from_mod(1);
-    create_proc_from_mod(1);
-    create_proc_from_mod(1);
-    create_proc_from_mod(1);
-    // create_proc_from_mod(1);
     current_task = task_head;
 }
+
+int64_t ntasks = 0;
 
 task_t *new_node() {
     task_t *t = (task_t*)kmalloc(sizeof(task_t));
@@ -76,6 +73,7 @@ void kill_task(uint32_t pid) {
         t->next->prev = t->prev;
     kprintf("kill3\n");
     kfree(t);
+    ntasks--;
 }
 
 void kill_task_raw(task_t *t) {
@@ -84,11 +82,12 @@ void kill_task_raw(task_t *t) {
     if (t->next != NULL)
     t->next->prev = t->prev;
     kfree(t);
+    ntasks--;
 }
 
 extern uint32_t current_pd;
 
-uint32_t pid;
+uint32_t pid = 1;
 
 
 uint32_t new_task(uint32_t addr, uint16_t cs, uint16_t ds, uint32_t pd, bool user) {
@@ -96,6 +95,8 @@ uint32_t new_task(uint32_t addr, uint16_t cs, uint16_t ds, uint32_t pd, bool use
     task_t *t = (task_t*)kmalloc(sizeof(task_t));
 
     printf("----- %p\n", t);
+    printf("------- %u\n", sizeof(task_t));
+    
 
     uint32_t a;
     getreg("cr3", a);
@@ -132,6 +133,7 @@ uint32_t new_task(uint32_t addr, uint16_t cs, uint16_t ds, uint32_t pd, bool use
     t->st.ss = ds;
     
     insert(t);
+    ntasks++;
 
 }
 
@@ -142,11 +144,13 @@ void tasking_schedule_next() {
     // kprintf("current pid: %u\n", current_task->pid);
 }
 
+// extern void tty_putstr(const char*);
+
 extern "C" {
 
 // extern void tasking_enter(void);
 
-uint32_t counter;
+bool init = false;
 
 uint32_t tasking_handler(uint32_t esp) {
     
@@ -154,13 +158,30 @@ uint32_t tasking_handler(uint32_t esp) {
 
     outb(0x20, 0xA0);
 
-    memcpy(&(current_task->st), (cpu_state_t*)esp, sizeof(cpu_state_t));
+    if (ntasks < 1) {
+        // crash
+        // nothing to do
+        kprintf("\e[1m");
+        kprintf("\e[47m");
+        kprintf("\e[31m");
+        kprintf("Kernel panic!\n");
+        kprintf("Scheduler has nothing to do(no processes running)! Halting!\n");
+        CLI();
+        while(1) asm volatile("hlt");
+    }
+
+    if (init)
+        memcpy(&(current_task->st), (cpu_state_t*)esp, sizeof(cpu_state_t));
+    else
+        init = true;
 
     tasking_schedule_next();
 
-    kprintf("counter: %u\ncurrent pid: %u\ncurrent task ptr: %08p\n", counter++, current_task->pid, current_task);
-    // printf("counter: %u\n", counter-1);
-
+    kprintf("current pid: %u\ncurrent task ptr: %08p\n", current_task->pid, current_task);
+    kprintf("eax: %08x ebx:    %08x ecx: %08x edx: %08x ebp: %08x\n", current_task->st.eax, current_task->st.ebx, current_task->st.ecx, current_task->st.edx, current_task->st.ebp);
+    kprintf("eip: %08x eflags: %08x esp: %08x edi: %08x esi: %08x\n", current_task->st.eip, current_task->st.eflags, current_task->st.esp, current_task->st.edi, current_task->st.esi);
+            
+    
     asm volatile ("mov %0, %%eax; mov %1, %%ebx; jmp tasking_enter" : : "r"(current_task->cr3), "r"(&(current_task->st)) : "%eax", "%ebx");
 
     return esp;

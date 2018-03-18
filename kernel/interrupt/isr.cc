@@ -73,10 +73,13 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 	
 
 	if (r.interrupt_number < 32 && !handled && current_task->st.cs != 0x08) {
-		kill_task(current_task->pid);
-		tasking_schedule_next();
+	    set_cr3(def_cr3());
 
-	    printf("Process crashed!\n");
+		uint32_t fault_pid = current_task->pid;
+		tasking_schedule_next();
+		kill_task(fault_pid);
+
+	    printf("Process %u crashed!\n", fault_pid);
 
 	    asm volatile ("mov %0, %%eax; mov %1, %%ebx; jmp tasking_enter" : : "r"(current_task->cr3), "r"(&current_task->st) : "%eax", "%ebx");
 

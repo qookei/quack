@@ -70,10 +70,13 @@ bool __attribute__((noreturn)) page_fault(interrupt_cpu_state *state) {
 	int id = state->err_code & 0x10;          // Caused by an instruction fetch?
 
 	if (us) {
-		kill_task(current_task->pid);
-		tasking_schedule_next();
+	    set_cr3(def_cr3());
 
-	    printf("Process crashed!\n");
+		uint32_t fault_pid = current_task->pid;
+		tasking_schedule_next();
+		kill_task(fault_pid);
+
+	    printf("Process %u crashed!\n", fault_pid);
 
 	    asm volatile ("mov %0, %%eax; mov %1, %%ebx; jmp tasking_enter" : : "r"(current_task->cr3), "r"(&current_task->st) : "%eax", "%ebx");
 	}
@@ -249,12 +252,12 @@ void kernel_main(multiboot_info_t *d) {
 	kprintf("[kernel] PIC ok\n");
 
 	idt_init();
-	asm volatile ("sti");
 	kprintf("[kernel] IDT ok\n");
+	// asm volatile ("sti");
 
 	register_interrupt_handler(14, page_fault);
 
-	asm volatile ("cli");
+	// asm volatile ("cli");
 	
 	pmm_init(d);
 
