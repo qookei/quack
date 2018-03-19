@@ -6,6 +6,7 @@
 	0 - tty_writestr((char*)esi, ecx)
 	1 - kb_rd() -> edx
 	2 - tty_putchar(esi)
+	3 - reset() dont use, for testing
 
 */
 
@@ -46,10 +47,14 @@ bool do_syscall(interrupt_cpu_state *state) {
 		case 1:
 			state->edx = readch();
 			break;
-		case 2:
+		case 2: {
 			char c = (char)state->esi;
 
 			tty_putchar(c);
+			break;
+		}
+		case 3:
+			outb(0x64, 0xFE);
 			break;
 	}
 

@@ -30,25 +30,56 @@ static inline void tlb_flush_entry(uint32_t addr) {
 
 uint32_t pt_f[1024] __attribute__((aligned(4096))) = {0};
 
+// 0xFFC00000
+#define PT 0xFFC00000
+
+inline uint32_t pdpt_addr(uint32_t pd, uint32_t pt) {
+
+}
+
 uint32_t alloc_clean_page() {
+    
+	kprintf("a\n");
 
     uint32_t *pd = (uint32_t *)0xFFFFF000;
 
 	for(uint32_t i = 0; i < 1024; i++) pt_f[i] = 0;
 
+	kprintf("b\n");
+
 	pt_f[0] = (uint32_t)pmm_alloc() | 0x3;
+
+	uint32_t r = pd[1023];
+
+	pt_f[1023] = r;
+
+	kprintf("c\n");
+
 	pd[1023] = (((uint32_t)pt_f - 0xC0000000) | 0x3);
 
-	tlb_flush_entry(0xFFC00000);
+	tlb_flush_entry(PT);
 
-	uint8_t *pt = (uint8_t *)0xFFC00000;
+	kprintf("d\n");
+
+	uint8_t *pt = (uint8_t *)PT;
 	
 	for(uint32_t i = 0; i < 4096; i++) pt[i] = 0;
 	
-	pd[1023] = ((current_pd) | 0x3);
+	kprintf("e\n");
+
+	// crash here
+	// i think
 	
-	tlb_flush_entry(0xFFC00000);
+	tlb_flush_entry(PT);
+
+	pd[1023] = r;
+
+	kprintf("e2\n");
 	
+	tlb_flush_entry(PT);
+	
+	kprintf("f\n");
+
 	return pt_f[0] & 0xFFFFF000;
 }
 
@@ -58,13 +89,14 @@ void map_page(void *physaddr, void *virtualaddr, unsigned int flags) {
 		return;
 	}
 
-	kprintf("cr3: %08x p: %08p v: %08p\n", get_cr3(), physaddr, virtualaddr);
+	// kprintf("cr3: %08x p: %08p v: %08p\n", get_cr3(), physaddr, virtualaddr);
  
     uint32_t pdindex = (uint32_t)virtualaddr >> 22;
     uint32_t ptindex = (uint32_t)virtualaddr >> 12 & 0x03FF;
 
     uint32_t *pd = (uint32_t *)0xFFFFF000;
     if (!(pd[pdindex] & 0x1)) pd[pdindex] = alloc_clean_page() | (flags & 0xFFF);
+    tlb_flush_entry(0xFFC00000);
 	
 
     uint32_t *pt = ((uint32_t *)0xFFC00000) + (0x400 * pdindex);

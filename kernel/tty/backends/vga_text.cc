@@ -164,11 +164,11 @@ uint8_t vga_colors_default[] = {
 	VGA_COLOR_BROWN,
 	VGA_COLOR_BLUE,
 	VGA_COLOR_MAGENTA,
-	VGA_COLOR_LIGHT_GREY,
+	VGA_COLOR_DARK_GREY,
 };
 
 uint8_t vga_colors_intense[] = {
-	VGA_COLOR_DARK_GREY,
+	VGA_COLOR_LIGHT_GREY,
 	VGA_COLOR_LIGHT_RED,
 	VGA_COLOR_LIGHT_GREEN,
 	VGA_COLOR_LIGHT_BROWN,
@@ -189,6 +189,9 @@ void vga_text_write(const char* data, size_t size) {
 		for (size_t i = 1; i < size; i++) {
 			if(i == 1) {
 				if (data[i] == 'c') {	// reset
+					terminal_row = 0;
+					terminal_column = 0;
+					terminal_color = vga_entry_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
 
 					for (size_t y = 0; y < VGA_HEIGHT; y++) {
 						for (size_t x = 0; x < VGA_WIDTH; x++) {
@@ -197,9 +200,6 @@ void vga_text_write(const char* data, size_t size) {
 						}
 					}
 
-					terminal_row = 0;
-					terminal_column = 0;
-					terminal_color = vga_entry_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
 
 					break;
 				}

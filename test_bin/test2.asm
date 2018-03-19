@@ -2,15 +2,15 @@ bits 32
 
 org 0x1000
 
-_start:
-	mov esi, 'A'
-_loop:
-	call _putchar
+; _start:
+	; mov esi, 'A'
+; _loop:
+	; call _putchar
 	
-	add esi, 1
-	cmp esi, '~'
-	jge _crash
-	jmp _loop
+	; add esi, 1
+	; cmp esi, '~'
+	; jge _crash
+	; jmp _loop
 	
 _crash:
 	mov eax, [0xC0000000]

@@ -22,10 +22,11 @@ void enter_kernel_directory() {
 	}
 }
 
+extern task_t *current_task;
 
 void leave_kernel_directory() {
 	if (isr_in_kdir) {
-		set_cr3(isr_old_cr3/* = get_current_process()->cr3*/);	
+		set_cr3(isr_old_cr3);	
 		isr_in_kdir = false;
 	}
 }
@@ -48,7 +49,6 @@ extern "C" {
 
 // extern void tasking_enter(task_regs_t*, uint32_t);
 
-extern task_t *current_task;
 
 void dispatch_interrupt(interrupt_cpu_state r) {
 	
@@ -79,7 +79,7 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 		tasking_schedule_next();
 		kill_task(fault_pid);
 
-	    printf("Process %u crashed!\n", fault_pid);
+	    printf("Process %u crashed with SIGILL!\n", fault_pid);
 
 	    asm volatile ("mov %0, %%eax; mov %1, %%ebx; jmp tasking_enter" : : "r"(current_task->cr3), "r"(&current_task->st) : "%eax", "%ebx");
 
