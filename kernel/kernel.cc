@@ -364,6 +364,14 @@ void kernel_main(multiboot_info_t *d) {
 	printf("\e[0m");
 	printf("\n");
 
+	// 
+
+	printf("setting refcount of 0xFF00F000 to 32\n");
+	page_metadata_t *mtd = get_page_metadata(0xFF00F000);
+	mtd->refcount = 32;
+	printf("set refcount of 0xFF00F000 to 32\n");
+	printf("metadata of 0xFF00F000 is %u\n", mtd->refcount);
+
 	uint32_t k = 0;
 	
 	syscall_init();

@@ -13,9 +13,6 @@ _start:
 	
 _loop:
 	call getch
-	
-	mov eax, 3
-	int 0x30
 
 	mov eax, 2
 	mov esi, edx
