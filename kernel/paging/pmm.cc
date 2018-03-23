@@ -80,7 +80,12 @@ void pmm_init(multiboot_info_t *mbt) {
 
 void *pmm_alloc() {
 	// last_free_page
-	return (void *)pmm_pop();
+
+	uint32_t addr = pmm_pop();
+
+	get_page_metadata(addr)->refcount = 1;
+
+	return (void *)addr;
 }
 
 void pmm_free(void *ptr) {
@@ -89,7 +94,12 @@ void pmm_free(void *ptr) {
 	if (page <= 0x800000) return;
 	//printf("0x%x\n", page);
 
-	pmm_push(page);
+	if (get_page_metadata(page)->refcount == 1) {
+		get_page_metadata(page)->refcount = 0;
+		pmm_push(page);
+	} else if (get_page_metadata(page)->refcount > 1) {
+		get_page_metadata(page)->refcount--;
+	}
 }
 
 size_t free_pages() {
@@ -98,4 +108,8 @@ size_t free_pages() {
 
 size_t max_pages() {
 	return pmm_stack_max_size;
+}
+
+size_t used_pages() {
+	return pmm_stack_max_size - pmm_stack_size;
 }

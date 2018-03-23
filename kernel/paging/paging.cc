@@ -1,8 +1,12 @@
 #include "paging.h"
+#include "../tasking/tasking.h"
+#include "../interrupt/isr.h"
+#include "../trace/stacktrace.h"
 
 page_directory dir_;
 
 extern int kprintf(const char*, ...);
+extern int printf(const char*, ...);
 extern void *memcpy(void *, const void *, size_t);
 
 uint32_t current_pd;
@@ -38,47 +42,24 @@ inline uint32_t pdpt_addr(uint32_t pd, uint32_t pt) {
 }
 
 uint32_t alloc_clean_page() {
-    
-	kprintf("a\n");
 
     uint32_t *pd = (uint32_t *)0xFFFFF000;
 
 	for(uint32_t i = 0; i < 1024; i++) pt_f[i] = 0;
 
-	kprintf("b\n");
-
 	pt_f[0] = (uint32_t)pmm_alloc() | 0x3;
-
 	uint32_t r = pd[1023];
-
 	pt_f[1023] = r;
-
-	kprintf("c\n");
-
 	pd[1023] = (((uint32_t)pt_f - 0xC0000000) | 0x3);
-
 	tlb_flush_entry(PT);
-
-	kprintf("d\n");
 
 	uint8_t *pt = (uint8_t *)PT;
 	
 	for(uint32_t i = 0; i < 4096; i++) pt[i] = 0;
-	
-	kprintf("e\n");
 
-	// crash here
-	// i think
-	
 	tlb_flush_entry(PT);
-
-	pd[1023] = r;
-
-	kprintf("e2\n");
-	
+	pd[1023] = r;	
 	tlb_flush_entry(PT);
-	
-	kprintf("f\n");
 
 	return pt_f[0] & 0xFFFFF000;
 }
@@ -188,7 +169,106 @@ void destroy_page_directory(void *pd) {
 	pmm_free(pd);
 }
 
+extern task_t* current_task;
+
+extern uint32_t isr_old_cr3;
+extern bool isr_in_kdir;
+
+bool __attribute__((noreturn)) page_fault(interrupt_cpu_state *state) {
+
+	// if (tasks[current_task]->regs.cs != 0x08) {
+	// 	return true;
+	// }
+
+	
+
+	uint32_t fault_addr;
+   	asm volatile("mov %%cr2, %0" : "=r" (fault_addr));
+
+   	uint32_t fault_cr3;
+   	asm volatile("mov %%cr3, %0" : "=r" (fault_cr3));
+
+	// The error code gives us details of what happened.
+	int present   = !(state->err_code & 0x1); // Page not present
+	int rw = state->err_code & 0x2;           // Write operation?
+	int us = state->err_code & 0x4;           // Processor was in user-mode?
+	int reserved = state->err_code & 0x8;     // Overwritten CPU-reserved bits of page entry?
+	int id = state->err_code & 0x10;          // Caused by an instruction fetch?
+
+#if 0
+
+	printf("pf at %08x cr3 %08x\n", fault_addr, isr_old_cr3);
+
+#endif
+
+	if (us) {
+	
+	#if 0
+
+		if (present) {printf("present");}
+		else {printf("not present");}
+		if (rw) {printf(", write");}
+		else {printf(", read");}
+		if (us) {printf(", user-mode");}
+		else {printf(", kernel-mode");}
+		if (id) {printf(", instruction-fetch");}
+		if (reserved) {printf(", reserved");}
+		printf("\n");
+		printf("faulting process regs at crash:\n");
+		printf("eax: %08x ebx:    %08x ecx: %08x edx: %08x ebp: %08x\n", state->eax, state->ebx, state->ecx, state->edx, state->ebp);
+		printf("eip: %08x eflags: %08x esp: %08x edi: %08x esi: %08x\n", state->eip, state->eflags, state->esp, state->edi, state->esi);
+		printf("cs: %04x ds: %04x\n", state->cs, state->ds);
+	
+	    printf("proc cr3 %08x\n", current_task->cr3);
+
+	    stack_trace(20, 0);
+
+	#endif
+
+		set_cr3(def_cr3());
+
+		uint32_t pid = current_task->pid;
+		task_t *fault_proc = current_task;
+		tasking_schedule_next();
+		kill_task_raw(fault_proc);
+
+	    printf("Process %u crashed with SIGSEGV!\n", fault_proc->pid);
+
+	    isr_old_cr3 = current_task->cr3;
+	    isr_in_kdir = false;
+
+	    asm volatile ("add $8, %%esp; mov %0, %%eax; mov %1, %%ebx; jmp tasking_enter" : : "r"(current_task->cr3), "r"(&current_task->st) : "%eax", "%ebx");
+	}
+
+
+	// TODO: use a logging system and not the standard output
+
+	printf("\e[1m");
+	printf("\e[47m");
+	printf("\e[31m");
+	printf("Kernel Panic! Page fault (");
+	if (present) {printf("present");}
+	else {printf("not present");}
+	if (rw) {printf(", write");}
+	else {printf(", read");}
+	if (us) {printf(", user-mode");}
+	else {printf(", kernel-mode");}
+	if (id) {printf(", instruction-fetch");}
+	if (reserved) {printf(", reserved");}
+	printf(") at 0x%08x\n", fault_addr);
+
+	printf("eax: %08x ebx:    %08x ecx: %08x edx: %08x ebp: %08x\n", state->eax, state->ebx, state->ecx, state->edx, state->ebp);
+	printf("eip: %08x eflags: %08x esp: %08x edi: %08x esi: %08x\n", state->eip, state->eflags, state->esp, state->edi, state->esi);
+	printf("cs: %04x ds: %04x\n", state->cs, state->ds);
+			
+	stack_trace(20, 0);
+	asm volatile ("1:\nhlt\njmp 1b");
+
+}
+
 void paging_init(void) {
+
+	register_interrupt_handler(14, page_fault);
 
 	uint32_t kernel_addr = (0xC0000000 >> 22);
 
@@ -214,7 +294,7 @@ void paging_init(void) {
 
 	set_cr3(addr);
 
-	kprintf("init cr3: %08x\n", get_cr3());
+	// kprintf("init cr3: %08x\n", get_cr3());
 
 
 	kprintf("[kernel] paging ok\n");

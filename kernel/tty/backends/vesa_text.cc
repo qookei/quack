@@ -187,45 +187,13 @@ void vesa_text_init() {
 extern void* memcpy(void* dst, const void* src, size_t len);
 extern void* memmove(void* dst, const void* src, size_t len);
 
-void vesa_scroll_up2(uint8_t lines) {
-	
-	for (uint32_t i = lines; i < mboot->framebuffer_height; i++)
-		memmove(vesa_bbuf + (i - lines) * mboot->framebuffer_pitch, 
-			    vesa_bbuf + i * mboot->framebuffer_pitch, 
-			    mboot->framebuffer_width * mboot->framebuffer_bpp / 8);
-
-	for (uint32_t y = 0; y < lines; y++) {
-		for (uint32_t x = 0; x < mboot->framebuffer_width; x++) {
-			uint32_t xx = x * mboot->framebuffer_bpp / 8;
-			uint32_t yy = mboot->framebuffer_height - y;
-			kprintf("%u %u\n", x, yy);
-
-			switch(mboot->framebuffer_bpp){
-				case 32:
-				case 24:
-					vesa_bbuf[xx + yy * mboot->framebuffer_pitch] = VESA_BG_R;
-					vesa_bbuf[xx + yy * mboot->framebuffer_pitch+1] = VESA_BG_G;
-					vesa_bbuf[xx + yy * mboot->framebuffer_pitch+2] = VESA_BG_B;
-					break;
-				case 16:
-					uint16_t u = rgb888_rgb565(VESA_BG_R, VESA_BG_G, VESA_BG_B);
-					vesa_bbuf[xx + yy * mboot->framebuffer_pitch] = u & 0xFF;
-					vesa_bbuf[xx + yy * mboot->framebuffer_pitch+1] = u >> 8;
-			}
-		}
-	}
-	
-	
-	memcpy(vesa_vbuf, vesa_bbuf, mboot->framebuffer_height * mboot->framebuffer_pitch);
-}
-
 void vesa_scroll_up(uint8_t lines) {
 	uint32_t pitch = lines * mboot->framebuffer_pitch;
 	
 	uint32_t bpp = mboot->framebuffer_bpp / 8;
 	
 	for (uint32_t i = lines; i < mboot->framebuffer_height; i++) {
-		memcpy(vesa_bbuf + (i - lines) * mboot->framebuffer_pitch, vesa_bbuf + (i) * mboot->framebuffer_pitch, mboot->framebuffer_width * bpp);
+		memcpy((vesa_bbuf + (i - lines) * mboot->framebuffer_pitch), (vesa_bbuf + (i) * mboot->framebuffer_pitch), mboot->framebuffer_width * bpp);
 	}
 	
 	memcpy(vesa_vbuf, vesa_bbuf, mboot->framebuffer_height * mboot->framebuffer_pitch);
@@ -264,6 +232,7 @@ void vesa_scroll_up(uint8_t lines) {
 
 void vesa_text_putchar(char c) {
 	if (c == '\n') {
+		vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 		cur_x = 0;
 
 		if (++cur_y == cur_max_y) {
@@ -271,15 +240,20 @@ void vesa_text_putchar(char c) {
 			vesa_scroll_up(font.Height);
 		}
 
+		vesa_putchar(0x01, cur_x * font.Width, cur_y * font.Height, text_R, text_R, text_R);
+
 		return;
 	}
 
 	if (c == '\r') {
+		vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 		cur_x = 0;
+		vesa_putchar(0x01, cur_x * font.Width, cur_y * font.Height, text_R, text_R, text_R);
 		return;
 	}
 
 	if (c == '\b') {
+		vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 		if (!cur_x) {
 			cur_x = cur_max_x - 1;
 			if (!(--cur_y)) cur_y = 0;
@@ -287,13 +261,13 @@ void vesa_text_putchar(char c) {
 			cur_x--;
 		}
 		
-
-		vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
+		vesa_putchar(0x01, cur_x * font.Width, cur_y * font.Height, text_R, text_R, text_R);
 		return;
 	}
 
 
 	vesa_putchar(c, cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
+
 	if (++cur_x == cur_max_x) {
 		cur_x = 0;
 		if (++cur_y == cur_max_y){
@@ -301,6 +275,9 @@ void vesa_text_putchar(char c) {
 			vesa_scroll_up(font.Height);
 		}
 	}
+
+	vesa_putchar(0x01, cur_x * font.Width, cur_y * font.Height, text_R, text_R, text_R);
+	
 }
 
 

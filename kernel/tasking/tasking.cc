@@ -35,8 +35,6 @@ void create_proc_from_mod(uint32_t i) {
 
 void tasking_init() {
     create_proc_from_mod(0);
-    create_proc_from_mod(1);
-    // create_proc_from_mod(1);
     current_task = task_head;
 }
 
@@ -63,26 +61,45 @@ void kill_task(uint32_t pid) {
     if (t->pid != pid)
         return;
 
-    stack_trace(20, 0);
-    printf("eax: %08x ebx:    %08x ecx: %08x edx: %08x ebp: %08x\n", t->st.eax, t->st.ebx, t->st.ecx, t->st.edx, t->st.ebp);
-    printf("eip: %08x eflags: %08x esp: %08x edi: %08x esi: %08x\n", t->st.eip, t->st.eflags, t->st.esp, t->st.edi, t->st.esi);        
-    
-    kprintf("killing %u\n", pid);
+    kill_task_raw(t);
+
+}
+
+void kill_task_raw(task_t *t) {
+
+    set_cr3(t->cr3);
+
+    uint32_t kernel_addr = (0xC0000000 >> 22);
+
+    uint32_t *pd = (uint32_t *)0xFFFFF000;
+
+    for (uint32_t i = 0; i < kernel_addr; i++) {
+        uint32_t pt = pd[i];
+        if ((pt & 0xFFF)) {
+            map_page((void*)(pt & 0xFFFFF000), (void*)0xE0000000, 0x3);
+            uint32_t *pt_p = (uint32_t *)0xE0000000;
+            for(uint32_t j = 0; j < 1024; j++) {
+                uint32_t addr = pt_p[j];
+                if ((addr & 0xFFF))
+                    pmm_free((void*)(addr & 0xFFFFF000));
+            }
+
+            unmap_page((void*)0xE0000000);
+            pmm_free((void *)(pt & 0xFFFFF000));
+        }
+    }
+
+    set_cr3(def_cr3());
+
+    destroy_page_directory((void *)t->cr3);
+
     if (t->prev != NULL)
         t->prev->next = t->next;
     if (t->next != NULL)
         t->next->prev = t->prev;
     kfree(t);
     ntasks--;
-}
 
-void kill_task_raw(task_t *t) {
-    if (t->prev != NULL)
-    t->prev->next = t->next;
-    if (t->next != NULL)
-    t->next->prev = t->prev;
-    kfree(t);
-    ntasks--;
 }
 
 extern uint32_t current_pd;
@@ -94,9 +111,6 @@ uint32_t new_task(uint32_t addr, uint16_t cs, uint16_t ds, uint32_t pd, bool use
 
     task_t *t = (task_t*)kmalloc(sizeof(task_t));
 
-    printf("----- %p\n", t);
-    printf("------- %u\n", sizeof(task_t));
-    
     memset(t, 0, sizeof(task_t));
 
     uint32_t a;
@@ -139,11 +153,15 @@ uint32_t new_task(uint32_t addr, uint16_t cs, uint16_t ds, uint32_t pd, bool use
 
 }
 
+uint32_t tasking_fork() {
+    // fork the process
+    // nice
+    
+}
+
 void tasking_schedule_next() {
 
     if (ntasks < 1) {
-        // crash
-        // nothing to do
         printf("\e[1m");
         printf("\e[47m");
         printf("\e[31m");
@@ -156,14 +174,9 @@ void tasking_schedule_next() {
     current_task = current_task->next;
     if (current_task == NULL)
         current_task = task_head;
-    // kprintf("current pid: %u\n", current_task->pid);
 }
 
-// extern void tty_putstr(const char*);
-
 extern "C" {
-
-// extern void tasking_enter(void);
 
 bool init = false;
 
@@ -172,18 +185,6 @@ uint32_t tasking_handler(uint32_t esp) {
     set_cr3(def_cr3());
 
     outb(0x20, 0xA0);
-
-    // if (ntasks < 1) {
-    //     // crash
-    //     // nothing to do
-    //     printf("\e[1m");
-    //     printf("\e[47m");
-    //     printf("\e[31m");
-    //     printf("Kernel panic!\n");
-    //     printf("Scheduler has nothing to do(no processes running)! Halting!\n");
-    //     CLI();
-    //     while(1) asm volatile("hlt");
-    // }
 
     if (init) {
         memcpy(&(current_task->st), (cpu_state_t*)esp, sizeof(cpu_state_t));

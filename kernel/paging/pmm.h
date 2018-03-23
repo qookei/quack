@@ -19,5 +19,6 @@ page_metadata_t* get_page_metadata(uint32_t);
 void set_page_metadata(uint32_t, page_metadata_t);
 size_t free_pages();
 size_t max_pages();
+size_t used_pages();
 
 #endif

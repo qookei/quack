@@ -21,6 +21,7 @@
 #include "kshell/shell.h"
 #include "tasking/tasking.h"
 #include "syscall/syscall.h"
+#include "fs/devfs.h"
 
 void serial_writestr(const char* data, size_t size) {
 	for (size_t i = 0; i < size; i++)
@@ -44,98 +45,6 @@ int kprintf(const char *fmt, ...) {
 
 bool axc = false;
 char lastkey = '\0';
-
-// extern void map_page(void*,void*,int);
-
-// extern "C" {extern void tasking_enter(task_regs_t*, uint32_t);}
-
-extern task_t* current_task;
-
-extern uint32_t isr_old_cr3;
-extern bool isr_in_kdir;
-
-bool __attribute__((noreturn)) page_fault(interrupt_cpu_state *state) {
-
-	// if (tasks[current_task]->regs.cs != 0x08) {
-	// 	return true;
-	// }
-
-	
-
-	uint32_t fault_addr;
-   	asm volatile("mov %%cr2, %0" : "=r" (fault_addr));
-
-   	uint32_t fault_cr3;
-   	asm volatile("mov %%cr3, %0" : "=r" (fault_cr3));
-
-	// The error code gives us details of what happened.
-	int present   = !(state->err_code & 0x1); // Page not present
-	int rw = state->err_code & 0x2;           // Write operation?
-	int us = state->err_code & 0x4;           // Processor was in user-mode?
-	int reserved = state->err_code & 0x8;     // Overwritten CPU-reserved bits of page entry?
-	int id = state->err_code & 0x10;          // Caused by an instruction fetch?
-
-	printf("pf at %08x cr3 %08x\n", fault_addr, isr_old_cr3);
-
-	if (us) {
-		if (present) {printf("present");}
-		else {printf("not present");}
-		if (rw) {printf(", write");}
-		else {printf(", read");}
-		if (us) {printf(", user-mode");}
-		else {printf(", kernel-mode");}
-		if (id) {printf(", instruction-fetch");}
-		if (reserved) {printf(", reserved");}
-		printf("\n");
-		printf("faulting process regs at crash:\n");
-		printf("eax: %08x ebx:    %08x ecx: %08x edx: %08x ebp: %08x\n", state->eax, state->ebx, state->ecx, state->edx, state->ebp);
-		printf("eip: %08x eflags: %08x esp: %08x edi: %08x esi: %08x\n", state->eip, state->eflags, state->esp, state->edi, state->esi);
-		printf("cs: %04x ds: %04x\n", state->cs, state->ds);
-	
-	    printf("proc cr3 %08x\n", current_task->cr3);
-
-	    stack_trace(20, 0);
-
-		set_cr3(def_cr3());
-
-		uint32_t pid = current_task->pid;
-		task_t *fault_proc = current_task;
-		tasking_schedule_next();
-		kill_task_raw(fault_proc);
-
-	    printf("Process %u crashed with SIGSEGV!\n", fault_proc->pid);
-
-	    isr_old_cr3 = current_task->cr3;
-	    isr_in_kdir = false;
-
-	    asm volatile ("add $8, %%esp; mov %0, %%eax; mov %1, %%ebx; jmp tasking_enter" : : "r"(current_task->cr3), "r"(&current_task->st) : "%eax", "%ebx");
-	}
-
-	// Output an error message.
-	// printf("\e[H");
-	printf("\e[1m");
-	printf("\e[47m");
-	printf("\e[31m");
-	printf("Kernel Panic! Page fault (");
-	if (present) {printf("present");}
-	else {printf("not present");}
-	if (rw) {printf(", write");}
-	else {printf(", read");}
-	if (us) {printf(", user-mode");}
-	else {printf(", kernel-mode");}
-	if (id) {printf(", instruction-fetch");}
-	if (reserved) {printf(", reserved");}
-	printf(") at 0x%08x\n", fault_addr);
-
-	//printf("faulting pid = %u\n", current_task);
-	printf("eax: %08x ebx:    %08x ecx: %08x edx: %08x ebp: %08x\n", state->eax, state->ebx, state->ecx, state->edx, state->ebp);
-	printf("eip: %08x eflags: %08x esp: %08x edi: %08x esi: %08x\n", state->eip, state->eflags, state->esp, state->edi, state->esi);
-	printf("cs: %04x ds: %04x\n", state->cs, state->ds);
-			
-	stack_trace(20, 0);
-	asm volatile ("1:\nhlt\njmp 1b");
-
-}
 
 uint32_t k = 0;
 uint8_t u = 0;
@@ -226,6 +135,7 @@ void pit_freq(uint32_t frequency) {
 }
 
 multiboot_info_t *mbootinfo;
+extern void* memcpy(void*, const void*, size_t);
 
 uint32_t loadexec(uint32_t i) {
 	multiboot_module_t* p = (multiboot_module_t*) (0xC0000000 + mbootinfo->mods_addr + (i * sizeof(multiboot_module_t)));
@@ -233,28 +143,28 @@ uint32_t loadexec(uint32_t i) {
 	uint32_t sta = p->mod_start;
 	uint32_t end = p->mod_end - 1;
 
-	printf("%08x\n", sta);
-	printf("%08x\n", end);
-
 	uint32_t pd = create_page_directory(mbootinfo);
 
-	printf("pd: %08x\n", pd);
 	set_cr3(pd);
 
-	// crash here
 	for (uint32_t i = 0; i <= (end - sta) / 0x1000; i++) {
-		map_page((void*)(sta & 0xFFFFF000 + (i * 0x1000)), (void*)((i*0x1000) + 0x1000), 0x7);
+
+		void* mem = pmm_alloc();
+
+		map_page(mem, (void*)((i*0x1000) + 0x1000), 0x7);
+		map_page((void*)(sta & 0xFFFFF000 + (i * 0x1000)), (void*)0xE0000000, 0x3);
+		memcpy((void*)((i*0x1000) + 0x1000), (const void*)0xE0000000, 0x1000);
+		unmap_page((void *)0xE0000000);
 	}
 
 	set_cr3(def_cr3());
 	return pd;
 }
 
-void fastmemcpy(uint32_t dst, uint32_t src, uint32_t size) {
-	asm volatile ("mov %0, %%ecx\nmov %1, %%edi\nmov %2, %%esi\nrep movsb" : : "r"(size), "r"(dst), "r"(src) : "%ecx","%edi","%esi");
-}
+// void fastmemcpy(uint32_t dst, uint32_t src, uint32_t size) {
+// 	asm volatile ("mov %0, %%ecx\nmov %1, %%edi\nmov %2, %%esi\nrep movsb" : : "r"(size), "r"(dst), "r"(src) : "%ecx","%edi","%esi");
+// }
 
-extern void* memcpy(void*, const void*, size_t);
 
 const char* mem_type_names[] = {"", "Available", "Reserved", "ACPI", "NVS", "Bad RAM"};
 
@@ -271,13 +181,13 @@ extern uint8_t _rodata;
 
 void kernel_main(multiboot_info_t *d) {
 	/* Initialize terminal interface */
+	serial_init();
 
 	if (((uint32_t)d) - 0xC0000000 > 0x800000) {
 		kprintf("[kernel] mboot hdr out of page");
 		return;
 	}
 
-	serial_init();
 
 
 
@@ -291,7 +201,7 @@ void kernel_main(multiboot_info_t *d) {
 	kprintf("[kernel] IDT ok\n");
 	// asm volatile ("sti");
 
-	register_interrupt_handler(14, page_fault);
+	
 
 	// asm volatile ("cli");
 	
@@ -364,14 +274,6 @@ void kernel_main(multiboot_info_t *d) {
 	printf("\e[0m");
 	printf("\n");
 
-	// 
-
-	printf("setting refcount of 0xFF00F000 to 32\n");
-	page_metadata_t *mtd = get_page_metadata(0xFF00F000);
-	mtd->refcount = 32;
-	printf("set refcount of 0xFF00F000 to 32\n");
-	printf("metadata of 0xFF00F000 is %u\n", mtd->refcount);
-
 	uint32_t k = 0;
 	
 	syscall_init();
@@ -382,6 +284,21 @@ void kernel_main(multiboot_info_t *d) {
 
 	tasking_init();
 
+	vfs_init();
+	devfs_init();
+
+	int file = open("/dev/stdin", O_RDONLY);
+
+	char buffer[8];
+
+	read(file, buffer, 8);
+
+	printf("%s\n", buffer);
+
+	// while( < 1);
+	
+	// mount initrd here
+
 	asm volatile ("mov %%esp, %0" : "=r"(stack));
 
 	gdt_set_tss_stack(stack);
@@ -389,72 +306,7 @@ void kernel_main(multiboot_info_t *d) {
 
 	asm volatile ("sti");
 	
-	// init_tasking();
-
-	//task_t *task = (task_t *)kmalloc(sizeof(task_t));
-
-	// task->status = 0;
-	// task->parent = 0;
-	// task->return_value = 0;
-	// task->page_directory = loadexec(d, 0);
-	// task->regs.eax = 0;
-	// task->regs.ebx = 0;
-	// task->regs.ecx = 0;
-	// task->regs.edx = 0;
-	// task->regs.esi = 0;
-	// task->regs.edi = 0;
-	// task->regs.esp = 0xA0001000;
-	// task->regs.eip = 0x1000;
-	// task->regs.cs = 0x1B;
-	// task->regs.ds = 0x23;
-	// task->regs.es = 0x23;
-	// task->regs.fs = 0x23;
-	// task->regs.gs = 0x23;
-	// task->regs.ss = 0x23;
-	// task->regs.eflags = 0x202;
-
-	// task_t *task2 = (task_t *)kmalloc(sizeof(task_t));
-
-	// task2->status = 0;
-	// task2->parent = 0;
-	// task2->return_value = 0;
-	// task2->page_directory = loadexec(d, 1);
-	// task2->regs.eax = 0;
-	// task2->regs.ebx = 0;
-	// task2->regs.ecx = 0;
-	// task2->regs.edx = 0;
-	// task2->regs.esi = 0;
-	// task2->regs.edi = 0;
-	// task2->regs.esp = 0xA0001000;
-	// task2->regs.eip = 0x1000;
-	// task2->regs.cs = 0x1B;
-	// task2->regs.ds = 0x23;
-	// task2->regs.es = 0x23;
-	// task2->regs.fs = 0x23;
-	// task2->regs.gs = 0x23;
-	// task2->regs.ss = 0x23;
-	// task2->regs.eflags = 0x202;
-
-	// int pid = tasking_create(task);
-	// printf("pid: %u\n", pid);
-
-
-	// pid = tasking_create(task2);
-	// printf("pid: %u\n", pid);
-
-
-
-	// uint32_t i;
-
-	// while(1) {
-	// 	asm volatile ("cli");
-	// 	i++;
-	// 	printf("debug, were kernel");
-	// 	asm volatile ("sti");
-	// };
-
 	while(true) {
-		// printf("xd\n");
 	}
 }
 

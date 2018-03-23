@@ -23,6 +23,25 @@ static const unsigned char __font_bitmap__[] = {
 	________,
 	________,
 	________,
+
+//   1 $01 'char1'
+//	width 8, bbx 0, bby -4, bbw 8, bbh 16
+	XXXXXXXX,
+	XXXXXXXX,
+	XXXXXXXX,
+	XXXXXXXX,
+	XXXXXXXX,
+	XXXXXXXX,
+	XXXXXXXX,
+	XXXXXXXX,
+	XXXXXXXX,
+	XXXXXXXX,
+	XXXXXXXX,
+	XXXXXXXX,
+	XXXXXXXX,
+	XXXXXXXX,
+	XXXXXXXX,
+	XXXXXXXX,
 //  32 $20 'space'
 //	width 8, bbx 0, bby -4, bbw 8, bbh 16
 	________,
@@ -1855,12 +1874,14 @@ static const unsigned char __font_widths__[] = {
 	8,
 	8,
 	8,
+	8,
 	
 };
 
 	/// character encoding for each index entry
 static const unsigned short __font_index__[] = {
 	0,
+	1,
 	32,
 	33,
 	34,
@@ -1962,7 +1983,7 @@ static const unsigned short __font_index__[] = {
 	/// bitmap font structure
 const struct bitmap_font font = {
 	.Width = 8, .Height = 16,
-	.Chars = 97,
+	.Chars = 98,
 	.Widths = __font_widths__,
 	.Index = __font_index__,
 	.Bitmap = __font_bitmap__,
