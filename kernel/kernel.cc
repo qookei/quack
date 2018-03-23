@@ -287,16 +287,12 @@ void kernel_main(multiboot_info_t *d) {
 	vfs_init();
 	devfs_init();
 
-	int file = open("/dev/stdin", O_RDONLY);
+	int file = open("/dev/initrd", O_RDONLY);
 
-	char buffer[8];
+	char buf[1024];
+	mem_dump(buf, read(file, buf, 1024), 16);
 
-	read(file, buffer, 8);
 
-	printf("%s\n", buffer);
-
-	// while( < 1);
-	
 	// mount initrd here
 
 	asm volatile ("mov %%esp, %0" : "=r"(stack));
