@@ -420,44 +420,52 @@ void vesa_text_write(const char* data, size_t size) {
 
 					switch (data[i]) {	// actual functions
 						case 'A': {
+							vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							cur_y -= csi_nums[0]; 
 							break;
 						}
 
 						case 'B': {
+							vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							cur_y += csi_nums[0]; 
 							break;
 						}
 
 						case 'C': {
+							vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							cur_x += csi_nums[0]; 
 							break;
 						}
 
 						case 'D': {
+							vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							cur_x -= csi_nums[0]; 
 							break;
 						}
 
 						case 'E': {
+							vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							cur_y = 0;
 							cur_x += csi_nums[0]; 
 							break;
 						}
 
 						case 'F': {
+							vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							cur_y = 0;
 							cur_x -= csi_nums[0]; 
 							break;
 						}
 
 						case 'G': {
+							vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							cur_x = csi_nums[0]; 
 							break;
 						}
 
 						case 'f':
 						case 'H': {
+							vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							cur_x = csi_nums[0] - 1; 
 							cur_y = csi_nums[1] - 1; 
 							break;
@@ -471,6 +479,7 @@ void vesa_text_write(const char* data, size_t size) {
 						}
 
 						case 'u': {
+							vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							cur_x = cur_x_sav;
 							cur_y = cur_y_sav;
 							break;

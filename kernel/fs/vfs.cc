@@ -200,10 +200,12 @@ size_t read(int handle, char *buffer, size_t count) {
 	if(!count)
 		return 0;
 
-
 	if(files[handle].present != 1) {
 		return EBADF;
 	}
+
+	if (files[handle].pid != current_task->pid && !(handle >= 0 && handle <= 2))
+		return EBADF;
 
 	int mountpoint = vfs_determine_mountpoint(full_path);
 	if(mountpoint < 0) {
