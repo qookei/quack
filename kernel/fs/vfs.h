@@ -2,9 +2,8 @@
 #define VFS
 
 #include "../kheap/heap.h"
-#include "../tasking/tasking.h"
 
-#define MAX_FILES 			1024
+#define MAX_FILES 			128
 #define MAX_MOUNTPOINTS 	128
 
 #define EACCES				-1
@@ -86,7 +85,6 @@ typedef struct {
 	char path[1024];
 	size_t offset;
 	int flags;
-	uint32_t pid;
 
 } file_handle_t;
 

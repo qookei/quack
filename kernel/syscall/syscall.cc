@@ -4,10 +4,10 @@
 /*
 
 	system calls as of now:
-	0 - tty_writestr((char*)esi, ecx)
-	1 - kb_rd() -> edx
-	2 - tty_putchar(esi)
-	3 - reset() dont use, for testing
+	0 - exit()
+	1 - unimpl
+	2 - unimpl
+	3 - unimpl
 
 	vfs
 	4 - open(path ebx, flags ecx)					->		file handle eax
@@ -28,6 +28,9 @@
 
 */
 
+extern file_handle_t *files;
+extern task_t *current_task;
+
 bool do_syscall(interrupt_cpu_state*);
 
 void syscall_init() {
@@ -43,25 +46,14 @@ bool do_syscall(interrupt_cpu_state *state) {
 
 	switch(state->eax) {
 		case 0: {
-			leave_kernel_directory();
-			uint32_t ss = state->ecx;
-			char buf[ss];
-			memcpy(buf,(void*)state->esi, ss);
-			enter_kernel_directory();
-			tty_putstr(buf);
+			uint32_t exit_pid = current_task->pid;
+			tasking_schedule_next();
+			kill_task(exit_pid);
 			break;
 		}
 		case 1:
-			state->edx = readch();
-			break;
-		case 2: {
-			char c = (char)state->esi;
-
-			tty_putchar(c);
-			break;
-		}
+		case 2:
 		case 3:
-			outb(0x64, 0xFE);
 			break;
 
 
@@ -70,18 +62,14 @@ bool do_syscall(interrupt_cpu_state *state) {
 			leave_kernel_directory();
 			void* phys = get_phys((void *)state->ebx);
 			enter_kernel_directory();
-			kprintf("%p\n", phys);
 
 			map_page((void*)((uint32_t)phys & 0xFFFFF000), (void *)0xEFFFF000, 0x3);
 			state->eax = open((char *)(0xEFFFF000 + (((uint32_t)phys) & 0xFFF)), state->ecx);
 			unmap_page((void *)0xEFFFF000);
-			kprintf("%i\n", state->eax);
 			break;
 		}
 
 		case 5: {
-			// read
-			kprintf("usr\n");
 			leave_kernel_directory();
 			void* phys = get_phys((void *)state->ecx);
 			uint32_t off = ((uint32_t)phys) & 0xFFF;
@@ -108,11 +96,15 @@ bool do_syscall(interrupt_cpu_state *state) {
 		case 6: {
 			// write
 			
-			kprintf("usr write\n");
+			int desc = state->ebx;
+
 			leave_kernel_directory();
+
 			void* phys = get_phys((void *)state->ecx);
+
 			uint32_t off = ((uint32_t)phys) & 0xFFF;
 			phys = (void*)(((uint32_t)phys) & 0xFFFFF000);
+
 			enter_kernel_directory();
 
 			size_t count = state->edx;
@@ -123,18 +115,16 @@ bool do_syscall(interrupt_cpu_state *state) {
 				map_page((void*)((uint32_t)phys + (i * 0x1000)), ((void *)(0xE0000000 + i * 0x1000)), 0x3);
 			}
 
-			state->eax = write(state->ebx, (char *)(0xE0000000 + off), count);
+			state->eax = write(desc, (char *)(0xE0000000 + off), count);
 
 			for (uint32_t i = 0; i < count; i++) {
 				unmap_page((void *)(0xE0000000 + i * 0x1000));
 			}
+			
 			break;
 		}
 
 		case 7: {
-			// close
-			kprintf("usr close\n");
-			// leave_kernel_directory();
 			state->eax = close(state->ebx);
 			break;
 		}

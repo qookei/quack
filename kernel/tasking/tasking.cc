@@ -147,6 +147,18 @@ uint32_t new_task(uint32_t addr, uint16_t cs, uint16_t ds, uint32_t pd, bool use
     t->st.eflags = 0x202;
     t->st.ss = ds;
     
+    t->files = (file_handle_t *)kmalloc(sizeof(file_handle_t) * MAX_FILES);
+    memset(t->files, 0, sizeof(file_handle_t) * MAX_FILES);
+
+    t->files[0].present = 1;
+    memcpy(t->files[0].path, "/dev/tty", 9);
+
+    t->files[1].present = 1;
+    memcpy(t->files[1].path, "/dev/tty", 9);
+
+    t->files[2].present = 1;
+    memcpy(t->files[2].path, "/dev/tty", 9);
+
     insert(t);
     ntasks++;
     return t->pid;

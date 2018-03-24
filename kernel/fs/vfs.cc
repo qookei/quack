@@ -1,7 +1,7 @@
 #include "vfs.h"
 #include "devfs.h"
+#include "../tasking/tasking.h"
 
-file_handle_t *files;
 mountpoint_t *mountpoints;
 char full_path[1024];
 struct stat root_stat;
@@ -35,10 +35,8 @@ int strcmp(const char *s1, const char *s2) {
 }
 
 void vfs_init() {
-	files = (file_handle_t *)kmalloc(sizeof(file_handle_t) * MAX_FILES);
 	mountpoints = (mountpoint_t *)kmalloc(sizeof(mountpoint_t) * MAX_MOUNTPOINTS);
 
-	memset(files, 0, sizeof(file_handle_t) * MAX_FILES);
 	memset(mountpoints, 0, sizeof(mountpoint_t) * MAX_MOUNTPOINTS);
 	
 	memset(&root_stat, 0, sizeof(struct stat));
@@ -60,7 +58,6 @@ int vfs_determine_mountpoint(char *path) {
 
 		size = strlen(mountpoints[mountpoint].path);
 		if(memcmp(mountpoints[mountpoint].path, path, size) == 0) {
-			// keep the longest path
 			if(size > size2) {
 				size2 = size;
 				mountpoint2 = mountpoint;
@@ -140,27 +137,26 @@ int open(const char *path, int flags) {
 
 	int handle = 0;
 
-	while(files[handle].present != 0 && handle < MAX_FILES)
+	while(current_task->files[handle].present != 0 && handle < MAX_FILES)
 		handle++;
 
 	if(handle >= MAX_FILES) {
 		return ENOBUFS;
 	}
 
-	files[handle].present = 1;
-	files[handle].offset = 0;
-	files[handle].flags = flags;
-	files[handle].pid = current_task->pid;
-	memcpy(files[handle].path, full_path, strlen(full_path));
+	current_task->files[handle].present = 1;
+	current_task->files[handle].offset = 0;
+	current_task->files[handle].flags = flags;
+	memcpy(current_task->files[handle].path, full_path, strlen(full_path));
 
 	return handle;
 }
 
 int close(int handle) {
-	if(files[handle].present != 1)
+	if(current_task->files[handle].present != 1)
 		return EBADF;
 
-	memset(&files[handle], 0, sizeof(file_handle_t));
+	memset(&current_task->files[handle], 0, sizeof(file_handle_t));
 	return 0;
 }
 
@@ -168,20 +164,19 @@ size_t write(int handle, char *buffer, size_t count) {
 	if(!count)
 		return 0;
 
-	if(files[handle].present != 1) {
+	if(current_task->files[handle].present != 1) {
 		return EBADF;
 	}
 
-	if (files[handle].pid != current_task->pid && !(handle >= 0 && handle <= 2))
-		return EBADF;
+	char *path = current_task->files[handle].path;
 
-	int mountpoint = vfs_determine_mountpoint(full_path);
+	int mountpoint = vfs_determine_mountpoint(path);
 	if(mountpoint < 0) {
 		return ENOENT;
 	}
 
 	char *tmp_path = (char *)kmalloc(1024);
-	memcpy(tmp_path, full_path, 1024);
+	memcpy(tmp_path, path, 1024);
 	
 	size_t status = 0;
 
@@ -200,20 +195,19 @@ size_t read(int handle, char *buffer, size_t count) {
 	if(!count)
 		return 0;
 
-	if(files[handle].present != 1) {
+	if(current_task->files[handle].present != 1) {
 		return EBADF;
 	}
 
-	if (files[handle].pid != current_task->pid && !(handle >= 0 && handle <= 2))
-		return EBADF;
+	char *path = current_task->files[handle].path;
 
-	int mountpoint = vfs_determine_mountpoint(full_path);
+	int mountpoint = vfs_determine_mountpoint(path);
 	if(mountpoint < 0) {
 		return ENOENT;
 	}
 
 	char *tmp_path = (char *)kmalloc(1024);
-	memcpy(tmp_path, full_path, 1024);
+	memcpy(tmp_path, path, 1024);
 	
 	size_t status = 0;
 

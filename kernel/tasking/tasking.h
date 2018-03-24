@@ -2,6 +2,7 @@
 #define TASKING_H
 
 #include "../kheap/heap.h"
+#include "../fs/vfs.h"
 #include <stddef.h>
 #include <stdint.h>
 
@@ -34,7 +35,7 @@ typedef struct {
 
 typedef struct task{
 
-    char *name;
+    
     uint32_t cr3;
     uint32_t pid;
 
@@ -42,6 +43,9 @@ typedef struct task{
 
     task* next;
     task* prev;
+
+    // file handles
+    file_handle_t *files;
 
 } task_t;
 
