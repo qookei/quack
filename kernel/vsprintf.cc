@@ -4,13 +4,13 @@
  */
 
 #include "vsprintf.h"
-#include "tty/tty.h"
+#include <tty/tty.h>
 
 extern void serial_writestring(const char*);
 
 int printf(const char *fmt, ...) {
 	// asm volatile ("cli");
-	char buf[1024] = {0};
+	char buf[1024];
 	va_list va;
 	va_start(va, fmt);
 	int ret = vsprintf(buf, fmt, va);
@@ -23,13 +23,6 @@ int printf(const char *fmt, ...) {
 
 /* we use this so that we can do without the ctype library */
 #define is_digit(c)	((c) >= '0' && (c) <= '9')
-
-size_t strlen(const char* str) {
-	size_t len = 0;
-	while (str[len])
-		len++;
-	return len;
-}
 
 static int skip_atoi(const char **s) {
 	int i=0;

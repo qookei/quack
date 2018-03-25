@@ -1,9 +1,9 @@
 #ifndef TTY_BACKEND_VESA
 #define TTY_BACKEND_VESA
 
-#include "../tty.h"
-#include "../../multiboot.h"
-#include "../../paging/paging.h"
+#include <tty/tty.h>
+#include <multiboot.h>
+#include <paging/paging.h>
 
 
 void vesa_scroll_up(uint8_t lines);

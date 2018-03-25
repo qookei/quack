@@ -3,8 +3,9 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <string.h>
 
-#include "../io/ports.h"
+#include <io/ports.h>
 
 #include "idt.h"
 

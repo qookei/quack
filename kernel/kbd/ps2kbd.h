@@ -1,8 +1,9 @@
 #ifndef PS2_KBD
 #define PS2_KBD
 
-#include "../interrupt/isr.h"
-#include "../io/ports.h"
+#include <interrupt/isr.h>
+#include <io/ports.h>
+#include <string.h>
 
 void ps2_kbd_init();
 

@@ -1,8 +1,8 @@
 #include "isr.h"
-#include "../trace/stacktrace.h"
+#include <trace/stacktrace.h>
 
-#include "../paging/paging.h"
-#include "../tasking/tasking.h"
+#include <paging/paging.h>
+#include <tasking/tasking.h>
 
 #define isr_count 10
 
@@ -45,13 +45,19 @@ void pic_eoi(uint32_t r) {
 	}
 }
 
+#define getreg(x,y) asm volatile ("mov %%" x ", %0" : "=r"(y) : :);
+
+uint32_t ___faulting_cr3;
+
 extern "C" {
 
 // extern void tasking_enter(task_regs_t*, uint32_t);
 
 
+
 void dispatch_interrupt(interrupt_cpu_state r) {
 	
+	getreg("cr3",___faulting_cr3);
 
 	enter_kernel_directory();
 

@@ -1,7 +1,9 @@
 #include "vesa_text.h"
 #include "vesa_font.h"
 
-#include "../../kheap/heap.h"
+#include <kheap/liballoc.h>
+#include <ctype.h>
+#include <stdlib.h>
 
 uint8_t text_R = 0xAA;
 uint8_t text_G = 0xAA;
@@ -281,22 +283,20 @@ void vesa_text_putchar(char c) {
 }
 
 
-extern int k_atoi(char *p);
+int k_atoi(char *p);
 
-extern bool ansi_seq;
+bool ansi_seq;
 
-extern char csi_num[32];
-extern uint32_t csi_nums[32];
+char csi_num[32];
+uint32_t csi_nums[32];
 
-extern uint8_t csi_nums_idx;
-extern uint8_t csi_num_idx;
+uint8_t csi_nums_idx;
+uint8_t csi_num_idx;
 
-extern uint32_t cur_x_sav;
-extern uint32_t cur_y_sav;
+uint32_t cur_x_sav;
+uint32_t cur_y_sav;
 
-extern int printf(const char*, ...);
-
-#define is_digit(c) (c >= '0' && c <= '9')
+int printf(const char*, ...);
 
 bool inc_intensity = 0;
 
@@ -403,13 +403,13 @@ void vesa_text_write(const char* data, size_t size) {
 							i++;
 							csi_num_idx = 0;
 							
-							while (is_digit(data[i])) {
+							while (isdigit(data[i])) {
 								csi_num[csi_num_idx++] = data[i++];
 								//terminal_buffer[0] = vga_entry(data[i++], 0x07);
 								
 							}
 							csi_num[csi_num_idx] = '\0';
-							csi_nums[csi_nums_idx++] = k_atoi(csi_num);
+							csi_nums[csi_nums_idx++] = atoi(csi_num);
 							
 							if (data[i] == ';')
 								continue;

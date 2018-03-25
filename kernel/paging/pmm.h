@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#include "../multiboot.h"
+#include <multiboot.h>
 
 typedef struct {
 

@@ -1,27 +1,26 @@
 #include <stddef.h>
 #include <stdint.h>
-#include "io/serial.h"
-#include "io/ports.h"
+#include <io/serial.h>
+#include <io/ports.h>
 #include <cpuid.h>
-#include "vsprintf.h"
-#include "trace/trace.h"
-#include "trace/stacktrace.h"
-#include "interrupt/idt.h"
-#include "interrupt/isr.h"
-#include "pic/pic.h"
-#include "multiboot.h"
-#include "paging/pmm.h"
-#include "paging/paging.h"
-#include "tty/tty.h"
-#include "tty/backends/vga_text.h"
-#include "tty/backends/vesa_text.h"
-#include "kheap/heap.h"
-#include "io/rtc.h"
-#include "kbd/ps2kbd.h"
-#include "kshell/shell.h"
-#include "tasking/tasking.h"
-#include "syscall/syscall.h"
-#include "fs/devfs.h"
+#include <vsprintf.h>
+#include <trace/trace.h>
+#include <trace/stacktrace.h>
+#include <interrupt/idt.h>
+#include <interrupt/isr.h>
+#include <pic/pic.h>
+#include <multiboot.h>
+#include <paging/pmm.h>
+#include <paging/paging.h>
+#include <tty/tty.h>
+#include <tty/backends/vesa_text.h>
+#include <kheap/liballoc.h>
+#include <io/rtc.h>
+#include <kbd/ps2kbd.h>
+#include <tasking/tasking.h>
+#include <syscall/syscall.h>
+#include <fs/devfs.h>
+#include <fs/ustar.h>
 
 void serial_writestr(const char* data, size_t size) {
 	for (size_t i = 0; i < size; i++)
@@ -34,7 +33,7 @@ void serial_writestring(const char* data) {
 
 
 int kprintf(const char *fmt, ...) {
-	char buf[1024] = {0};
+	char buf[1024];
 	va_list va;
 	va_start(va, fmt);
 	int ret = vsprintf(buf, fmt, va);
@@ -114,16 +113,6 @@ const char lower_normal[] = { '\0', '?', '1', '2', '3', '4', '5', '6',
 				'h', 'j', 'k', 'l', ';', '\'', '`', '\0', '\\', 'z', 'x', 'c', 'v', 
 				'b', 'n', 'm', ',', '.', '/', '\0', '\0', '\0', ' '};
 
-bool a(interrupt_cpu_state *state) {
-
-	uint8_t c = inb(0x60);
-	
-	if (c < 0x57)
-		printf("%c", lower_normal[c]);
-
-	return true;
-
-}
 
 void pit_freq(uint32_t frequency) {
     uint16_t x = 1193182 / frequency;
@@ -136,30 +125,6 @@ void pit_freq(uint32_t frequency) {
 
 multiboot_info_t *mbootinfo;
 extern void* memcpy(void*, const void*, size_t);
-
-uint32_t loadexec(uint32_t i) {
-	multiboot_module_t* p = (multiboot_module_t*) (0xC0000000 + mbootinfo->mods_addr + (i * sizeof(multiboot_module_t)));
-
-	uint32_t sta = p->mod_start;
-	uint32_t end = p->mod_end - 1;
-
-	uint32_t pd = create_page_directory(mbootinfo);
-
-	set_cr3(pd);
-
-	for (uint32_t i = 0; i <= (end - sta) / 0x1000; i++) {
-
-		void* mem = pmm_alloc();
-
-		map_page(mem, (void*)((i*0x1000) + 0x1000), 0x7);
-		map_page((void*)(sta & 0xFFFFF000 + (i * 0x1000)), (void*)0xE0000000, 0x3);
-		memcpy((void*)((i*0x1000) + 0x1000), (const void*)0xE0000000, 0x1000);
-		unmap_page((void *)0xE0000000);
-	}
-
-	set_cr3(def_cr3());
-	return pd;
-}
 
 // void fastmemcpy(uint32_t dst, uint32_t src, uint32_t size) {
 // 	asm volatile ("mov %0, %%ecx\nmov %1, %%edi\nmov %2, %%esi\nrep movsb" : : "r"(size), "r"(dst), "r"(src) : "%ecx","%edi","%esi");
@@ -188,9 +153,6 @@ void kernel_main(multiboot_info_t *d) {
 		return;
 	}
 
-
-
-
 	gdt_new_setup();
 	kprintf("[kernel] GDT ok\n");
 
@@ -199,28 +161,16 @@ void kernel_main(multiboot_info_t *d) {
 
 	idt_init();
 	kprintf("[kernel] IDT ok\n");
-	// asm volatile ("sti");
-
-	
-
-	// asm volatile ("cli");
 	
 	pmm_init(d);
 
 	paging_init();
 
-	heap_init();
+	// heap_init();
 
 
-	if (d->framebuffer_addr == 0xB8000 || d->framebuffer_addr == 0x0) {
-		tty_setdev(vga_text_tty_dev); // vga
-		// tty_putstr("VGA is unsupported!");
-		// while(1) asm volatile("hlt");
-	} else {
-		vesa_text_tty_set_mboot(d);
-		tty_setdev(vesa_text_tty_dev);
-		// 
-	}
+	vesa_text_tty_set_mboot(d);
+	tty_setdev(vesa_text_tty_dev);
 
 	tty_init();
 
@@ -280,14 +230,15 @@ void kernel_main(multiboot_info_t *d) {
 
 	uint32_t stack;
 
-	pit_freq(40000);
+	pit_freq(4000);
 
 	tasking_init();
 
 	vfs_init();
 	devfs_init();
+	mount("/dev/initrd", "/", "ustar", 0);
 
-	// mount initrd here
+	tasking_setup();
 
 	asm volatile ("mov %%esp, %0" : "=r"(stack));
 

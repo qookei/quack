@@ -1,42 +1,18 @@
 #include "vfs.h"
 #include "devfs.h"
-#include "../tasking/tasking.h"
+#include "ustar.h"
+#include <tasking/tasking.h>
 
 mountpoint_t *mountpoints;
 char full_path[1024];
 struct stat root_stat;
 
-
-int memcmp(const void* a, const void* b, size_t s) {
-	for (size_t i = 0; i < s; i++) {
-		if(((const char*)a)[i] != ((const char*)b)[i]) return 1;
-	}
-	return 0;
-}
-
-extern size_t strlen(const char*);
-extern void* memset(void*, int, size_t);
-extern void* memcpy(void*, const void *, size_t);
 extern int printf(const char *, ...);
 
 extern task_t *current_task;
 
-int strcmp(const char *s1, const char *s2) {
-	int ret = 0;
-
-	while (!(ret = *(unsigned char *) s1 - *(unsigned char *) s2) && *s2) ++s1, ++s2;
-
-	if (ret < 0)
-		ret = -1;
-	else if (ret > 0)
-		ret = 1;
-
-	return ret;
-}
-
 void vfs_init() {
 	mountpoints = (mountpoint_t *)kmalloc(sizeof(mountpoint_t) * MAX_MOUNTPOINTS);
-
 	memset(mountpoints, 0, sizeof(mountpoint_t) * MAX_MOUNTPOINTS);
 	
 	memset(&root_stat, 0, sizeof(struct stat));
@@ -55,7 +31,7 @@ int vfs_determine_mountpoint(char *path) {
 			mountpoint++;
 			continue;
 		}
-
+		
 		size = strlen(mountpoints[mountpoint].path);
 		if(memcmp(mountpoints[mountpoint].path, path, size) == 0) {
 			if(size > size2) {
@@ -175,18 +151,15 @@ size_t write(int handle, char *buffer, size_t count) {
 		return ENOENT;
 	}
 
-	char *tmp_path = (char *)kmalloc(1024);
-	memcpy(tmp_path, path, 1024);
-	
 	size_t status = 0;
 
-	char *fs_path = tmp_path + strlen(mountpoints[mountpoint].path);
+	char *fs_path = path + strlen(mountpoints[mountpoint].path);
 
 	if (strcmp(mountpoints[mountpoint].fs, "devfs") == 0) {
 		status = devfs_write(fs_path, buffer, count);
+	} else if (strcmp(mountpoints[mountpoint].fs, "ustar") == 0) {
+		status = ustar_write(&mountpoints[mountpoint], fs_path, buffer, count);
 	}
-
-	kfree(tmp_path);
 
 	return status;
 }
@@ -206,23 +179,22 @@ size_t read(int handle, char *buffer, size_t count) {
 		return ENOENT;
 	}
 
-	char *tmp_path = (char *)kmalloc(1024);
-	memcpy(tmp_path, path, 1024);
-	
 	size_t status = 0;
 
-	char *fs_path = tmp_path + strlen(mountpoints[mountpoint].path);
+	char *fs_path = path + strlen(mountpoints[mountpoint].path);
 
 	if (strcmp(mountpoints[mountpoint].fs, "devfs") == 0) {
 		status = devfs_read(fs_path, buffer, count);
+	} else if (strcmp(mountpoints[mountpoint].fs, "ustar") == 0) {
+		status = ustar_read(&mountpoints[mountpoint], fs_path, buffer, count);
 	}
-
-	kfree(tmp_path);
 
 	return status;
 }
 
 int stat(const char *path, struct stat *destination) {
+	printf("stat on %s\n", path);
+
 	int status = 0;
 
 	resolve_path(full_path, path);
@@ -242,17 +214,58 @@ int stat(const char *path, struct stat *destination) {
 		return ENOENT;
 	}
 
-	char *tmp_path = (char *)kmalloc(1024);
-	memcpy(tmp_path, full_path, 1024);
-	
-	char *fs_path = tmp_path + strlen(mountpoints[mountpoint].path);
+	const char *fs_path = path + strlen(mountpoints[mountpoint].path);
 
 	if (strcmp(mountpoints[mountpoint].fs, "devfs") == 0) {
 		status = devfs_stat(fs_path, destination);
+	} else if (strcmp(mountpoints[mountpoint].fs, "ustar") == 0) {
+		status = ustar_stat(&mountpoints[mountpoint], fs_path, destination);
 	}
-
-	kfree(tmp_path);
 
 	return status;
 
+}
+
+int mount(const char *device, const char *dir, const char *fstype, uint32_t flags) {
+	if(!flags & MS_MGC_MASK) {
+		flags = 0;
+	}
+
+	struct stat stat_info;
+	int status = stat(device, &stat_info);
+	if(status != 0)
+		return status;
+
+	if(!stat_info.st_mode & S_IFBLK)
+		return ENOTBLK;
+
+	status = stat(dir, &stat_info);
+	if(status != 0)
+		return status;
+
+	if(!stat_info.st_mode & S_IFDIR)
+		return ENOTDIR;
+
+	int mountpoint = 0;
+	while(mountpoints[mountpoint].present != 0 && mountpoint < MAX_MOUNTPOINTS)
+		mountpoint++;
+
+	if(mountpoint >= MAX_MOUNTPOINTS) {
+		return ENOBUFS;
+	}
+
+	mountpoints[mountpoint].present = 1;
+	memcpy(mountpoints[mountpoint].fs, fstype, strlen(fstype));
+
+	resolve_path(full_path, device);
+	memcpy(mountpoints[mountpoint].dev, full_path, strlen(full_path));
+
+	resolve_path(full_path, dir);
+	memcpy(mountpoints[mountpoint].path, full_path, strlen(full_path));
+
+	mountpoints[mountpoint].flags = flags;
+
+	printf("mounted %s on %s, type '%s'\n", device, dir, fstype);
+
+	return 0;
 }

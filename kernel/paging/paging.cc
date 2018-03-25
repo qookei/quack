@@ -1,7 +1,7 @@
 #include "paging.h"
-#include "../tasking/tasking.h"
-#include "../interrupt/isr.h"
-#include "../trace/stacktrace.h"
+#include <tasking/tasking.h>
+#include <interrupt/isr.h>
+#include <trace/stacktrace.h>
 
 page_directory dir_;
 
@@ -195,11 +195,8 @@ bool __attribute__((noreturn)) page_fault(interrupt_cpu_state *state) {
 	int reserved = state->err_code & 0x8;     // Overwritten CPU-reserved bits of page entry?
 	int id = state->err_code & 0x10;          // Caused by an instruction fetch?
 
-#if 0
 
-	printf("pf at %08x cr3 %08x\n", fault_addr, isr_old_cr3);
-
-#endif
+	printf("kcr3 is %08x cr3 %08x\n", def_cr3(), isr_old_cr3);
 
 	if (us) {
 	

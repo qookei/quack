@@ -1,7 +1,8 @@
 #ifndef VFS
 #define VFS
 
-#include "../kheap/heap.h"
+#include <kheap/liballoc.h>
+#include <string.h>
 
 #define MAX_FILES 			128
 #define MAX_MOUNTPOINTS 	128
@@ -117,5 +118,6 @@ int close(int);
 size_t read(int, char *, size_t);
 size_t write(int, char *, size_t);
 int stat(const char *, struct stat *);
+int mount(const char *, const char *, const char *, uint32_t);
 
 #endif

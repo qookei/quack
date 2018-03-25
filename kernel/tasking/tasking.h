@@ -1,8 +1,9 @@
 #ifndef TASKING_H
 #define TASKING_H
 
-#include "../kheap/heap.h"
-#include "../fs/vfs.h"
+#include <kheap/liballoc.h>
+#include <fs/vfs.h>
+#include <paging/paging.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -51,6 +52,7 @@ typedef struct task{
 
 
 void tasking_init();
+void tasking_setup();
 extern "C" {void tasking_switch();}
 void tasking_schedule_next();
 

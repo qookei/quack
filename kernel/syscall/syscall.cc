@@ -1,6 +1,6 @@
 #include "syscall.h"
-#include "../fs/vfs.h"
-
+#include <fs/vfs.h>
+#include <tasking/tasking.h>
 /*
 
 	system calls as of now:

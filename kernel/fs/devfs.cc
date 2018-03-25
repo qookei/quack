@@ -1,15 +1,13 @@
 #include "devfs.h"
-#include "../tty/tty.h"
-#include "../kbd/ps2kbd.h"
-#include "../tasking/tasking.h"
+#include <tty/tty.h>
+#include <kbd/ps2kbd.h>
+#include <tasking/tasking.h>
+#include <string.h>
 
 #define DEVFS_VFS_MODE (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH)
 
 struct stat _devfs_stat;
 
-extern void* memset(void*, int, size_t);
-extern void* memcpy(void*, const void *, size_t);
-extern int memcmp(const void*, const void*, size_t);
 extern int printf(const char *, ...);
 
 extern task_t *current_task;
@@ -52,17 +50,8 @@ size_t devfs_write(const char *path, char *buffer, size_t count) {
 extern multiboot_info_t *mbootinfo;
 
 size_t devfs_read(const char *path, char *buffer, size_t count) {
-	// if (memcmp(path, "stdin", 6) == 0) {	
-	// 	char c = readch();
-	// 	size_t s = 0;
-	// 	while (c != 0 && s < count) {
-	// 		buffer[s++] = c;
-	// 		c = readch();
-	// 	}
-	// 	return s;
-	// }
 
-	if (memcmp(path, "tty", 4) == 0) {	
+	if (strcmp(path, "tty") == 0) {	
 		char c = readch();
 		size_t s = 0;
 		while (c != 0 && s < count) {
@@ -72,16 +61,14 @@ size_t devfs_read(const char *path, char *buffer, size_t count) {
 		return s;
 	}
 
-	if (memcmp(path, "initrd", 7) == 0) {
+	if (strcmp(path, "initrd") == 0) {
 		multiboot_module_t* p = (multiboot_module_t*) (0xC0000000 + mbootinfo->mods_addr);
 
 		uint32_t sta = p->mod_start;
 		uint32_t end = p->mod_end - 1;
 
 		for (uint32_t i = 0; i <= (end - sta) / 0x1000; i++) {
-
-			map_page((void*)(sta & 0xFFFFF000 + (i * 0x1000)), (void*)(0xE0000000 + (i * 0x1000)), 0x3);
-			// unmap_page((void *)0xE0000000);
+			map_page((void*)((sta & 0xFFFFF000) + (i * 0x1000)), (void*)(0xE0000000 + (i * 0x1000)), 0x3);
 		}
 
 		size_t s = count;
@@ -92,7 +79,6 @@ size_t devfs_read(const char *path, char *buffer, size_t count) {
 		memcpy(buffer, (void *)0xE0000000, s);
 
 		for (uint32_t i = 0; i <= (end - sta) / 0x1000; i++) {
-
 			unmap_page((void*)(0xE0000000 + (i * 0x1000)));
 		}
 
@@ -104,7 +90,7 @@ size_t devfs_read(const char *path, char *buffer, size_t count) {
 
 
 int devfs_stat(const char *path, struct stat *destination) {
-	if (memcmp(path, "stdout", 7) == 0) {
+	if (strcmp(path, "tty") == 0) {
 		struct stat s;
 		
 		s.st_atime = 0;
@@ -117,51 +103,18 @@ int devfs_stat(const char *path, struct stat *destination) {
 		return 0;
 	}
 
-	if (memcmp(path, "serial", 7) == 0) {
+	if (strcmp(path, "initrd") == 0) {
+		multiboot_module_t* p = (multiboot_module_t*) (0xC0000000 + mbootinfo->mods_addr);
+
+		uint32_t sta = p->mod_start;
+		uint32_t end = p->mod_end - 1;
+
 		struct stat s;
 		
 		s.st_atime = 0;
 		s.st_mtime = 0;
 		s.st_ctime = 0;
-		s.st_mode = S_IFCHR | DEVFS_VFS_MODE;
-
-		memcpy(destination, &s, sizeof(struct stat));
-
-		return 0;
-	}
-
-	if (memcmp(path, "stdin", 6) == 0) {
-		struct stat s;
-		
-		s.st_atime = 0;
-		s.st_mtime = 0;
-		s.st_ctime = 0;
-		s.st_mode = S_IFCHR | DEVFS_VFS_MODE;
-
-		memcpy(destination, &s, sizeof(struct stat));
-
-		return 0;
-	}
-
-	if (memcmp(path, "stderr", 7) == 0) {
-		struct stat s;
-		
-		s.st_atime = 0;
-		s.st_mtime = 0;
-		s.st_ctime = 0;
-		s.st_mode = S_IFCHR | DEVFS_VFS_MODE;
-
-		memcpy(destination, &s, sizeof(struct stat));
-
-		return 0;
-	}
-
-	if (memcmp(path, "initrd", 7) == 0) {
-		struct stat s;
-		
-		s.st_atime = 0;
-		s.st_mtime = 0;
-		s.st_ctime = 0;
+		s.st_size = end - sta + 1;
 		s.st_mode = S_IFBLK | DEVFS_VFS_MODE;
 
 		memcpy(destination, &s, sizeof(struct stat));

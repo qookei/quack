@@ -194,8 +194,6 @@ bool ps2_interrupt(interrupt_cpu_state *state) {
 	return true;
 }
 
-extern void* memset(void*, int, size_t);
-
 void ps2_kbd_reset_buffer() {
 
 	uint8_t tmp = 0x01;

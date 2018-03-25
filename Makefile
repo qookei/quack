@@ -1,18 +1,19 @@
 OBJS = boot/boot2.o kernel/kernel.o kernel/io/serial.o kernel/io/ports.o kernel/cpu/gdt.o kernel/vsprintf.o \
 	   kernel/trace/stacktrace.o kernel/interrupt/idt_load.o kernel/interrupt/isr.o kernel/interrupt/idt.o \
-	   kernel/interrupt/interrupt.o kernel/pic/pic.o kernel/tty/tty.o kernel/tty/backends/vga_text.o \
-	   kernel/paging/pmm.o kernel/paging/paging.o kernel/kheap/heap.o kernel/tty/backends/vesa_text.o \
+	   kernel/interrupt/interrupt.o kernel/pic/pic.o kernel/tty/tty.o \
+	   kernel/paging/pmm.o kernel/paging/paging.o kernel/tty/backends/vesa_text.o \
 	   kernel/tty/backends/vesa_font.o kernel/io/rtc.o kernel/kbd/ps2kbd.o \
 	   kernel/tasking/tasking.o kernel/syscall/syscall.o kernel/cpu/gdt_new.o kernel/cpu/usermode_switch.o \
-	   kernel/tasking/tasking_enter.o kernel/fs/vfs.o kernel/fs/devfs.o 
-
+	   kernel/tasking/tasking_enter.o kernel/fs/vfs.o kernel/fs/devfs.o kernel/fs/ustar.o kernel/lib/string.o \
+	   kernel/lib/stdlib.o kernel/lib/ctype.o kernel/kheap/liballoc_funcs.o kernel/kheap/liballoc.o
+	   #kernel/kheap/heap.o
 	   #kernel/kshell/shell.o
 
 CXX = i686-elf-g++
 CC = i686-elf-gcc
 ASM = i686-elf-as
 ASM2 = nasm
-CXXFLAGS = -ffreestanding -O0 -Wall -Wextra -fno-exceptions -fno-rtti -std=c++14 -g
+CXXFLAGS = -ffreestanding -O0 -Wall -Wextra -fno-exceptions -fno-rtti -std=c++14 -g -Ikernel -Ikernel/lib 
 CFLAGS = -ffreestanding -O0 -nostdlib -g
 
 run: quack.iso
