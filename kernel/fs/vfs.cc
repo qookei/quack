@@ -193,8 +193,7 @@ size_t read(int handle, char *buffer, size_t count) {
 }
 
 int stat(const char *path, struct stat *destination) {
-	printf("stat on %s\n", path);
-
+	
 	int status = 0;
 
 	resolve_path(full_path, path);

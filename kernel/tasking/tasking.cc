@@ -11,8 +11,6 @@
 
 extern int printf(const char* , ...);
 extern int kprintf(const char* , ...);
-extern void* memset(void*, int, size_t);
-extern void* memcpy(void*, const void*, size_t);
 
 extern multiboot_info_t *mbootinfo;
 
@@ -27,47 +25,33 @@ uint32_t load_init(const char *init) {
     uint32_t oldcr3;
     getreg("cr3", oldcr3);
 
-    set_cr3(def_cr3());
-
     struct stat s;
     int i = stat(init, &s);
 
-    uint32_t sz = s.st_size;
-    printf("stat %i\n", i);
-    printf("size %u\n", sz);
+    if (i != 0) {
+        return 0;
+        printf("\e[1m");
+        printf("\e[47m");
+        printf("\e[31m");
+        printf("Kernel panic!\n");
+        printf("Unable to load init!\n");
+        CLI();
+        while(1) asm volatile("hlt");
+    }
 
+    uint32_t sz = s.st_size;
 
     int f = open(init, O_RDONLY);
     char *buffer = (char *)kmalloc(s.st_size);
     read(f, buffer, s.st_size);
     close(f);
 
-    uint32_t phys = (uint32_t)get_phys(buffer);
 
     uint32_t pd = create_page_directory(mbootinfo);
 
-    set_cr3(pd);
+    alloc_mem_at(pd, 0x1000, sz / 0x1000 + (sz & 0xFFF ? 1 : 0), 0x7);
 
-    kprintf("before cpy\n");
-
-    for (uint32_t i = 0; i <= sz / 0x1000; i++) {
-
-        void* mem = pmm_alloc();
-
-        map_page(mem, (void*)((i*0x1000) + 0x1000), 0x7);
-
-        map_page((void*)(phys & 0xFFFFF000 + (i * 0x1000)), (void*)0xE0000000, 0x3);
-
-        memcpy((void*)((i*0x1000) + 0x1000), (const void*)(0xE0000000 + phys & 0xFFF), 0x1000);
-
-        unmap_page((void *)0xE0000000);
-    }
-
-    kprintf("after cpy\n");
-
-    // uint32_t x = loadexec(i);
-
-    set_cr3(oldcr3);
+    crosspd_memcpy(pd, (void*)0x1000, def_cr3(), buffer, sz);
 
     return pd;    
 
@@ -81,21 +65,21 @@ void tasking_init() {
     memset(t, 0, sizeof(task_t));
     t->files = (file_handle_t *)kmalloc(sizeof(file_handle_t) * MAX_FILES);
     memset(t->files, 0, sizeof(file_handle_t) * MAX_FILES);
-    current_task = t; // dirty hack here
+    current_task = t;
 
     
 }
 
 void tasking_setup() {
-    printf("%u free memory\n", free_pages() * 0x1000);
-
-    uint32_t pd = load_init("/init");
+    uint32_t pd = load_init("/bin/init");
     
+    if (!pd) {
+
+    }
+
     kfree(current_task->files);
     kfree(current_task);
     current_task = NULL;
-
-
 
     new_task(0x1000, 0x1b, 0x23, pd, true);
 

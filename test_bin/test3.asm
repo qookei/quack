@@ -27,11 +27,5 @@ _loop:
 _str1:
 	db "Usermode notepad v2.0", 0xA, "Using filesystem read/write calls", 0xA
 
-_path:
-	db "/dev/stdout", 0x0
-
-_path2:
-	db "/dev/stdin", 0x0
-
 _buf:
 	times 16 db 0

@@ -32,8 +32,7 @@ quack.iso: kernel.elf
 	mkdir -p isodir/boot/grub
 	cp grub.cfg isodir/boot/grub/grub.cfg
 	cp kernel.elf isodir/boot/kernel.elf
-	cp test isodir/boot/test
-	cp test2 isodir/boot/test2
+	cp initrd/initrd isodir/boot/initrd
 	grub-mkrescue -o quack.iso isodir
 
 strip-quack.iso: kernel.elf
@@ -41,8 +40,7 @@ strip-quack.iso: kernel.elf
 	cp grub.cfg isodir/boot/grub/grub.cfg
 	i686-elf-strip kernel.elf
 	cp kernel.elf isodir/boot/kernel.elf
-	cp test isodir/boot/test
-	cp test2 isodir/boot/test2
+	cp initrd/initrd isodir/boot/initrd
 	grub-mkrescue -o strip-quack.iso isodir
 
 kernel.elf: kernel.o kernel/trace/trace.o

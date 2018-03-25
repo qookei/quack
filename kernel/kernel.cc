@@ -191,7 +191,7 @@ void kernel_main(multiboot_info_t *d) {
 
 	ps2_kbd_reset_buffer();
 	
-	printf("[kernel] params: %s\n", (const char*)(0xC0000000 + d->cmdline));
+	// printf("[kernel] params: %s\n", (const char*)(0xC0000000 + d->cmdline));
 
 	printf("free memory: %u out of %u bytes free\n", free_pages() * 4096, max_pages() * 4096);
 

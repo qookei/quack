@@ -37,8 +37,94 @@ uint32_t pt_f[1024] __attribute__((aligned(4096))) = {0};
 // 0xFFC00000
 #define PT 0xFFC00000
 
-inline uint32_t pdpt_addr(uint32_t pd, uint32_t pt) {
+void crosspd_memcpy(uint32_t dst_pd, void *dst_addr, uint32_t src_pd, void *src_addr, size_t sz) {
+	uint32_t src_phys;
+	uint32_t dst_phys;
+	
+	uint32_t src_off;
+	uint32_t dst_off;
 
+	uint32_t cur = get_cr3();
+	set_cr3(src_pd);
+	src_phys = (uint32_t)get_phys(src_addr);
+	set_cr3(dst_pd);
+	dst_phys = (uint32_t)get_phys(dst_addr);
+	set_cr3(cur);
+
+	src_off = src_phys & 0xFFF;
+	src_phys &= ~0xFFF;
+
+	dst_off = src_phys & 0xFFF;
+	dst_phys &= ~0xFFF;
+
+	size_t pages_to_copy = sz / 0x1000;
+	if(sz & 0xFFF) pages_to_copy++;
+
+	for (size_t i = 0; i < pages_to_copy; i++) {
+		map_page((void*)(src_phys + i * 0x1000), (void*)0xE0000000, 0x3);
+		map_page((void*)(dst_phys + i * 0x1000), (void*)0xE0001000, 0x3);
+
+		if (i == 0) {
+			// first copy
+			size_t size_to_cp = sz - sz / 0x1000;
+			memcpy((void*)(0xE0001000 + dst_off), (void*)(0xE0000000 + src_off), size_to_cp);
+		} else {
+			size_t size_to_cp = 0x1000;
+			if (i == pages_to_copy - 1) size_to_cp = sz - i * 0x1000;
+			memcpy((void*)(0xE0001000), (void*)(0xE0000000), size_to_cp);
+		}
+
+		unmap_page((void*)0xE0000000);
+		unmap_page((void*)0xE0001000);
+
+	}
+
+}
+
+void crosspd_memset(uint32_t dst_pd, void *dst_addr, int num, size_t sz) {
+	uint32_t dst_phys;
+	
+	uint32_t dst_off;
+
+	uint32_t cur = get_cr3();
+	set_cr3(dst_pd);
+	dst_phys = (uint32_t)get_phys(dst_addr);
+	set_cr3(cur);
+
+	dst_off = src_phys & 0xFFF;
+	dst_phys &= ~0xFFF;
+
+	size_t pages_to_copy = sz / 0x1000;
+	if(sz & 0xFFF) pages_to_copy++;
+
+	for (size_t i = 0; i < pages_to_copy; i++) {
+		map_page((void*)(dst_phys + i * 0x1000), (void*)0xE0000000, 0x3);
+
+		if (i == 0) {
+			// first set
+			size_t size_to_cp = sz - sz / 0x1000;
+			memset((void*)(0xE0000000 + dst_off), num, size_to_cp);
+		} else {
+			size_t size_to_cp = 0x1000;
+			if (i == pages_to_copy - 1) size_to_cp = sz - i * 0x1000;
+			memcpy((void*)(0xE0000000), num, size_to_cp);
+		}
+
+		unmap_page((void*)0xE0000000);
+
+	}
+
+}
+
+
+void alloc_mem_at(uint32_t pd, uint32_t where, size_t pages, uint32_t flags) {
+	uint32_t opd = get_cr3();
+	set_cr3(pd);
+	for (size_t i = 0; i < pages; i++) {
+		void *mem = pmm_alloc();
+		map_page(mem, (void *)(where + i * 0x1000), flags);
+	}
+	set_cr3(opd);
 }
 
 uint32_t alloc_clean_page() {

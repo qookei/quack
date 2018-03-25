@@ -5,7 +5,7 @@ extern int printf(const char *, ...);
 size_t oct_to_dec(char *string) {
 	size_t integer = 0;
 	size_t multiplier = 1;
-	size_t i = (size_t)strlen(string) - 1;
+	size_t i = strlen(string) - 1;
 
 	while(i >= 0 && string[i] >= '0' && string[i] <= '7') {
 		integer += (string[i] - 48) * multiplier;
@@ -18,6 +18,8 @@ size_t oct_to_dec(char *string) {
 
 
 uint64_t ustar_get_file(mountpoint_t *mountpoint, const char *path, ustar_entry_t *destination) {
+
+
 	uint64_t block = 0;
 	size_t file_size;
 
@@ -32,22 +34,17 @@ uint64_t ustar_get_file(mountpoint_t *mountpoint, const char *path, ustar_entry_
 
 	ustar_entry_t *entry = (ustar_entry_t *)buffer;
 
-	printf("stat read %i\n", r);
-
-	printf("malloc address %08p\n", buffer);
-
 	while(1) {
 
-		if ((uint32_t)entry > ((uint32_t)buffer + s.st_size))
+		if ((uint32_t)entry - (uint32_t)buffer > s.st_size)
 			break;
 
 		if (memcmp(entry->signature, "ustar", 5) != 0) {
 			break;
 		}
 
-		if(strcmp(entry->name, path) == 0) {
+		if(strlen(entry->name) == strlen(path) && !memcmp(entry->name, path, strlen(path))) {
 			memcpy(destination, entry, sizeof(ustar_entry_t));
-			printf("found file %s", entry->name);
 			kfree(buffer);
 			return block * USTAR_BLOCK_SIZE;
 		}
@@ -55,11 +52,11 @@ uint64_t ustar_get_file(mountpoint_t *mountpoint, const char *path, ustar_entry_
 		file_size = oct_to_dec(entry->size);
 		block += (file_size + USTAR_BLOCK_SIZE - 1) / USTAR_BLOCK_SIZE;
 		block++;
-		entry += (block * USTAR_BLOCK_SIZE);
+		entry = (ustar_entry_t*)(((uint32_t)entry) + (block * USTAR_BLOCK_SIZE));
 	}
 
-	printf("not found");
 	kfree(buffer);
+
 	return 1;
 }
 
