@@ -54,7 +54,7 @@ void crosspd_memcpy(uint32_t dst_pd, void *dst_addr, uint32_t src_pd, void *src_
 	src_off = src_phys & 0xFFF;
 	src_phys &= ~0xFFF;
 
-	dst_off = src_phys & 0xFFF;
+	dst_off = dst_phys & 0xFFF;
 	dst_phys &= ~0xFFF;
 
 	size_t pages_to_copy = sz / 0x1000;
@@ -91,7 +91,7 @@ void crosspd_memset(uint32_t dst_pd, void *dst_addr, int num, size_t sz) {
 	dst_phys = (uint32_t)get_phys(dst_addr);
 	set_cr3(cur);
 
-	dst_off = src_phys & 0xFFF;
+	dst_off = dst_phys & 0xFFF;
 	dst_phys &= ~0xFFF;
 
 	size_t pages_to_copy = sz / 0x1000;
@@ -107,7 +107,7 @@ void crosspd_memset(uint32_t dst_pd, void *dst_addr, int num, size_t sz) {
 		} else {
 			size_t size_to_cp = 0x1000;
 			if (i == pages_to_copy - 1) size_to_cp = sz - i * 0x1000;
-			memcpy((void*)(0xE0000000), num, size_to_cp);
+			memset((void*)(0xE0000000), num, size_to_cp);
 		}
 
 		unmap_page((void*)0xE0000000);
@@ -286,27 +286,10 @@ bool __attribute__((noreturn)) page_fault(interrupt_cpu_state *state) {
 
 	if (us) {
 	
-	#if 0
-
-		if (present) {printf("present");}
-		else {printf("not present");}
-		if (rw) {printf(", write");}
-		else {printf(", read");}
-		if (us) {printf(", user-mode");}
-		else {printf(", kernel-mode");}
-		if (id) {printf(", instruction-fetch");}
-		if (reserved) {printf(", reserved");}
-		printf("\n");
-		printf("faulting process regs at crash:\n");
+		printf("at %08x faulting process regs at crash:\n", fault_addr);
 		printf("eax: %08x ebx:    %08x ecx: %08x edx: %08x ebp: %08x\n", state->eax, state->ebx, state->ecx, state->edx, state->ebp);
 		printf("eip: %08x eflags: %08x esp: %08x edi: %08x esi: %08x\n", state->eip, state->eflags, state->esp, state->edi, state->esi);
 		printf("cs: %04x ds: %04x\n", state->cs, state->ds);
-	
-	    printf("proc cr3 %08x\n", current_task->cr3);
-
-	    stack_trace(20, 0);
-
-	#endif
 
 		set_cr3(def_cr3());
 

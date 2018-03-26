@@ -5,7 +5,8 @@ OBJS = boot/boot2.o kernel/kernel.o kernel/io/serial.o kernel/io/ports.o kernel/
 	   kernel/tty/backends/vesa_font.o kernel/io/rtc.o kernel/kbd/ps2kbd.o \
 	   kernel/tasking/tasking.o kernel/syscall/syscall.o kernel/cpu/gdt_new.o kernel/cpu/usermode_switch.o \
 	   kernel/tasking/tasking_enter.o kernel/fs/vfs.o kernel/fs/devfs.o kernel/fs/ustar.o kernel/lib/string.o \
-	   kernel/lib/stdlib.o kernel/lib/ctype.o kernel/kheap/liballoc_funcs.o kernel/kheap/liballoc.o
+	   kernel/lib/stdlib.o kernel/lib/ctype.o kernel/kheap/liballoc_funcs.o kernel/kheap/liballoc.o \
+	   kernel/tasking/elf.o
 	   #kernel/kheap/heap.o
 	   #kernel/kshell/shell.o
 
@@ -32,6 +33,8 @@ quack.iso: kernel.elf
 	mkdir -p isodir/boot/grub
 	cp grub.cfg isodir/boot/grub/grub.cfg
 	cp kernel.elf isodir/boot/kernel.elf
+	rm initrd/initrd
+	./prepare_initrd.sh
 	cp initrd/initrd isodir/boot/initrd
 	grub-mkrescue -o quack.iso isodir
 
@@ -40,7 +43,8 @@ strip-quack.iso: kernel.elf
 	cp grub.cfg isodir/boot/grub/grub.cfg
 	i686-elf-strip kernel.elf
 	cp kernel.elf isodir/boot/kernel.elf
-	cp initrd/initrd isodir/boot/initrd
+	rm initrd/initrd
+	./prepare_initrd.sh
 	grub-mkrescue -o strip-quack.iso isodir
 
 kernel.elf: kernel.o kernel/trace/trace.o

@@ -36,8 +36,9 @@ uint64_t ustar_get_file(mountpoint_t *mountpoint, const char *path, ustar_entry_
 
 	while(1) {
 
-		if ((uint32_t)entry - (uint32_t)buffer > s.st_size)
+		if (block * USTAR_BLOCK_SIZE > s.st_size) {
 			break;
+		}
 
 		if (memcmp(entry->signature, "ustar", 5) != 0) {
 			break;
@@ -52,7 +53,8 @@ uint64_t ustar_get_file(mountpoint_t *mountpoint, const char *path, ustar_entry_
 		file_size = oct_to_dec(entry->size);
 		block += (file_size + USTAR_BLOCK_SIZE - 1) / USTAR_BLOCK_SIZE;
 		block++;
-		entry = (ustar_entry_t*)(((uint32_t)entry) + (block * USTAR_BLOCK_SIZE));
+		entry = (ustar_entry_t*)(buffer + (block * USTAR_BLOCK_SIZE));
+		
 	}
 
 	kfree(buffer);

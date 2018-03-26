@@ -1,4 +1,5 @@
 #include "tasking.h"
+#include "elf.h"
 #include <io/ports.h>
 #include <multiboot.h>
 #include <trace/stacktrace.h>
@@ -17,19 +18,18 @@ extern multiboot_info_t *mbootinfo;
 task_t* task_head = NULL;
 task_t* current_task = NULL;
 
-uint32_t kernel_idle_create(uint32_t addr, uint16_t cs, uint16_t ds, uint32_t pd, uint32_t esp);
+void tasking_init() {
+    task_t *t = (task_t*)kmalloc(sizeof(task_t));
+    memset(t, 0, sizeof(task_t));
+    t->files = (file_handle_t *)kmalloc(sizeof(file_handle_t) * MAX_FILES);
+    memset(t->files, 0, sizeof(file_handle_t) * MAX_FILES);
+    current_task = t;   
+}
 
-
-uint32_t load_init(const char *init) {
-
-    uint32_t oldcr3;
-    getreg("cr3", oldcr3);
-
-    struct stat s;
-    int i = stat(init, &s);
-
-    if (i != 0) {
-        return 0;
+void tasking_setup() {
+    elf_loaded r = prepare_elf_for_exec("/bin/test_elf");
+    
+    if (!r.success_ld) {
         printf("\e[1m");
         printf("\e[47m");
         printf("\e[31m");
@@ -39,51 +39,14 @@ uint32_t load_init(const char *init) {
         while(1) asm volatile("hlt");
     }
 
-    uint32_t sz = s.st_size;
-
-    int f = open(init, O_RDONLY);
-    char *buffer = (char *)kmalloc(s.st_size);
-    read(f, buffer, s.st_size);
-    close(f);
-
-
-    uint32_t pd = create_page_directory(mbootinfo);
-
-    alloc_mem_at(pd, 0x1000, sz / 0x1000 + (sz & 0xFFF ? 1 : 0), 0x7);
-
-    crosspd_memcpy(pd, (void*)0x1000, def_cr3(), buffer, sz);
-
-    return pd;    
-
-}
-
-void tasking_init() {
-    uint32_t esp;
-    getreg("esp", esp);
-
-    task_t *t = (task_t*)kmalloc(sizeof(task_t));
-    memset(t, 0, sizeof(task_t));
-    t->files = (file_handle_t *)kmalloc(sizeof(file_handle_t) * MAX_FILES);
-    memset(t->files, 0, sizeof(file_handle_t) * MAX_FILES);
-    current_task = t;
-
-    
-}
-
-void tasking_setup() {
-    uint32_t pd = load_init("/bin/init");
-    
-    if (!pd) {
-
-    }
+    printf("Successfully loaded %s\n", "/bin/test_elf");
 
     kfree(current_task->files);
     kfree(current_task);
     current_task = NULL;
 
-    new_task(0x1000, 0x1b, 0x23, pd, true);
+    new_task(r.entry_addr, 0x1b, 0x23, r.page_direc, true);
 
-    // create_proc_from_mod(0);
     current_task = task_head;
 }
 
