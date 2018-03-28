@@ -44,6 +44,28 @@ uint32_t findIndexOf(uint16_t what, const uint16_t* where, uint32_t howMuchWhere
 uint32_t cur_x = 0, cur_y = 0;
 uint32_t cur_max_x, cur_max_y;
 
+void vesa_ppx(uint32_t x, uint32_t y, uint8_t r, uint8_t g, uint8_t b) {
+	uint32_t pitch = y * mboot->framebuffer_pitch;
+	uint32_t bpp = mboot->framebuffer_bpp / 8;
+	
+	uint32_t poff = x * bpp + pitch;
+
+	vesa_vbuf[poff] = r;
+	vesa_vbuf[poff + 1] = g;
+	vesa_vbuf[poff + 2] = b;
+}
+
+void vesa_resetppx(uint32_t x, uint32_t y) {
+	uint32_t pitch = y * mboot->framebuffer_pitch;
+	uint32_t bpp = mboot->framebuffer_bpp / 8;
+	
+	uint32_t poff = x * bpp + pitch;
+
+	vesa_vbuf[poff] = vesa_bbuf[poff];
+	vesa_vbuf[poff + 1] = vesa_bbuf[poff + 1];
+	vesa_vbuf[poff + 2] = vesa_bbuf[poff + 2];
+}
+
 void vesa_putchar(uint16_t c, uint32_t x, uint32_t y, uint8_t r, uint8_t g, uint8_t b) {
 	
 	uint32_t pitch = y * mboot->framebuffer_pitch;
@@ -422,24 +444,28 @@ void vesa_text_write(const char* data, size_t size) {
 						case 'A': {
 							vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							cur_y -= csi_nums[0]; 
+							vesa_putchar(0x1, cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							break;
 						}
 
 						case 'B': {
 							vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							cur_y += csi_nums[0]; 
+							vesa_putchar(0x1, cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							break;
 						}
 
 						case 'C': {
 							vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							cur_x += csi_nums[0]; 
+							vesa_putchar(0x1, cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							break;
 						}
 
 						case 'D': {
 							vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							cur_x -= csi_nums[0]; 
+							vesa_putchar(0x1, cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							break;
 						}
 
@@ -447,6 +473,7 @@ void vesa_text_write(const char* data, size_t size) {
 							vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							cur_y = 0;
 							cur_x += csi_nums[0]; 
+							vesa_putchar(0x1, cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							break;
 						}
 
@@ -454,12 +481,14 @@ void vesa_text_write(const char* data, size_t size) {
 							vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							cur_y = 0;
 							cur_x -= csi_nums[0]; 
+							vesa_putchar(0x1, cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							break;
 						}
 
 						case 'G': {
 							vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							cur_x = csi_nums[0]; 
+							vesa_putchar(0x1, cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							break;
 						}
 
@@ -468,6 +497,7 @@ void vesa_text_write(const char* data, size_t size) {
 							vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							cur_x = csi_nums[0] - 1; 
 							cur_y = csi_nums[1] - 1; 
+							vesa_putchar(0x1, cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							break;
 						}
 
@@ -482,6 +512,7 @@ void vesa_text_write(const char* data, size_t size) {
 							vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							cur_x = cur_x_sav;
 							cur_y = cur_y_sav;
+							vesa_putchar(0x1, cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							break;
 						}
 

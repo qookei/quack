@@ -17,6 +17,7 @@
 #include <kheap/liballoc.h>
 #include <io/rtc.h>
 #include <kbd/ps2kbd.h>
+#include <mouse/ps2mouse.h>
 #include <tasking/tasking.h>
 #include <syscall/syscall.h>
 #include <fs/devfs.h>
@@ -191,6 +192,8 @@ void kernel_main(multiboot_info_t *d) {
 
 	ps2_kbd_reset_buffer();
 	
+	ps2mouse_init();
+
 	// printf("[kernel] params: %s\n", (const char*)(0xC0000000 + d->cmdline));
 
 	printf("free memory: %u out of %u bytes free\n", free_pages() * 4096, max_pages() * 4096);
@@ -237,6 +240,7 @@ void kernel_main(multiboot_info_t *d) {
 	vfs_init();
 	devfs_init();
 	mount("/dev/initrd", "/", "ustar", 0);
+
 
 	tasking_setup();
 

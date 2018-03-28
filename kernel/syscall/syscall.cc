@@ -5,8 +5,8 @@
 
 	system calls as of now:
 	0 - exit()
-	1 - unimpl
-	2 - unimpl
+	1 - fork() -> pid eax
+	2 - execve(path ebx, argv ecx, envp edx)		->		may not return, error eax
 	3 - unimpl
 
 	vfs
@@ -17,16 +17,6 @@
 
 */
 
-/*
-
-	how to use the kernel directory:
-	read parameters from usermode(if it's a structure, string or whatnot)
-	switch to kernel dir(if needs screen memory/kernel heap/kernel structures)
-	run whatever you need
-	switch back(it doesn't waste processing time if not actually switched)
-	exit from syscall
-
-*/
 
 extern file_handle_t *files;
 extern task_t *current_task;
@@ -37,22 +27,50 @@ void syscall_init() {
 	register_interrupt_handler(0x30, do_syscall);
 }
 
-extern size_t strlen(const char*);
-extern void* memcpy(void*, const void*, size_t);
-extern void* memset(void*, int, size_t);
 extern int kprintf(const char*, ...);
+extern int printf(const char*, ...);
+
+extern uint32_t isr_old_cr3;
 
 bool do_syscall(interrupt_cpu_state *state) {
 
 	switch(state->eax) {
 		case 0: {
-			uint32_t exit_pid = current_task->pid;
+			uint32_t pid = current_task->pid;
 			tasking_schedule_next();
-			kill_task(exit_pid);
+			kill_task(pid);
+			tasking_schedule_after_kill();
 			break;
 		}
-		case 1:
-		case 2:
+
+		case 1: {
+			uint32_t fork_stat = tasking_fork(state);
+			state->eax = fork_stat;
+			break;
+		}
+
+		case 2: {
+#if 0
+			leave_kernel_directory();
+			void* phys = get_phys((void *)state->ebx);
+			enter_kernel_directory();
+
+			map_page((void*)((uint32_t)phys & 0xFFFFF000), (void *)0xEFFFF000, 0x3);
+
+			int returnval = tasking_execve((const char *)(0xEFFFF000 + ((uint32_t)phys & 0xFFF)), NULL, NULL);
+			if (returnval == -1) {
+				state->eax = -1;
+				break;
+			} else {
+				tasking_schedule_next();
+				tasking_schedule_after_kill();
+				break;
+			}
+#endif
+		}
+
+
+
 		case 3:
 			break;
 

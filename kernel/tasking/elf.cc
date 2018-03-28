@@ -12,25 +12,31 @@ unsigned int get_file_size(const char *name) {
 }
 
 bool elf_check_header(elf_hdr* hdr) {
-	if(hdr->mag_num[0] != 0x7f || hdr->mag_num[1] != 'E' || hdr->mag_num[2] != 'L' || hdr->mag_num[3] != 'F')
+	if(hdr->mag_num[0] != 0x7f || hdr->mag_num[1] != 'E' || hdr->mag_num[2] != 'L' || hdr->mag_num[3] != 'F') {
 		return false;
-	if(hdr->arch != ELF_ARCH_32BIT)
+	}
+	if(hdr->arch != ELF_ARCH_32BIT) {
 		return false;
-	if(hdr->byte_order != ELF_BYTEORDER_LENDIAN)
+	}
+	if(hdr->byte_order != ELF_BYTEORDER_LENDIAN) {
 		return false;
-	if(hdr->elf_ver != 1)
+	}
+	if(hdr->elf_ver != 1){
 		return false;
-	if(hdr->file_type != ELF_REL && hdr->file_type != ELF_EXEC)
+	}
+	if(hdr->file_type != ELF_REL && hdr->file_type != ELF_EXEC) {
 		return false;
-	if(hdr->machine != ELF_386_MACHINE)
+	}
+	if(hdr->machine != ELF_386_MACHINE) {
 		return false;
+	}
 	return true;
 }
 
 void *elf_open(const char* name) {
 	int r = open(name, O_RDONLY);
 
-	if(r != 0) {
+	if(r < 0) {
 		return NULL;
 	}
 	

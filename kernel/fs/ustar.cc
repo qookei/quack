@@ -44,9 +44,12 @@ uint64_t ustar_get_file(mountpoint_t *mountpoint, const char *path, ustar_entry_
 			break;
 		}
 
+		// printf("%s\n%s\n\n", entry->name, path);
+
 		if(strlen(entry->name) == strlen(path) && !memcmp(entry->name, path, strlen(path))) {
 			memcpy(destination, entry, sizeof(ustar_entry_t));
 			kfree(buffer);
+			// printf("found %s\n", entry->name);
 			return block * USTAR_BLOCK_SIZE;
 		}
 

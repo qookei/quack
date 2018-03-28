@@ -6,6 +6,7 @@
 #include <paging/paging.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <interrupt/isr.h>
 
 #define PROCESS_ALIVE 0
 #define PROCESS_ZOMBIE 1
@@ -55,8 +56,11 @@ void tasking_init();
 void tasking_setup();
 extern "C" {void tasking_switch();}
 void tasking_schedule_next();
+void tasking_schedule_after_kill();
 
 uint32_t new_task(uint32_t, uint16_t, uint16_t, uint32_t, bool);
+uint32_t tasking_fork(interrupt_cpu_state *);
+int tasking_execve(const char *name, char **argv, char **envp);
 void kill_task(uint32_t);
 void kill_task_raw(task_t*);
 

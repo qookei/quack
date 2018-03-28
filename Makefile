@@ -6,7 +6,7 @@ OBJS = boot/boot2.o kernel/kernel.o kernel/io/serial.o kernel/io/ports.o kernel/
 	   kernel/tasking/tasking.o kernel/syscall/syscall.o kernel/cpu/gdt_new.o kernel/cpu/usermode_switch.o \
 	   kernel/tasking/tasking_enter.o kernel/fs/vfs.o kernel/fs/devfs.o kernel/fs/ustar.o kernel/lib/string.o \
 	   kernel/lib/stdlib.o kernel/lib/ctype.o kernel/kheap/liballoc_funcs.o kernel/kheap/liballoc.o \
-	   kernel/tasking/elf.o
+	   kernel/tasking/elf.o kernel/mouse/ps2mouse.o
 	   #kernel/kheap/heap.o
 	   #kernel/kshell/shell.o
 

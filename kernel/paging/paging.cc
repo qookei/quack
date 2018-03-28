@@ -199,22 +199,22 @@ void unmap_page(void *virtualaddr) {
 }
 
 void *get_phys(void * virtualaddr) {
-    unsigned long pdindex = (unsigned long)virtualaddr >> 22;
-    unsigned long ptindex = (unsigned long)virtualaddr >> 12 & 0x03FF;
+    uint32_t pdindex = (uint32_t)virtualaddr >> 22;
+    uint32_t ptindex = (uint32_t)virtualaddr >> 12 & 0x03FF;
  
-    unsigned long * pd = (unsigned long *)0xFFFFF000;
+    uint32_t *pd = (uint32_t *)0xFFFFF000;
     if (!(pd[pdindex] & 0x1)) {
     	kprintf("get_phys on unmapped address");
     	return NULL;
 	}
  
-    unsigned long * pt = ((unsigned long *)0xFFC00000) + (0x400 * pdindex);
+    uint32_t *pt = ((uint32_t *)0xFFC00000) + (0x400 * pdindex);
     if (!(pt[ptindex] & 0x1)) {
     	kprintf("get_phys on unmapped address");
     	return NULL;
     }
  
-    return (void *)((pt[ptindex] & ~0xFFF) + ((unsigned long)virtualaddr & 0xFFF));
+    return (void *)((pt[ptindex] & ~0xFFF) + ((uint32_t)virtualaddr & 0xFFF));
 }
 
 uint32_t create_page_directory(multiboot_info_t* mboot) {
