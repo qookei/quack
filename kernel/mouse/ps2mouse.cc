@@ -132,12 +132,6 @@ bool ps2mouse_interrupt(interrupt_cpu_state *unused) {
 		mouse_x += mouse_x_move;
 		mouse_y -= mouse_y_move;
 
-		if(mouse_x < 0) mouse_x = 0;
-		if(mouse_y < 0) mouse_y = 0;
-
-		if(mouse_x > 1023) mouse_x = 1023;
-		if(mouse_y > 767)  mouse_y = 767;
-
 		ps2mouse_changed = true;
 	}
 
