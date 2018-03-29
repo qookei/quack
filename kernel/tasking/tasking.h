@@ -58,7 +58,7 @@ extern "C" {void tasking_switch();}
 void tasking_schedule_next();
 void tasking_schedule_after_kill();
 
-uint32_t new_task(uint32_t, uint16_t, uint16_t, uint32_t, bool);
+task_t *new_task(uint32_t, uint16_t, uint16_t, uint32_t, bool, uint32_t);
 uint32_t tasking_fork(interrupt_cpu_state *);
 int tasking_execve(const char *name, char **argv, char **envp);
 void kill_task(uint32_t);

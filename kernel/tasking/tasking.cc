@@ -26,6 +26,7 @@ void tasking_init() {
     current_task = t;   
 }
 
+uint32_t __pid = 1;
 void tasking_setup() {
     elf_loaded r = prepare_elf_for_exec("/bin/test_elf");
     
@@ -45,7 +46,7 @@ void tasking_setup() {
     kfree(current_task);
     current_task = NULL;
 
-    new_task(r.entry_addr, 0x1b, 0x23, r.page_direc, true);
+    new_task(r.entry_addr, 0x1b, 0x23, r.page_direc, true, __pid++);
 
     current_task = task_head;
 }
@@ -109,6 +110,7 @@ void kill_task_raw(task_t *t) {
         t->prev->next = t->next;
     if (t->next != NULL)
         t->next->prev = t->prev;
+    kfree(t->files);
     kfree(t);
     ntasks--;
 
@@ -116,9 +118,8 @@ void kill_task_raw(task_t *t) {
 
 extern uint32_t current_pd;
 
-uint32_t pid = 1;
 
-uint32_t new_task(uint32_t addr, uint16_t cs, uint16_t ds, uint32_t pd, bool user) {
+task_t *new_task(uint32_t addr, uint16_t cs, uint16_t ds, uint32_t pd, bool user, uint32_t pid) {
 
     task_t *t = (task_t*)kmalloc(sizeof(task_t));
 
@@ -140,7 +141,7 @@ uint32_t new_task(uint32_t addr, uint16_t cs, uint16_t ds, uint32_t pd, bool use
 
     t->cr3 = pd;
     
-    t->pid = pid++;
+    t->pid = pid;
 
     t->st.seg = ds;
     t->st.ebx = 0;
@@ -171,7 +172,7 @@ uint32_t new_task(uint32_t addr, uint16_t cs, uint16_t ds, uint32_t pd, bool use
 
     insert(t);
     ntasks++;
-    return t->pid;
+    return t;
 
 }
 
@@ -195,7 +196,7 @@ uint32_t tasking_fork(interrupt_cpu_state *state) {
     t->st.ss = state->ds;
     t->st.cs = state->cs;
     t->st.ebx = state->ebx;
-    t->pid = pid++;
+    t->pid = __pid++;
 
     t->files = (file_handle_t *)kmalloc(sizeof(file_handle_t) * MAX_FILES);
     memcpy(t->files, current_task->files, sizeof(file_handle_t) * MAX_FILES);
@@ -262,96 +263,26 @@ int tasking_execve(const char *name, char **argv, char **envp) {
 
     elf_loaded r = prepare_elf_for_exec(name);
 
-    kprintf("exec %s\n", name);
-
     if (!r.success_ld) {
-        kprintf("exec failed for %s\n", name);
         return -1;
     }
 
-    task_t *t = current_task;
+    uint32_t pid = current_task->pid;
 
-    set_cr3(t->cr3);
+    task_t* t = current_task;
 
-    kprintf("a\n");
+    file_handle_t *f = (file_handle_t *)kmalloc(sizeof(file_handle_t) * MAX_FILES);
+    memcpy(f, t->files, sizeof(file_handle_t) * MAX_FILES);
 
-    uint32_t kernel_addr = (0xC0000000 >> 22);
+    tasking_schedule_next();
 
-    uint32_t *pd = (uint32_t *)0xFFFFF000;
+    kill_task_raw(t);
 
-    for (uint32_t i = 0; i < kernel_addr; i++) {
-        uint32_t pt = pd[i];
-        if ((pt & 0xFFF)) {
-            map_page((void*)(pt & 0xFFFFF000), (void*)0xE0000000, 0x3);
-            uint32_t *pt_p = (uint32_t *)0xE0000000;
-            for(uint32_t j = 0; j < 1024; j++) {
-                uint32_t addr = pt_p[j];
-                if ((addr & 0xFFF))
-                    pmm_free((void*)(addr & 0xFFFFF000));
-            }
-
-            unmap_page((void*)0xE0000000);
-            pmm_free((void *)(pt & 0xFFFFF000));
-        }
-    }
-
-    set_cr3(def_cr3());
-    
-    destroy_page_directory((void *)t->cr3);
-
-    kfree(t->files);
-    kprintf("b\n");
-
-    
-
-    t->cr3 = r.page_direc;
-
-    kprintf("exec %08x\n", t->cr3);
-
-    set_cr3(t->cr3);
-
-    void* map = pmm_alloc();
-
-    map_page(map, (void*)0xA0000000, 0x7);
-
-    set_cr3(def_cr3());
-
-    kprintf("page directory %08x\n", t->cr3);
-
-    t->cr3 = r.page_direc;
-
-    t->st.seg = 0x23;
-    t->st.ebx = 0;
-    t->st.ebx = 0;
-    t->st.ecx = 0;
-    t->st.edx = 0;
-    t->st.esi = 0;
-    t->st.edi = 0;
-    t->st.ebp = 0;
-
-    t->st.esp = 0xA0001000;
-    t->st.eip = r.entry_addr;
-    t->st.cs = 0x1b;
-    t->st.eflags = 0x202;
-    t->st.ss = 0x23;
-    
-    t->files = (file_handle_t *)kmalloc(sizeof(file_handle_t) * MAX_FILES);
-    memset(t->files, 0, sizeof(file_handle_t) * MAX_FILES);
-
-    t->files[0].present = 1;
-    memcpy(t->files[0].path, "/dev/tty", 9);
-
-    t->files[1].present = 1;
-    memcpy(t->files[1].path, "/dev/tty", 9);
-
-    t->files[2].present = 1;
-    memcpy(t->files[2].path, "/dev/tty", 9);
-
-    kprintf("c\n");
+    task_t *u = new_task(r.entry_addr, 0x1b, 0x23, r.page_direc, true, pid);
+    kfree(u->files);
+    u->files = f;
 
     return 0;
-
-
 }
 
 void tasking_schedule_next() {

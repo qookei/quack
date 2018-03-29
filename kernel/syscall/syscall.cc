@@ -37,6 +37,7 @@ bool do_syscall(interrupt_cpu_state *state) {
 	switch(state->eax) {
 		case 0: {
 			uint32_t pid = current_task->pid;
+			printf("Process %u has quit!\n", pid);
 			tasking_schedule_next();
 			kill_task(pid);
 			tasking_schedule_after_kill();
@@ -44,14 +45,22 @@ bool do_syscall(interrupt_cpu_state *state) {
 		}
 
 		case 1: {
+
+			// kprintf("fork\n");
+
 			uint32_t fork_stat = tasking_fork(state);
 			state->eax = fork_stat;
 			break;
 		}
 
 		case 2: {
-#if 0
+
+			// kprintf("exec\n");
+
+			kprintf("%08x\n", state->ebx);
 			leave_kernel_directory();
+
+
 			void* phys = get_phys((void *)state->ebx);
 			enter_kernel_directory();
 
@@ -63,10 +72,11 @@ bool do_syscall(interrupt_cpu_state *state) {
 				break;
 			} else {
 				tasking_schedule_next();
+				// printf("successfully exec\n");
 				tasking_schedule_after_kill();
 				break;
 			}
-#endif
+
 		}
 
 
@@ -77,17 +87,23 @@ bool do_syscall(interrupt_cpu_state *state) {
 
 		case 4: {
 			// open
+
+			// kprintf("open\n");
+
 			leave_kernel_directory();
 			void* phys = get_phys((void *)state->ebx);
 			enter_kernel_directory();
 
-			map_page((void*)((uint32_t)phys & 0xFFFFF000), (void *)0xEFFFF000, 0x3);
-			state->eax = open((char *)(0xEFFFF000 + (((uint32_t)phys) & 0xFFF)), state->ecx);
-			unmap_page((void *)0xEFFFF000);
+			map_page((void*)((uint32_t)phys & 0xFFFFF000), (void *)0xE0000000, 0x3);
+			state->eax = open((char *)(0xE0000000 + (((uint32_t)phys) & 0xFFF)), state->ecx);
+			unmap_page((void *)0xE0000000);
 			break;
 		}
 
 		case 5: {
+
+			// kprintf("read\n");
+
 			leave_kernel_directory();
 			void* phys = get_phys((void *)state->ecx);
 			uint32_t off = ((uint32_t)phys) & 0xFFF;
@@ -114,6 +130,8 @@ bool do_syscall(interrupt_cpu_state *state) {
 		case 6: {
 			// write
 			
+			// kprintf("write\n");
+
 			int desc = state->ebx;
 
 			leave_kernel_directory();
@@ -124,6 +142,7 @@ bool do_syscall(interrupt_cpu_state *state) {
 			phys = (void*)(((uint32_t)phys) & 0xFFFFF000);
 
 			enter_kernel_directory();
+			// kprintf("ctask pid %u\n", current_task->pid);
 
 			size_t count = state->edx;
 			uint32_t pages = count / 0x1000;
@@ -143,6 +162,9 @@ bool do_syscall(interrupt_cpu_state *state) {
 		}
 
 		case 7: {
+
+			// kprintf("close\n");
+
 			state->eax = close(state->ebx);
 			break;
 		}

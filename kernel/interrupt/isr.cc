@@ -15,20 +15,14 @@ bool isr_in_kdir = false;
 uint32_t isr_old_cr3;
 
 void enter_kernel_directory() {
-	if (!isr_in_kdir) {
-		isr_old_cr3 = get_cr3();
-		set_cr3(def_cr3());
-		isr_in_kdir = true;
-	}
+	isr_old_cr3 = get_cr3();
+	set_cr3(def_cr3());	
 }
 
 extern task_t *current_task;
 
 void leave_kernel_directory() {
-	if (isr_in_kdir) {
-		set_cr3(isr_old_cr3);	
-		isr_in_kdir = false;
-	}
+	set_cr3(isr_old_cr3);	
 }
 
 void pic_eoi(uint32_t r) {

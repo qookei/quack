@@ -79,8 +79,6 @@ void pmm_init(multiboot_info_t *mbt) {
 }
 
 void *pmm_alloc() {
-	// last_free_page
-
 	uint32_t addr = pmm_pop();
 
 	get_page_metadata(addr)->refcount = 1;
@@ -92,8 +90,7 @@ void pmm_free(void *ptr) {
 	uint32_t page = (uint32_t)ptr;
 	page &= 0xFFFFF000;
 	if (page <= 0x800000) return;
-	//printf("0x%x\n", page);
-
+	
 	if (get_page_metadata(page)->refcount == 1) {
 		get_page_metadata(page)->refcount = 0;
 		pmm_push(page);

@@ -57,15 +57,35 @@ void ps2mouse_init() {
 int32_t mouse_x = 0;
 int32_t mouse_y = 0;
 
+bool ps2_mouse_left_down;
+bool ps2_mouse_right_down;
+bool ps2_mouse_middle_down;
+
 uint8_t first;
 uint8_t sec;
 uint8_t third;
 
 uint8_t which = 0;
 
-extern void vesa_ppx(uint32_t x, uint32_t y, uint8_t r, uint8_t g, uint8_t b);
-extern void vesa_resetppx(uint32_t x, uint32_t y);
+bool ps2mouse_changed = false;
 
+bool ps2mouse_haschanged() {
+	bool a = ps2mouse_changed;
+	ps2mouse_changed = false;
+	return a;
+}
+
+int32_t ps2mouse_get_mouse_x() {
+	return mouse_x;
+}
+
+int32_t ps2mouse_get_mouse_y() {
+	return mouse_y;
+}
+
+uint8_t ps2mouse_get_mouse_buttons() {
+	return ((ps2_mouse_left_down ? 1 : 0) << 2) | ((ps2_mouse_middle_down ? 1 : 0) << 1) | (ps2_mouse_right_down ? 1 : 0);
+}
 
 bool ps2mouse_interrupt(interrupt_cpu_state *unused) {
 	if (!(inb(0x64) & 0x20)) {
@@ -88,16 +108,16 @@ bool ps2mouse_interrupt(interrupt_cpu_state *unused) {
 	} else if (which == 2) {
 		third = state;
 		which = 0;
-		vesa_resetppx(mouse_x, mouse_y);
-		vesa_resetppx(mouse_x + 1, mouse_y);
-		vesa_resetppx(mouse_x + 1, mouse_y + 1);
-		vesa_resetppx(mouse_x, mouse_y + 1);
 		
 		uint8_t rel_x = sec;
 		uint8_t rel_y = third;
 
 		int16_t mouse_x_move = 0;
 		int16_t mouse_y_move = 0;
+
+		ps2_mouse_left_down = BITTEST(first, 0);
+		ps2_mouse_right_down = BITTEST(first, 1);
+		ps2_mouse_middle_down = BITTEST(first, 2);
 
 		if (BITTEST(first, 4))
 			mouse_x_move = (int8_t)rel_x;
@@ -109,20 +129,16 @@ bool ps2mouse_interrupt(interrupt_cpu_state *unused) {
 		else
 			mouse_y_move = rel_y;
 
-
 		mouse_x += mouse_x_move;
 		mouse_y -= mouse_y_move;
 
-		if(mouse_x < 4) mouse_x = 4;
-		if(mouse_y < 4) mouse_y = 4;
+		if(mouse_x < 0) mouse_x = 0;
+		if(mouse_y < 0) mouse_y = 0;
 
-		if(mouse_x > 1019) mouse_x = 1019;
-		if(mouse_y > 763)  mouse_y = 763;
+		if(mouse_x > 1023) mouse_x = 1023;
+		if(mouse_y > 767)  mouse_y = 767;
 
-		vesa_ppx(mouse_x, mouse_y, 0xFF, 0xFF, 0xFF);
-		vesa_ppx(mouse_x + 1, mouse_y, 0xFF, 0xFF, 0xFF);
-		vesa_ppx(mouse_x + 1, mouse_y + 1, 0xFF, 0xFF, 0xFF);
-		vesa_ppx(mouse_x, mouse_y + 1, 0xFF, 0xFF, 0xFF);
+		ps2mouse_changed = true;
 	}
 
 	return true;

@@ -144,7 +144,7 @@ uint32_t alloc_clean_page() {
 	for(uint32_t i = 0; i < 4096; i++) pt[i] = 0;
 
 	tlb_flush_entry(PT);
-	pd[1023] = r;	
+	pd[1023] = r;
 	tlb_flush_entry(PT);
 
 	return pt_f[0] & 0xFFFFF000;
@@ -156,15 +156,12 @@ void map_page(void *physaddr, void *virtualaddr, unsigned int flags) {
 		return;
 	}
 
-	// kprintf("cr3: %08x p: %08p v: %08p\n", get_cr3(), physaddr, virtualaddr);
- 
     uint32_t pdindex = (uint32_t)virtualaddr >> 22;
     uint32_t ptindex = (uint32_t)virtualaddr >> 12 & 0x03FF;
 
     uint32_t *pd = (uint32_t *)0xFFFFF000;
     if (!(pd[pdindex] & 0x1)) pd[pdindex] = alloc_clean_page() | (flags & 0xFFF);
     tlb_flush_entry(0xFFC00000);
-	
 
     uint32_t *pt = ((uint32_t *)0xFFC00000) + (0x400 * pdindex);
 
@@ -196,25 +193,51 @@ void unmap_page(void *virtualaddr) {
     pt[ptindex] = 0x00000000;
 
     tlb_flush_entry((uint32_t)virtualaddr);
+
 }
 
-void *get_phys(void * virtualaddr) {
+void *get_phys(void *virtualaddr) {
     uint32_t pdindex = (uint32_t)virtualaddr >> 22;
     uint32_t ptindex = (uint32_t)virtualaddr >> 12 & 0x03FF;
- 
-    uint32_t *pd = (uint32_t *)0xFFFFF000;
-    if (!(pd[pdindex] & 0x1)) {
-    	kprintf("get_phys on unmapped address");
-    	return NULL;
-	}
- 
-    uint32_t *pt = ((uint32_t *)0xFFC00000) + (0x400 * pdindex);
-    if (!(pt[ptindex] & 0x1)) {
-    	kprintf("get_phys on unmapped address");
+	
+	uint32_t page_dir = get_cr3();
+	set_cr3(def_cr3());
+
+    map_page((void *)page_dir, (void *)0xE0000000, 0x3);
+    uint32_t pt = ((uint32_t *)0xE0000000)[pdindex];
+    unmap_page((void *)0xE0000000);
+    if (!(pt & 0xFFF)) {
+    	set_cr3(page_dir);
+    	kprintf("pt not found in pd\n");
     	return NULL;
     }
+
+    map_page((void *)(pt & 0xFFFFF000), (void *)0xE0000000, 0x3);
+	uint32_t page = ((uint32_t *)0xE0000000)[ptindex];
+    unmap_page((void *)0xE0000000);
+    if (!(page & 0xFFF)) {
+    	set_cr3(page_dir);
+    	kprintf("page not found in pt\n");
+    	return NULL;
+    }
+    
+    set_cr3(page_dir);
+    return (void*)((page & 0xFFFFF000) + ((uint32_t)virtualaddr & 0xFFF));
+
+ //    uint32_t *pd = (uint32_t *)0xFFFFF000;
+
+ //    if (!(pd[pdindex] & 0x1)) {
+ //    	kprintf("get_phys on unmapped address");
+ //    	return NULL;
+	// }
  
-    return (void *)((pt[ptindex] & ~0xFFF) + ((uint32_t)virtualaddr & 0xFFF));
+ //    uint32_t *pt = ((uint32_t *)0xFFC00000) + (0x400 * pdindex);
+ //    if (!(pt[ptindex] & 0x1)) {
+ //    	kprintf("get_phys on unmapped address");
+ //    	return NULL;
+ //    }
+ 
+ //    return (void *)((pt[ptindex] & ~0xFFF) + ((uint32_t)virtualaddr & 0xFFF));
 }
 
 uint32_t create_page_directory(multiboot_info_t* mboot) {
@@ -239,6 +262,8 @@ uint32_t create_page_directory(multiboot_info_t* mboot) {
 		new_dir[i++] = 0x0;
 
 	new_dir[i++] = (tmp_addr | 0x3);
+
+	printf("at end of %s i = %i\n", __FUNCTION__, i);
 
 	unmap_page((void*)0xE0000000);
 
@@ -327,8 +352,8 @@ bool __attribute__((noreturn)) page_fault(interrupt_cpu_state *state) {
 	printf("eip: %08x eflags: %08x esp: %08x edi: %08x esi: %08x\n", state->eip, state->eflags, state->esp, state->edi, state->esi);
 	printf("cs: %04x ds: %04x\n", state->cs, state->ds);
 			
-	stack_trace(20, 0);
 	asm volatile ("1:\nhlt\njmp 1b");
+	stack_trace(20, 0);
 
 }
 

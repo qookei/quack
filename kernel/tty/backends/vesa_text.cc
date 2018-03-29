@@ -55,6 +55,17 @@ void vesa_ppx(uint32_t x, uint32_t y, uint8_t r, uint8_t g, uint8_t b) {
 	vesa_vbuf[poff + 2] = b;
 }
 
+void vesa_bgppx(uint32_t x, uint32_t y, uint8_t r, uint8_t g, uint8_t b) {
+	uint32_t pitch = y * mboot->framebuffer_pitch;
+	uint32_t bpp = mboot->framebuffer_bpp / 8;
+	
+	uint32_t poff = x * bpp + pitch;
+
+	vesa_bbuf[poff] = r;
+	vesa_bbuf[poff + 1] = g;
+	vesa_bbuf[poff + 2] = b;
+}
+
 void vesa_resetppx(uint32_t x, uint32_t y) {
 	uint32_t pitch = y * mboot->framebuffer_pitch;
 	uint32_t bpp = mboot->framebuffer_bpp / 8;

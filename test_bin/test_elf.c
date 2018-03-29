@@ -7,6 +7,12 @@ int read(int handle, void *buffer, size_t count) {
 	return _val;
 }
 
+int open(const char *name, uint32_t flags) {
+	int _val;
+	asm ("int $0x30" : "=a"(_val) : "a"(4), "b"(name), "c"(flags));
+	return _val;
+}
+
 int write(int handle, void *buffer, size_t count) {
 	int _val;
 	asm ("int $0x30" : "=a"(_val) : "a"(6), "b"(handle), "c"(buffer), "d"(count));
@@ -45,25 +51,20 @@ void _start(void) {
 	write(1, msg1, strlen(msg1));
 	write(1, msg2, strlen(msg2));
 
-	// char buffer[16];
+	char buffer[16];
+	int d = open("/dev/mouse", 0);
 
-	// int pid = fork();
-
-
-	// if (pid == 0) {
-	// 	// child
-	// 	write(1, "Fork works! Child processes about to execute exec\n", 12);
-	// 	execve("/bin/test2");
-		
-	// } else {
-	// 	// parent
-	// 	while(1) {
-	// 		int i = read(0, buffer, 16);
-	// 		if (i > 0)
-	// 			write(1, buffer, i);
-	// 	}
-	// }
-
-	while(1);
+	int u = fork();
+	if (!u) {
+		execve("/bin/test2");
+	} else {
+		while(1) {
+			int i = read(d, buffer, 16);
+			if (i > 0) {
+				if(buffer[8] & (1<<2))
+					write(1, "Button press\n", 13);
+			}
+		}
+	}
 
 }

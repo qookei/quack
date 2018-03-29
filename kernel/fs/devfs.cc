@@ -1,6 +1,7 @@
 #include "devfs.h"
 #include <tty/tty.h>
 #include <kbd/ps2kbd.h>
+#include <mouse/ps2mouse.h>
 #include <tasking/tasking.h>
 #include <string.h>
 
@@ -24,7 +25,7 @@ void devfs_init() {
 	mountpoints[0].present = true;
 	memcpy(mountpoints[0].fs, "devfs", 6);
 	memcpy(mountpoints[0].path, "/dev/", 6);
-	memcpy(mountpoints[0].dev, "", 2);
+	memcpy(mountpoints[0].dev, "?", 2);
 }
 
 size_t devfs_write(const char *path, char *buffer, size_t count) {
@@ -84,6 +85,25 @@ size_t devfs_read(const char *path, char *buffer, size_t count) {
 
 		return s;
 	}
+
+	if (strcmp(path, "mouse") == 0) {
+		if (!ps2mouse_haschanged()) return 0;
+		int32_t x = ps2mouse_get_mouse_x();
+		int32_t y = ps2mouse_get_mouse_y();
+		uint8_t i = ps2mouse_get_mouse_buttons();
+
+		char mbuffer[9] = {0};
+		((int32_t*)mbuffer)[0] = x;
+		((int32_t*)mbuffer)[1] = y;
+		mbuffer[8] = i;
+
+		size_t s = count;
+		if (s > 9) s = 9;
+
+		memcpy(buffer, mbuffer, s);
+
+		return s;
+	}
 	
 	return EIO;
 }
@@ -91,6 +111,19 @@ size_t devfs_read(const char *path, char *buffer, size_t count) {
 
 int devfs_stat(const char *path, struct stat *destination) {
 	if (strcmp(path, "tty") == 0) {
+		struct stat s;
+		
+		s.st_atime = 0;
+		s.st_mtime = 0;
+		s.st_ctime = 0;
+		s.st_mode = S_IFCHR | DEVFS_VFS_MODE;
+
+		memcpy(destination, &s, sizeof(struct stat));
+
+		return 0;
+	}
+
+	if (strcmp(path, "mouse") == 0) {
 		struct stat s;
 		
 		s.st_atime = 0;
