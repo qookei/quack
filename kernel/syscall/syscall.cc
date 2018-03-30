@@ -185,8 +185,6 @@ bool do_syscall(interrupt_cpu_state *state) {
 			// 	break;
 			// }
 
-			printf("requesting %u\n", state->ebx);
-
 			switch(state->ebx) {
 				case 0: {
 					// frame buffer address

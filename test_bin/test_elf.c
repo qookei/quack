@@ -57,10 +57,7 @@ size_t strlen(const char *s) {
 	return len;
 }
 
-char *msg1 = "Usermode paint!\n";
-char *msg2 = "This is C code running in userspace!\n";
-
-char *msg3 = "Failed to acquire a frame buffer!\n";
+char *err = "Failed to acquire a frame buffer!\n";
 
 struct vmode {
 	uint32_t w;
@@ -98,10 +95,13 @@ char *itoa(uint32_t n, char *s, int base) {
 	return s;
 }
 
-void _start(void) {
-	write(1, msg1, strlen(msg1));
-	write(1, msg2, strlen(msg2));
+void putpx(uint8_t *vram, struct vmode video, uint32_t x, uint32_t y, uint8_t r, uint8_t g, uint8_t b) {
+	vram[x * (video.b / 8) + y * video.p]     = r;
+	vram[x * (video.b / 8) + y * video.p + 1] = g;
+	vram[x * (video.b / 8) + y * video.p + 2] = b;
+}
 
+void _start(void) {
 	struct mpack mouse;
 	struct vmode video;
 	int d = open("/dev/mouse", 0);
@@ -113,41 +113,19 @@ void _start(void) {
 	uint8_t *vram = (uint8_t *)reqres(RESOURCE_FRAME_BUFFER);
 
 	if ((uint32_t)vram == 0xFFFFFFFF){
-		write(1, msg3, strlen(msg3));
+		write(1, err, strlen(err));
 		exit();
 	}
 
 	write(1, "\ec", 2);
 
-	int u = 1;
-	if (!u) {
-		// execve("/bin/test2");
-	} else {
-		while(1) {
-			int i = read(d, &mouse, 12);
-			if (i > 0) {
+	while(1) {
+		int i = read(d, &mouse, 12);
+		if (i > 0) {
 
-				// char buf1[6] = {0x20};
-				// char buf2[6] = {0x20};
-				// itoa(mouse.x, buf1, 10);
-				// itoa(mouse.y, buf2, 10);
-
-				// // write(1, "\ec", 2);
-				// write(1, "\e[H", 3);
-				// write(1, "Mouse at ", 9);
-				// write(1, buf1, strlen(buf1));
-				// write(1, ", ", 2);
-				// write(1, buf2, strlen(buf2));
-				// write(1, "                       \n", 24);
-
-				// if(mouse.b & (1<<2)) {
-					vram[mouse.x * (video.b / 8) + mouse.y * video.p] = 0xFF;
-					vram[mouse.x * (video.b / 8) + mouse.y * video.p + 1] = 0xFF;
-					vram[mouse.x * (video.b / 8) + mouse.y * video.p + 2] = 0xFF;
-					vram[mouse.x * (video.b / 8) + mouse.y * video.p + 3] = 0xFF;	
-				// }
+			if(mouse.b & (1<<2)) {
+				putpx(vram, video, mouse.x, mouse.y, mouse.x, 0xFF, mouse.y);
 			}
 		}
 	}
-
 }
