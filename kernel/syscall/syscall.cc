@@ -7,16 +7,16 @@
 
 	process control:
 	0 - exit()
-	1 - fork() -> pid eax
+	1 - fork() 										->	 	pid eax
 	2 - execve(path ebx, argv ecx, envp edx)		->		may not return, error eax
-	3 - unimpl
+	3 - waitpid(pid ebx)							->		blocks until process at pid exits, return status eax
 
 	vfs:
 	4 - open(path ebx, flags ecx)					->		file handle eax
 	5 - read(handle ebx, buffer ecx, count edx)		->		size eax
 	6 - write(handle ebx, buffer ecx, count edx)	->		size eax
 	7 - close(handle ebx)							->		status eax
-
+	10- stat(path ebx, dst ecx)						-> 		status eax
 	
 	resources:
 	8 - request resource(resource_id ebx)			->		resource address eax(0xFFFFFFFF on error)
@@ -78,21 +78,27 @@ bool do_syscall(interrupt_cpu_state *state) {
 
 			int returnval = tasking_execve((const char *)(0xEFFFF000 + ((uint32_t)phys & 0xFFF)), NULL, NULL);
 			if (returnval == -1) {
+				unmap_page((void *)0xEFFFF000);
 				state->eax = -1;
 				break;
 			} else {
+				unmap_page((void *)0xEFFFF000);
 				tasking_schedule_next();
 				// printf("successfully exec\n");
 				tasking_schedule_after_kill();
 				break;
 			}
-
+			break;
 		}
 
 
 
-		case 3:
+		case 3: {
+			tasking_waitpid(state, state->ebx);
+			tasking_schedule_next();
+			tasking_schedule_after_kill();
 			break;
+		}
 
 
 		case 4: {
@@ -217,6 +223,10 @@ bool do_syscall(interrupt_cpu_state *state) {
 				default:
 					state->eax = 0xFFFFFFFF;
 			}
+		}
+
+		case 10: {
+			// stat
 		}
 	}
 

@@ -14,13 +14,13 @@ CXX = i686-elf-g++
 CC = i686-elf-gcc
 ASM = i686-elf-as
 ASM2 = nasm
-CXXFLAGS = -ffreestanding -O0 -Wall -Wextra -fno-exceptions -fno-rtti -std=c++14 -g -Ikernel -Ikernel/lib 
+CXXFLAGS = -ffreestanding -O0 -Wall -Wextra -fno-exceptions -fno-rtti -std=c++14 -g -Ikernel -Ikernel/lib
 CFLAGS = -ffreestanding -O0 -nostdlib -g
+
+iso: quack.iso
 
 run: quack.iso
 	qemu-system-i386 -cdrom quack.iso -serial file:serial.txt -monitor stdio
-
-iso: quack.iso
 
 strip-iso: strip-quack.iso
 
@@ -37,6 +37,7 @@ quack.iso: kernel.elf
 	./prepare_initrd.sh
 	cp initrd/initrd isodir/boot/initrd
 	grub-mkrescue -o quack.iso isodir
+	@echo "Done, thank you for patience"
 
 strip-quack.iso: kernel.elf
 	mkdir -p isodir/boot/grub
@@ -46,6 +47,7 @@ strip-quack.iso: kernel.elf
 	rm initrd/initrd
 	./prepare_initrd.sh
 	grub-mkrescue -o strip-quack.iso isodir
+	@echo "Done, thank you for patience"
 
 kernel.elf: kernel.o kernel/trace/trace.o
 	$(CC) -T linker.ld -o kernel.elf -lgcc $(CFLAGS) $^

@@ -16,35 +16,53 @@ size_t oct_to_dec(char *string) {
 	return integer;
 }
 
-
 uint64_t ustar_get_file(mountpoint_t *mountpoint, const char *path, ustar_entry_t *destination) {
-
 
 	uint64_t block = 0;
 	size_t file_size;
 
 	struct stat s;
-	stat(mountpoint->dev, &s);
+	int st = stat(mountpoint->dev, &s);
+
+	if (st < 0) {
+		printf("ustar: stat failed!\n");
+		return 1;
+	}
 
 	char *buffer = (char *)kmalloc(s.st_size);
 
 	int handle = open(mountpoint->dev, O_RDONLY);
+
+	if (handle < 0) {
+		printf("ustar: open failed!\n");
+		return 1;
+	}
+
 	int r = read(handle, buffer, s.st_size);
+	
+	if (!r) {
+		printf("ustar: read failed!\n");
+		return 1;
+	}
+
+	if (r != s.st_size) {
+		printf("ustar: read %i bytes, while file size is %i bytes\n", r, s.st_size);
+		return 1;
+	}
+
 	close(handle);
 
 	ustar_entry_t *entry = (ustar_entry_t *)buffer;
 
 	while(1) {
 
-		if (block * USTAR_BLOCK_SIZE > s.st_size) {
+		if ((uint32_t)entry > (uint32_t)buffer + s.st_size) {
 			break;
 		}
 
 		if (memcmp(entry->signature, "ustar", 5) != 0) {
 			break;
 		}
-
-		// printf("%s\n%s\n\n", entry->name, path);
 
 		if(strlen(entry->name) == strlen(path) && !memcmp(entry->name, path, strlen(path))) {
 			memcpy(destination, entry, sizeof(ustar_entry_t));

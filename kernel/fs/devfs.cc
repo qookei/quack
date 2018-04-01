@@ -14,6 +14,11 @@ extern int printf(const char *, ...);
 extern task_t *current_task;
 extern mountpoint_t *mountpoints;
 
+char *initrd;
+size_t initrd_sz;
+
+extern multiboot_info_t *mbootinfo;
+
 void devfs_init() {
 	memset(&_devfs_stat, 0, sizeof(struct stat));
 	_devfs_stat.st_mode = S_IFDIR | S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
@@ -26,23 +31,30 @@ void devfs_init() {
 	memcpy(mountpoints[0].fs, "devfs", 6);
 	memcpy(mountpoints[0].path, "/dev/", 6);
 	memcpy(mountpoints[0].dev, "?", 2);
+
+	multiboot_module_t* p = (multiboot_module_t*) (0xC0000000 + mbootinfo->mods_addr);
+
+	uint32_t sta = p->mod_start;
+	uint32_t end = p->mod_end - 1;
+
+	for (uint32_t i = 0; i <= (end - sta) / 0x1000; i++) {
+		map_page((void*)((sta & 0xFFFFF000) + (i * 0x1000)), (void*)(0xE0000000 + (i * 0x1000)), 0x3);
+	}
+
+	initrd_sz = end - sta + 1;
+	initrd = (char *)kmalloc(initrd_sz);
+
+	memcpy(initrd, (void *)0xE0000000, initrd_sz);
+
+	for (uint32_t i = 0; i <= (end - sta) / 0x1000; i++) {
+		unmap_page((void*)(0xE0000000 + (i * 0x1000)));
+	}
 }
+
 extern void vesa_text_write(const char* data, size_t size);
 
 size_t devfs_write(const char *path, char *buffer, size_t count) {
-	// if (memcmp(path, "stdout", 7) == 0 || memcmp(path, "stderr", 7) == 0) {
-	// 	size_t t = count;
-	// 	while (t--) {
-	// 		tty_putchar(*buffer++);
-	// 	}
-	// 	return count;
-	// }
-
 	if (memcmp(path, "tty", 4) == 0) {
-		
-		// while (t--) {
-		// 	tty_putchar(*buffer++);
-		// }
 		vesa_text_write(buffer, count);
 		return count;
 	}
@@ -50,7 +62,6 @@ size_t devfs_write(const char *path, char *buffer, size_t count) {
 	return EIO;
 }
 
-extern multiboot_info_t *mbootinfo;
 
 
 size_t devfs_read(const char *path, char *buffer, size_t count) {
@@ -66,25 +77,14 @@ size_t devfs_read(const char *path, char *buffer, size_t count) {
 	}
 
 	if (strcmp(path, "initrd") == 0) {
-		multiboot_module_t* p = (multiboot_module_t*) (0xC0000000 + mbootinfo->mods_addr);
-
-		uint32_t sta = p->mod_start;
-		uint32_t end = p->mod_end - 1;
-
-		for (uint32_t i = 0; i <= (end - sta) / 0x1000; i++) {
-			map_page((void*)((sta & 0xFFFFF000) + (i * 0x1000)), (void*)(0xE0000000 + (i * 0x1000)), 0x3);
-		}
 
 		size_t s = count;
-		if ((end - sta) + 1 < count) {
-			s = (end - sta) + 1;
+
+		if (s > initrd_sz) {
+			s = initrd_sz;
 		}
 
-		memcpy(buffer, (void *)0xE0000000, s);
-
-		for (uint32_t i = 0; i <= (end - sta) / 0x1000; i++) {
-			unmap_page((void*)(0xE0000000 + (i * 0x1000)));
-		}
+		memcpy(buffer, initrd, s);
 
 		return s;
 	}

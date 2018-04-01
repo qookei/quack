@@ -1,4 +1,5 @@
 #include "ps2kbd.h"
+#include <tasking/tasking.h>
 
 #define PS2_DATA_PORT 0x60
 #define PS2_COMM_PORT 0x64
@@ -12,6 +13,7 @@
 #define SC_LEFT_SHIFT 0x2A
 #define SC_RIGHT_SHIFT_REL 0xB6
 #define SC_LEFT_SHIFT_REL 0xAA
+#define SC_F12 0x58
 
 #define BITTEST(var,pos) ((var) & (1 << (pos)))
 
@@ -28,6 +30,7 @@ void inline ps2_wait_ready () {
 }
 
 extern int printf(const char*, ...);
+extern task_t *current_task;
 
 bool ps2_interrupt(interrupt_cpu_state *state);
 
@@ -172,7 +175,12 @@ bool ps2_interrupt(interrupt_cpu_state *state) {
 		shift = true;
 	else if (sc == SC_CAPSLOCK)
 		caps = !caps;
-	else if (sc < SC_MAX) {
+	else if (sc == SC_F12) {
+		uint32_t pid = current_task->pid;
+		tasking_schedule_next();
+		kill_task(pid);
+		tasking_schedule_after_kill();
+	} else if (sc < SC_MAX) {
 		
 		char c = 0;
 		

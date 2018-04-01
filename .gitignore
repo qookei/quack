@@ -4,3 +4,4 @@ kernel.elf
 **.o
 serial.txt
 /bochsout.txt
+initrd/bin/*

@@ -15,6 +15,9 @@
 #define SIGTERM 15
 #define SIGILL 4
 
+#define WAIT_NONE 0
+#define WAIT_PROC 1
+
 typedef struct {
 
     uint32_t seg;
@@ -36,7 +39,6 @@ typedef struct {
 } cpu_state_t;
 
 typedef struct task{
-
     
     uint32_t cr3;
     uint32_t pid;
@@ -45,6 +47,9 @@ typedef struct task{
 
     task* next;
     task* prev;
+
+    uint32_t waiting_status;
+    uint32_t waiting_info;
 
     // file handles
     file_handle_t *files;
@@ -60,6 +65,7 @@ void tasking_schedule_after_kill();
 
 task_t *new_task(uint32_t, uint16_t, uint16_t, uint32_t, bool, uint32_t);
 uint32_t tasking_fork(interrupt_cpu_state *);
+void tasking_waitpid(interrupt_cpu_state *, uint32_t);
 int tasking_execve(const char *name, char **argv, char **envp);
 void kill_task(uint32_t);
 void kill_task_raw(task_t*);

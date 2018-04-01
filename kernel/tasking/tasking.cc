@@ -23,12 +23,13 @@ void tasking_init() {
     memset(t, 0, sizeof(task_t));
     t->files = (file_handle_t *)kmalloc(sizeof(file_handle_t) * MAX_FILES);
     memset(t->files, 0, sizeof(file_handle_t) * MAX_FILES);
-    current_task = t;   
+    t->waiting_status = WAIT_NONE;
+    current_task = t;
 }
 
 uint32_t __pid = 1;
 void tasking_setup() {
-    elf_loaded r = prepare_elf_for_exec("/bin/test_elf");
+    elf_loaded r = prepare_elf_for_exec("/bin/init");
     
     if (!r.success_ld) {
         printf("\e[1m");
@@ -40,7 +41,7 @@ void tasking_setup() {
         while(1) asm volatile("hlt");
     }
 
-    printf("Successfully loaded %s\n", "/bin/test_elf");
+    printf("Successfully loaded %s\n", "/bin/init");
 
     kfree(current_task->files);
     kfree(current_task);
@@ -80,6 +81,9 @@ void kill_task(uint32_t pid) {
 
 void kill_task_raw(task_t *t) {
 
+    uint32_t dead_pid = t->pid;
+    uint32_t dead_ret = t->st.eax;
+
     set_cr3(t->cr3);
 
     uint32_t kernel_addr = (0xC0000000 >> 22);
@@ -114,7 +118,19 @@ void kill_task_raw(task_t *t) {
     kfree(t);
     ntasks--;
 
+    // find all tasks that waited for this
+
+    task_t* temp = task_head;
+    while(temp != NULL) {
+        if (temp->waiting_status == WAIT_PROC && temp->waiting_info == dead_pid) {
+            temp->waiting_status = WAIT_NONE;
+            temp->waiting_info = 0;
+            temp->st.eax = dead_ret;
+        }
+        temp = temp->next;
+    }
 }
+
 
 extern uint32_t current_pd;
 
@@ -261,28 +277,89 @@ uint32_t tasking_fork(interrupt_cpu_state *state) {
 
 int tasking_execve(const char *name, char **argv, char **envp) {
 
+    (void)argv;
+    (void)envp;
+
     elf_loaded r = prepare_elf_for_exec(name);
 
     if (!r.success_ld) {
         return -1;
     }
 
-    uint32_t pid = current_task->pid;
-
     task_t* t = current_task;
-
-    file_handle_t *f = (file_handle_t *)kmalloc(sizeof(file_handle_t) * MAX_FILES);
-    memcpy(f, t->files, sizeof(file_handle_t) * MAX_FILES);
 
     tasking_schedule_next();
 
-    kill_task_raw(t);
+    set_cr3(t->cr3);
 
-    task_t *u = new_task(r.entry_addr, 0x1b, 0x23, r.page_direc, true, pid);
-    kfree(u->files);
-    u->files = f;
+    uint32_t kernel_addr = (0xC0000000 >> 22);
+
+    uint32_t *pd = (uint32_t *)0xFFFFF000;
+
+    for (uint32_t i = 0; i < kernel_addr; i++) {
+        uint32_t pt = pd[i];
+        if ((pt & 0xFFF)) {
+            map_page((void*)(pt & 0xFFFFF000), (void*)0xE0000000, 0x3);
+            uint32_t *pt_p = (uint32_t *)0xE0000000;
+            for(uint32_t j = 0; j < 1024; j++) {
+                uint32_t addr = pt_p[j];
+                if ((addr & 0xFFF))
+                    pmm_free((void*)(addr & 0xFFFFF000));
+            }
+
+            unmap_page((void*)0xE0000000);
+            pmm_free((void *)(pt & 0xFFFFF000));
+        }
+    }
+
+    set_cr3(def_cr3());
+
+    destroy_page_directory((void *)t->cr3);
+
+    t->cr3 = r.page_direc;
+
+    set_cr3(t->cr3);
+
+    void* map = pmm_alloc();
+    map_page(map, (void*)0xA0000000, 0x7);
+
+    set_cr3(def_cr3());
+
+    t->st.ebx = 0;
+    t->st.ebx = 0;
+    t->st.ecx = 0;
+    t->st.edx = 0;
+    t->st.esi = 0;
+    t->st.edi = 0;
+    t->st.ebp = 0;
+
+    t->st.esp = 0xA0001000;
+    t->st.eip = r.entry_addr;
+    t->st.eflags = 0x202;
 
     return 0;
+}
+
+void tasking_waitpid(interrupt_cpu_state *state, uint32_t pid) {
+    task_t *t = current_task;
+
+    t->st.eax = state->eax;
+    t->st.ebx = state->ebx;
+    t->st.ecx = state->ecx;
+    t->st.edx = state->edx;
+    t->st.esi = state->esi;
+    t->st.edi = state->edi;
+    t->st.esp = state->esp;
+    t->st.ebp = state->ebp;
+    t->st.eip = state->eip;
+    t->st.eflags = state->eflags;
+    t->st.seg = state->ds;
+    t->st.ss = state->ds;
+    t->st.cs = state->cs;
+    t->st.ebx = state->ebx;
+
+    t->waiting_status = WAIT_PROC;
+    t->waiting_info = pid;
 }
 
 void tasking_schedule_next() {
@@ -297,9 +374,14 @@ void tasking_schedule_next() {
         while(1) asm volatile("hlt");
     }
 
-    current_task = current_task->next;
-    if (current_task == NULL)
-        current_task = task_head;
+    while (1) {
+        current_task = current_task->next;
+        if (current_task == NULL)
+            current_task = task_head;
+    
+        if (current_task->waiting_status == WAIT_NONE)
+            break;
+    }
 }
 
 void tasking_schedule_after_kill() {

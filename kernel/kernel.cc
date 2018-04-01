@@ -46,7 +46,6 @@ int kprintf(const char *fmt, ...) {
 bool axc = false;
 char lastkey = '\0';
 
-uint32_t k = 0;
 uint8_t u = 0;
 
 extern uint8_t minute;
@@ -58,18 +57,6 @@ extern uint8_t month;
 extern uint32_t year;
 
 const char* months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
-
-bool timer(interrupt_cpu_state *state) {
-
-	read_rtc();
-	printf("%c[s", 0x1B);
-	printf("%c[%u;%uH", 0x1B, 1, 1);
-	printf("%c[%uG", 0x1B, 105);
-	printf("%02u %s. %04u [%02u:%02u:%02u]", day, months[month-1], year, hour, minute, second);
-	printf("%c[u", 0x1B);
-
-	return true;
-}
 
 void mem_dump(void *data, size_t nbytes, size_t bytes_per_line) {
 	uint8_t *mem = (uint8_t *)data;
@@ -146,6 +133,41 @@ extern "C" {
 extern uint8_t _rodata;
 
 void kernel_main(multiboot_info_t *d) {
+
+
+	if(d->framebuffer_width == 80) {
+		char *v = (char*)0xC00B8000;
+		memset(v, 0, 80 * 25 * 2);
+		*v++ = 'U';
+		*v++ = 0x07;
+		*v++ = 'N';
+		*v++ = 0x07;
+		*v++ = 'S';
+		*v++ = 0x07;
+		*v++ = 'U';
+		*v++ = 0x07;
+		*v++ = 'P';
+		*v++ = 0x07;
+		*v++ = 'P';
+		*v++ = 0x07;
+		*v++ = 'O';
+		*v++ = 0x07;
+		*v++ = 'R';
+		*v++ = 0x07;
+		*v++ = 'T';
+		*v++ = 0x07;
+		*v++ = 'E';
+		*v++ = 0x07;
+		*v++ = 'D';
+		*v++ = 0x07;
+		*v++ = ' ';
+		*v++ = 0x07;
+		*v++ = ' ';
+		*v++ = 0x07;
+		
+		return;
+	}
+
 	/* Initialize terminal interface */
 	serial_init();
 
@@ -167,15 +189,10 @@ void kernel_main(multiboot_info_t *d) {
 
 	paging_init();
 
-	// heap_init();
-
-
 	vesa_text_tty_set_mboot(d);
 	tty_setdev(vesa_text_tty_dev);
 
 	tty_init();
-
-	
 
 	mbootinfo = d;
 
@@ -234,6 +251,7 @@ void kernel_main(multiboot_info_t *d) {
 	uint32_t stack;
 
 	pit_freq(4000);
+
 
 	tasking_init();
 

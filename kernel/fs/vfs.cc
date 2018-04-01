@@ -109,7 +109,8 @@ int open(const char *path, int flags) {
 	if(file_info.st_mode & S_IFDIR)
 		return EBADF;
 
-	resolve_path(full_path, path);
+	char *tmp = (char *)kmalloc(1024);
+	resolve_path(tmp, path);
 
 	int handle = 0;
 
@@ -123,7 +124,9 @@ int open(const char *path, int flags) {
 	current_task->files[handle].present = 1;
 	current_task->files[handle].offset = 0;
 	current_task->files[handle].flags = flags;
-	memcpy(current_task->files[handle].path, full_path, strlen(full_path));
+	memcpy(current_task->files[handle].path, tmp, strlen(tmp));
+
+	kfree(tmp);
 
 	return handle;
 }
@@ -196,7 +199,7 @@ int stat(const char *path, struct stat *destination) {
 	
 	int status = 0;
 
-	resolve_path(full_path, path);
+	memcpy(full_path, path, 1024);
 
 	if (strcmp(full_path, "/") == 0) {
 		memcpy(destination, &root_stat, sizeof(struct stat));
@@ -213,13 +216,17 @@ int stat(const char *path, struct stat *destination) {
 		return ENOENT;
 	}
 
-	const char *fs_path = path + strlen(mountpoints[mountpoint].path);
-
+	char *tmp = (char *)kmalloc(1024);
+	strcpy(tmp, full_path);
+	const char *fs_path = tmp + strlen(mountpoints[mountpoint].path);
+	
 	if (strcmp(mountpoints[mountpoint].fs, "devfs") == 0) {
 		status = devfs_stat(fs_path, destination);
 	} else if (strcmp(mountpoints[mountpoint].fs, "ustar") == 0) {
 		status = ustar_stat(&mountpoints[mountpoint], fs_path, destination);
 	}
+
+	kfree(tmp);
 
 	return status;
 

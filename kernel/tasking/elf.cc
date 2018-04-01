@@ -6,12 +6,16 @@ unsigned int get_file_size(const char *name) {
 	
 	struct stat s;
 	int r = stat(name, &s);
-	if (r != 0) return 0;
+	if (r != 0) {
+		printf("elf: Failed to stat '%s'\n", name);
+		return 0;
+	}
 
 	return s.st_size;
 }
 
 bool elf_check_header(elf_hdr* hdr) {
+
 	if(hdr->mag_num[0] != 0x7f || hdr->mag_num[1] != 'E' || hdr->mag_num[2] != 'L' || hdr->mag_num[3] != 'F') {
 		return false;
 	}
@@ -37,6 +41,7 @@ void *elf_open(const char* name) {
 	int r = open(name, O_RDONLY);
 
 	if(r < 0) {
+		printf("elf: Failed to open '%s'\n", name);
 		return NULL;
 	}
 	
@@ -47,6 +52,7 @@ void *elf_open(const char* name) {
 	close(r);
 
 	if(!elf_check_header((elf_hdr *)addr)){
+		printf("elf: Failed to verify header for '%s'\n", name);
 		return NULL;
 	}
 	

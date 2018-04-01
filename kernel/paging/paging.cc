@@ -251,19 +251,13 @@ uint32_t create_page_directory(multiboot_info_t* mboot) {
 	uint32_t addr = 0xE0000000;
 	uint32_t *new_dir = (uint32_t *)addr;
 
-	for (uint32_t j = 0; j < kernel_addr; j++)
-		new_dir[i++] = 0x0;
-	
-	new_dir[i++] = 0x00000083;
-	new_dir[i++] = 0x00400083;
-	new_dir[i++] = 0x00800083;
-	
-	for (uint32_t j = 0; j < 1024 - kernel_addr - 4; j++)
-		new_dir[i++] = 0x0;
+	memset(new_dir, 0, 0x1000);
 
-	new_dir[i++] = (tmp_addr | 0x3);
-
-	printf("at end of %s i = %i\n", __FUNCTION__, i);
+	new_dir[kernel_addr] = 0x00000083;
+	new_dir[kernel_addr + 1] = 0x00400083;
+	new_dir[kernel_addr + 2] = 0x00800083;
+	
+	new_dir[1023] = (tmp_addr | 0x3);
 
 	unmap_page((void*)0xE0000000);
 
@@ -352,8 +346,8 @@ bool __attribute__((noreturn)) page_fault(interrupt_cpu_state *state) {
 	printf("eip: %08x eflags: %08x esp: %08x edi: %08x esi: %08x\n", state->eip, state->eflags, state->esp, state->edi, state->esi);
 	printf("cs: %04x ds: %04x\n", state->cs, state->ds);
 			
-	asm volatile ("1:\nhlt\njmp 1b");
 	stack_trace(20, 0);
+	asm volatile ("1:\nhlt\njmp 1b");
 
 }
 
