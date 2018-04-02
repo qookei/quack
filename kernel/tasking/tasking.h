@@ -58,7 +58,7 @@ typedef struct task{
 
 
 void tasking_init();
-void tasking_setup();
+void tasking_setup(const char *);
 extern "C" {void tasking_switch();}
 void tasking_schedule_next();
 void tasking_schedule_after_kill();

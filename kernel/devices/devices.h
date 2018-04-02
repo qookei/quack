@@ -2,6 +2,7 @@
 #define DEVICES
 
 #include <fs/devfs.h>
+#include <io/rtc.h>
 
 void dev_tty_init();
 void dev_initrd_init();

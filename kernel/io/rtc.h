@@ -5,4 +5,6 @@
 
 void read_rtc();
 
+uint32_t gettime();
+
 #endif

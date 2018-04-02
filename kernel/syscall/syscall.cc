@@ -67,9 +67,7 @@ bool do_syscall(interrupt_cpu_state *state) {
 
 			// kprintf("exec\n");
 
-			kprintf("%08x\n", state->ebx);
 			leave_kernel_directory();
-
 
 			void* phys = get_phys((void *)state->ebx);
 			enter_kernel_directory();

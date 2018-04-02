@@ -36,10 +36,7 @@ void read_rtc() {
     unsigned char last_year;
     unsigned char last_century;
     unsigned char registerB;
- 
-    // Note: This uses the "read registers until you get the same values twice in a row" technique
-    //       to avoid getting dodgy/inconsistent values due to RTC updates
- 
+
     while (get_update_in_progress_flag());                // Make sure an update isn't in progress
     second = get_RTC_register(0x00);
     minute = get_RTC_register(0x02);
@@ -47,7 +44,7 @@ void read_rtc() {
     day = get_RTC_register(0x07);
     month = get_RTC_register(0x08);
     year = get_RTC_register(0x09);
-    if(century_register != 0) {
+    if (century_register != 0) {
         century = get_RTC_register(century_register);
     }
  
@@ -61,18 +58,19 @@ void read_rtc() {
         last_century = century;
 
         while (get_update_in_progress_flag());           // Make sure an update isn't in progress
-            second = get_RTC_register(0x00);
-            minute = get_RTC_register(0x02);
-            hour = get_RTC_register(0x04);
-            day = get_RTC_register(0x07);
-            month = get_RTC_register(0x08);
-            year = get_RTC_register(0x09);
-            if(century_register != 0) {
-                  century = get_RTC_register(century_register);
-            }
-    } while( (last_second != second) || (last_minute != minute) || (last_hour != hour) ||
+        
+        second = get_RTC_register(0x00);
+        minute = get_RTC_register(0x02);
+        hour = get_RTC_register(0x04);
+        day = get_RTC_register(0x07);
+        month = get_RTC_register(0x08);
+        year = get_RTC_register(0x09);
+        if (century_register != 0) {
+              century = get_RTC_register(century_register);
+        }
+    } while ((last_second != second) || (last_minute != minute) || (last_hour != hour) ||
                (last_day != day) || (last_month != month) || (last_year != year) ||
-               (last_century != century) );
+               (last_century != century));
  
     registerB = get_RTC_register(0x0B);
  
@@ -85,7 +83,7 @@ void read_rtc() {
             day = (day & 0x0F) + ((day / 16) * 10);
             month = (month & 0x0F) + ((month / 16) * 10);
             year = (year & 0x0F) + ((year / 16) * 10);
-        if(century_register != 0) {
+        if (century_register != 0) {
             century = (century & 0x0F) + ((century / 16) * 10);
         }
     }
@@ -98,10 +96,34 @@ void read_rtc() {
  
     // Calculate the full (4-digit) year
  
-    if(century_register != 0) {
+    if (century_register != 0) {
         year += century * 100;
     } else {
         year += (CURRENT_YEAR / 100) * 100;
         if(year < CURRENT_YEAR) year += 100;
     }
+}
+
+uint32_t yisleap(uint32_t year) {
+    return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+}
+
+static const int days[2][13] = {
+    {0, 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334},
+    {0, 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335}
+};
+
+extern int printf(const char *, ...);
+
+uint32_t get_yday(uint32_t mon, uint32_t day, uint32_t year) {
+    uint32_t leap = yisleap(year);
+    return days[leap][mon] + day;
+}
+
+uint32_t gettime() {
+    read_rtc();
+
+    uint32_t tm_year = year - 1900;
+
+    return second + minute*60 + hour*3600 + (get_yday(month, day, year) - 1)*86400 + (tm_year-70)*31536000 + ((tm_year-69)/4)*86400 - ((tm_year-1)/100)*86400 + ((tm_year+299)/400)*86400;
 }

@@ -128,6 +128,40 @@ void gdt_set_tss_stack(uint32_t);
 
 void gdt_ltr(void);
 
+const char *get_init_path(char *cmdline) {
+	if (strlen(cmdline)) {
+		char *where = strstr(cmdline, "init=");
+
+		if (where == NULL)
+			return "/bin/init";
+
+		uint32_t len = 0;
+
+		char *tmp = where + 5;
+
+		char *a = strchr(tmp, ',');
+		char *b = strchr(tmp, '\0');
+		char *c = strchr(tmp, ' ');
+		char *d;
+		char *e;
+
+		if (a == NULL) e = b;
+		if (b == NULL) e = a;
+		if (c == NULL) d = e;
+		if (d == NULL) 
+			d = tmp + strlen(tmp);
+
+		len = (uint32_t)(d - tmp);
+
+		char *path = (char *)kmalloc(len + 1);
+		memset(path, 0, len + 1);
+		memcpy(path, tmp, len);
+
+		return path;
+	} else
+		return "/bin/init";
+}
+
 extern "C" { 
 
 
@@ -229,24 +263,6 @@ void kernel_main(multiboot_info_t *d) {
 
 	printf("\n");
 
-	for (int i = 0; i < 8; i++) {
-		printf("\e[%um", 40 + i);
-		printf(" ");
-	}
-	printf("\e[1m");
-	for (int i = 0; i < 8; i++) {
-		printf("\e[%um", 40 + i);
-		printf(" ");
-	}
-	printf("\e[0m");
-	printf("\e[40m");
-	printf("\e[1m");
-	printf("\e[39m");
-	printf("\e[0m");
-	printf("\n");
-
-	uint32_t k = 0;
-	
 	syscall_init();
 
 	uint32_t stack;
@@ -267,10 +283,11 @@ void kernel_main(multiboot_info_t *d) {
 
 	mount("/dev/initrd", "/", "ustar", 0);
 
+	char *cmdline = (char *)(0xC0000000+d->cmdline);
 
+	printf("boot time %u\n", gettime());
 
-
-	tasking_setup();
+	tasking_setup(get_init_path(cmdline));		// default path
 
 	asm volatile ("mov %%esp, %0" : "=r"(stack));
 

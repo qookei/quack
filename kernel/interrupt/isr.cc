@@ -3,6 +3,7 @@
 
 #include <paging/paging.h>
 #include <tasking/tasking.h>
+#include <panic.h>
 
 #define isr_count 10
 
@@ -89,14 +90,9 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 	if (r.interrupt_number < 32 && !handled /*|| (tasks[current_task]->regs.cs != 0x08 && r.interrupt_number == 14)*/) {
 		
 		if (r.interrupt_number == 0x08) {
-			// double fault
-			// were doomed
-	
-			
 			printf("Double fault!\n");
 			
-			while(1) asm volatile ("hlt");
-	
+			while(1) asm volatile ("hlt");	
 		}
 		
 		// if (tasks[current_task]->regs.cs != 0x08) {
@@ -108,7 +104,7 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 		// 	// tasking_enter(&tasks[current_task]->regs, tasks[current_task]->page_directory);
 			
 		// } else {
-			// printf("\e[H");
+			printf("\e[H");
 			printf("\e[1m");
 			printf("\e[47m");
 			printf("\e[31m");
@@ -119,6 +115,9 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 			printf("exception:  %s\nerror code: %08x\n", int_names[r.interrupt_number], r.err_code);
 			stack_trace(20, 0);
 			while(1) asm volatile ("hlt");
+
+		// panic("Unhandled exception!", &r, true, false);
+
 		// }
 	}
 	

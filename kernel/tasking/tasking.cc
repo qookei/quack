@@ -3,6 +3,7 @@
 #include <io/ports.h>
 #include <multiboot.h>
 #include <trace/stacktrace.h>
+#include <panic.h>
 #define CLI() asm volatile("cli");
 #define STI() asm volatile("sti");
 
@@ -28,20 +29,14 @@ void tasking_init() {
 }
 
 uint32_t __pid = 1;
-void tasking_setup() {
-    elf_loaded r = prepare_elf_for_exec("/bin/init");
+void tasking_setup(const char *init_path) {
+    elf_loaded r = prepare_elf_for_exec(init_path);
     
     if (!r.success_ld) {
-        printf("\e[1m");
-        printf("\e[47m");
-        printf("\e[31m");
-        printf("Kernel panic!\n");
-        printf("Unable to load init!\n");
-        CLI();
-        while(1) asm volatile("hlt");
+        panic("Going nowhere without my init!", NULL, false, false);
     }
 
-    printf("Successfully loaded %s\n", "/bin/init");
+    printf("Successfully loaded %s\n", init_path);
 
     kfree(current_task->files);
     kfree(current_task);
@@ -128,6 +123,10 @@ void kill_task_raw(task_t *t) {
             temp->st.eax = dead_ret;
         }
         temp = temp->next;
+    }
+
+    if (dead_pid == 1) {
+        panic("Init died!", NULL, false, false);
     }
 }
 
@@ -365,13 +364,7 @@ void tasking_waitpid(interrupt_cpu_state *state, uint32_t pid) {
 void tasking_schedule_next() {
 
     if (ntasks < 1) {
-        printf("\e[1m");
-        printf("\e[47m");
-        printf("\e[31m");
-        printf("Kernel panic!\n");
-        printf("Scheduler has nothing to do(no processes running)! Halting!\n");
-        CLI();
-        while(1) asm volatile("hlt");
+        panic("Scheduler is bored(no processes running)!", NULL, false, false);
     }
 
     while (1) {

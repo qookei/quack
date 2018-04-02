@@ -26,9 +26,9 @@ void dev_videomode_init() {
 int dev_videomode_stat(struct stat *destination) {
 	struct stat s;
 	
-	s.st_atime = 0;
-	s.st_mtime = 0;
-	s.st_ctime = 0;
+	s.st_atime = gettime();
+	s.st_mtime = gettime();
+	s.st_ctime = gettime();
 	s.st_mode = S_IFCHR | S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH;
 
 	memcpy(destination, &s, sizeof(struct stat));
