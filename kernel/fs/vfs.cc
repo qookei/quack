@@ -26,15 +26,15 @@ int vfs_determine_mountpoint(char *path) {
 	int mountpoint = 0, mountpoint2 = 0;
 	size_t size = 0, size2 = 0;
 
-	while(mountpoint < MAX_MOUNTPOINTS) {
-		if(mountpoints[mountpoint].present != 1) {
+	while (mountpoint < MAX_MOUNTPOINTS) {
+		if (mountpoints[mountpoint].present != 1) {
 			mountpoint++;
 			continue;
 		}
 		
 		size = strlen(mountpoints[mountpoint].path);
-		if(memcmp(mountpoints[mountpoint].path, path, size) == 0) {
-			if(size > size2) {
+		if (memcmp(mountpoints[mountpoint].path, path, size) == 0) {
+			if (size > size2) {
 				size2 = size;
 				mountpoint2 = mountpoint;
 			}
@@ -43,7 +43,7 @@ int vfs_determine_mountpoint(char *path) {
 		mountpoint++;
 	}
 
-	if(size2 != 0 && mountpoint2 < MAX_MOUNTPOINTS)
+	if (size2 != 0 && mountpoint2 < MAX_MOUNTPOINTS)
 		return mountpoint2;
 
 	else
@@ -53,8 +53,8 @@ int vfs_determine_mountpoint(char *path) {
 size_t resolve_path(char *fullpath, const char *path) {
 	size_t i = 0, j = 0;
 
-	if(path[0] == '/') {
-		if(path[1] == 0) {
+	if (path[0] == '/') {
+		if (path[1] == 0) {
 			fullpath[0] = '/';
 			fullpath[1] = 0;
 			return 1;
@@ -66,18 +66,18 @@ size_t resolve_path(char *fullpath, const char *path) {
 		j = 1;
 	}
 
-	while(path[i] != 0) {
-		if(path[i] == '.' && path[i+1] == '/')
+	while (path[i] != 0) {
+		if (path[i] == '.' && path[i+1] == '/')
 			i += 2;
 
-		else if(path[i] == '.' && path[i+1] == '.' && path[i+2] == '/') {
+		else if (path[i] == '.' && path[i+1] == '.' && path[i+2] == '/') {
 			i += 3;
-			if(j > 1) {
-				while(fullpath[j] != '/')
+			if (j > 1) {
+				while (fullpath[j] != '/')
 					j--;
 
 				j--;
-				while(fullpath[j] != '/')
+				while (fullpath[j] != '/')
 					j--;
 
 				j++;
@@ -90,7 +90,7 @@ size_t resolve_path(char *fullpath, const char *path) {
 		}
 	}
 
-	while(fullpath[j-1] == '/') {
+	while (fullpath[j-1] == '/') {
 		fullpath[j-1] = 0;
 		j--;
 	}
@@ -103,10 +103,10 @@ int open(const char *path, int flags) {
 	struct stat file_info;
 	int status = stat(path, &file_info);
 
-	if(status != 0)
+	if (status != 0)
 		return status;
 
-	if(file_info.st_mode & S_IFDIR)
+	if (file_info.st_mode & S_IFDIR)
 		return EBADF;
 
 	char *tmp = (char *)kmalloc(1024);
@@ -114,10 +114,10 @@ int open(const char *path, int flags) {
 
 	int handle = 0;
 
-	while(current_task->files[handle].present != 0 && handle < MAX_FILES)
+	while (current_task->files[handle].present != 0 && handle < MAX_FILES)
 		handle++;
 
-	if(handle >= MAX_FILES) {
+	if (handle >= MAX_FILES) {
 		return ENOBUFS;
 	}
 
@@ -132,7 +132,7 @@ int open(const char *path, int flags) {
 }
 
 int close(int handle) {
-	if(current_task->files[handle].present != 1)
+	if (current_task->files[handle].present != 1)
 		return EBADF;
 
 	memset(&current_task->files[handle], 0, sizeof(file_handle_t));
@@ -140,17 +140,17 @@ int close(int handle) {
 }
 
 size_t write(int handle, char *buffer, size_t count) {
-	if(!count)
+	if (!count)
 		return 0;
 
-	if(current_task->files[handle].present != 1) {
+	if (current_task->files[handle].present != 1) {
 		return EBADF;
 	}
 
 	char *path = current_task->files[handle].path;
 
 	int mountpoint = vfs_determine_mountpoint(path);
-	if(mountpoint < 0) {
+	if (mountpoint < 0) {
 		return ENOENT;
 	}
 
@@ -168,17 +168,17 @@ size_t write(int handle, char *buffer, size_t count) {
 }
 
 size_t read(int handle, char *buffer, size_t count) {
-	if(!count)
+	if (!count)
 		return 0;
 
-	if(current_task->files[handle].present != 1) {
+	if (current_task->files[handle].present != 1) {
 		return EBADF;
 	}
 
 	char *path = current_task->files[handle].path;
 
 	int mountpoint = vfs_determine_mountpoint(path);
-	if(mountpoint < 0) {
+	if (mountpoint < 0) {
 		return ENOENT;
 	}
 
@@ -212,7 +212,7 @@ int stat(const char *path, struct stat *destination) {
 	}
 
 	int mountpoint = vfs_determine_mountpoint(full_path);
-	if(mountpoint < 0) {
+	if (mountpoint < 0) {
 		return ENOENT;
 	}
 
@@ -233,30 +233,30 @@ int stat(const char *path, struct stat *destination) {
 }
 
 int mount(const char *device, const char *dir, const char *fstype, uint32_t flags) {
-	if(!flags & MS_MGC_MASK) {
+	if (!flags & MS_MGC_MASK) {
 		flags = 0;
 	}
 
 	struct stat stat_info;
 	int status = stat(device, &stat_info);
-	if(status != 0)
+	if (status != 0)
 		return status;
 
-	if(!stat_info.st_mode & S_IFBLK)
+	if (!stat_info.st_mode & S_IFBLK)
 		return ENOTBLK;
 
 	status = stat(dir, &stat_info);
-	if(status != 0)
+	if (status != 0)
 		return status;
 
-	if(!stat_info.st_mode & S_IFDIR)
+	if (!stat_info.st_mode & S_IFDIR)
 		return ENOTDIR;
 
 	int mountpoint = 0;
-	while(mountpoints[mountpoint].present != 0 && mountpoint < MAX_MOUNTPOINTS)
+	while (mountpoints[mountpoint].present != 0 && mountpoint < MAX_MOUNTPOINTS)
 		mountpoint++;
 
-	if(mountpoint >= MAX_MOUNTPOINTS) {
+	if (mountpoint >= MAX_MOUNTPOINTS) {
 		return ENOBUFS;
 	}
 

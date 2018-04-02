@@ -19,24 +19,6 @@ int write(int handle, void *buffer, size_t count) {
 	return _val;
 }
 
-int execve(const char *path) {
-	int _val;
-	asm ("int $0x30" : "=a"(_val) : "a"(2), "b"(path));
-	return _val;
-}
-
-int fork() {
-	int _val;
-	asm ("mov $1, %%eax; int $0x30; mov %%eax, %0" : "=g"(_val));
-	return _val;
-}
-
-int waitpid(int pid) {
-	int _val;
-	asm ("int $0x30" : "=a"(_val) : "a"(3), "b"(pid));
-	return _val;	
-}
-
 void exit() {
 	asm ("int $0x30" : : "a"(0));
 }
@@ -47,16 +29,53 @@ int close(int handle) {
 	return _val;
 }
 
+char *msg1 = "Dump utility\nEnter a filename: ";
+
+size_t strlen(const char *s) {
+	size_t len = 0;
+	while(s[len]) {
+		len++;
+	}
+	return len;
+}
+
+char input[1024];
+
 void _start(void) {
 	/*do stuff xd*/
-	write(1, "init v1.0\n", 10);
+	write(1, msg1, strlen(msg1));
 
-	int i = fork();
-	if(!i) {
-		execve("/bin/sh");
-	} else {
-		waitpid(i);
-	}
+	char kb = 0;
+	uint32_t pos = 0;
+
 	
+	for(int i = 0; i < 1024; i++) input[i] = 0;
+	while(kb != '\n') {
+		if (kb != 0)  {
+			if (kb != '\b') {
+				input[pos++] = kb;
+			} else {
+				input[pos] = 0;
+				pos--;
+			}
+			write(1, &kb, 1);
+			kb = 0;
+		}
+		read(0, &kb, 1);
+	}
+	kb = 0;
+	write(1, "\n", 1);
+	pos = 0;
+
+	int s = open(input, 0);
+	if (s < 0) {
+		write(1, "\nFile not found!\n", 17);
+	} else {
+		int sz = read(s, input, 1024);
+		write(1, input, sz);
+		close(s);
+	}
+
 	exit();
+	
 }

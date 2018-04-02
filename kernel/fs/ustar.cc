@@ -127,7 +127,7 @@ int ustar_stat(mountpoint_t *mnt, const char *path, struct stat *s) {
 	
 	ustar_entry_t entry;
 	uint64_t offset = ustar_get_file(mnt, path, &entry);
-	if(offset == 1)
+	if (offset == 1)
 		return ENOENT;
 
 	s->st_dev = 0;
@@ -145,8 +145,7 @@ int ustar_stat(mountpoint_t *mnt, const char *path, struct stat *s) {
 
 	s->st_mode = 0;
 
-	switch(entry.type)
-	{
+	switch (entry.type) {
 	case USTAR_REG:
 	case 0:
 		s->st_mode |= S_IFREG;
@@ -173,31 +172,31 @@ int ustar_stat(mountpoint_t *mnt, const char *path, struct stat *s) {
 	}
 
 	size_t permissions = oct_to_dec(entry.mode);
-	if(permissions & USTAR_READ_USER)
+	if (permissions & USTAR_READ_USER)
 		s->st_mode |= S_IRUSR;
 
-	if(permissions & USTAR_WRITE_USER)
+	if (permissions & USTAR_WRITE_USER)
 		s->st_mode |= S_IWUSR;
 
-	if(permissions & USTAR_EXECUTE_USER)
+	if (permissions & USTAR_EXECUTE_USER)
 		s->st_mode |= S_IXUSR;
 
-	if(permissions & USTAR_READ_GROUP)
+	if (permissions & USTAR_READ_GROUP)
 		s->st_mode |= S_IRGRP;
 
-	if(permissions & USTAR_WRITE_GROUP)
+	if (permissions & USTAR_WRITE_GROUP)
 		s->st_mode |= S_IWGRP;
 
-	if(permissions & USTAR_EXECUTE_GROUP)
+	if (permissions & USTAR_EXECUTE_GROUP)
 		s->st_mode |= S_IXGRP;
 
-	if(permissions & USTAR_READ_OTHER)
+	if (permissions & USTAR_READ_OTHER)
 		s->st_mode |= S_IROTH;
 
-	if(permissions & USTAR_WRITE_OTHER)
+	if (permissions & USTAR_WRITE_OTHER)
 		s->st_mode |= S_IWOTH;
 
-	if(permissions & USTAR_EXECUTE_OTHER)
+	if (permissions & USTAR_EXECUTE_OTHER)
 		s->st_mode |= S_IXOTH;
 
 	return 0;

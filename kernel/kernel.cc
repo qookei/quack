@@ -22,6 +22,7 @@
 #include <syscall/syscall.h>
 #include <fs/devfs.h>
 #include <fs/ustar.h>
+#include <devices/devices.h>
 
 void serial_writestr(const char* data, size_t size) {
 	for (size_t i = 0; i < size; i++)
@@ -257,7 +258,16 @@ void kernel_main(multiboot_info_t *d) {
 
 	vfs_init();
 	devfs_init();
+
+	// init devices
+	dev_tty_init();
+	dev_initrd_init();
+	dev_videomode_init();
+	dev_mouse_init();
+
 	mount("/dev/initrd", "/", "ustar", 0);
+
+
 
 
 	tasking_setup();

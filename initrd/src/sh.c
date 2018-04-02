@@ -95,7 +95,7 @@ char input[128];
 
 void _start(void) {
 
-	write(1, "Super duper sh v1.0!\n", 21);
+	write(1, "sh v1.0\n", 8);
 	
 	char kb = 0;
 	uint32_t pos = 0;
@@ -122,7 +122,7 @@ void _start(void) {
 
 		int s = open(input, 0);
 		if (s < 0) {
-			write(1, "\nFile not found!\n", 17);
+			write(1, "File not found!\n", 17);
 		} else {
 			close(s);
 			int f = fork();
@@ -133,7 +133,6 @@ void _start(void) {
 				exit();
 			} else {
 				waitpid(f);
-				// write(1, "\n\nTODO: Implement wait and waitpid!\n\n", 37);
 			}
 		}
 	}

@@ -14,6 +14,9 @@ i686-elf-gcc src/paint.c -o bin/paint -ffreestanding -nostdlib -O0
 echo "prepare_initrd - Compiling note"
 i686-elf-gcc src/note.c -o bin/note -ffreestanding -nostdlib -O0
 
+echo "prepare_initrd - Compiling dump"
+i686-elf-gcc src/dump.c -o bin/dump -ffreestanding -nostdlib -O0
+
 echo "prepare_initrd - Packaging"
 tar cf initrd *
 cd ..
