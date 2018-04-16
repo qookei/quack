@@ -459,6 +459,40 @@ void vesa_text_write(const char* data, size_t size) {
 							break;
 						}
 
+						case 'J': {
+							vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
+							
+							for(uint32_t y = 0; y < mboot->framebuffer_height; y++) {
+								for(uint32_t x = 0; x < mboot->framebuffer_width; x++) {
+									uint32_t xx = x * mboot->framebuffer_bpp / 8;
+
+									switch(mboot->framebuffer_bpp){
+										case 32:
+										case 24:
+											vesa_vbuf[xx + y * mboot->framebuffer_pitch] = VESA_BG_R;
+											vesa_vbuf[xx + y * mboot->framebuffer_pitch+1] = VESA_BG_G;
+											vesa_vbuf[xx + y * mboot->framebuffer_pitch+2] = VESA_BG_B;
+											vesa_bbuf[xx + y * mboot->framebuffer_pitch] = VESA_BG_R;
+											vesa_bbuf[xx + y * mboot->framebuffer_pitch+1] = VESA_BG_G;
+											vesa_bbuf[xx + y * mboot->framebuffer_pitch+2] = VESA_BG_B;
+											break;
+										case 16:
+											uint16_t u = rgb888_rgb565(VESA_BG_R,VESA_BG_G,VESA_BG_B);
+											vesa_vbuf[xx + y * mboot->framebuffer_pitch] = u & 0xFF;
+											vesa_vbuf[xx + y * mboot->framebuffer_pitch+1] = u >> 8;
+											vesa_bbuf[xx + y * mboot->framebuffer_pitch] = u & 0xFF;
+											vesa_bbuf[xx + y * mboot->framebuffer_pitch+1] = u >> 8;
+									}
+								}
+							}
+
+							cur_x = 0;
+							cur_y = 0;
+
+							vesa_putchar(0x1, cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
+							break;
+						}
+
 						case 'B': {
 							vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							cur_y += csi_nums[0]; 

@@ -6,7 +6,7 @@ megs: 256
 
 clock: sync=realtime, time0=local
 
-ata0-master: type=cdrom, path="quack.iso", status=inserted, biosdetect=auto, model="XD"
+ata0-master: type=cdrom, path="quack.iso", status=inserted, biosdetect=auto, model="??"
 
 boot: cdrom
 

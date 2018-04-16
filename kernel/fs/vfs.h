@@ -22,6 +22,7 @@
 #define ENODEV				-13
 #define ENOTBLK				-14
 #define EBUSY				-15
+#define ERANGE				-34
 
 #define O_RDONLY			0x0001
 #define O_WRONLY			0x0002
@@ -119,5 +120,9 @@ size_t read(int, char *, size_t);
 size_t write(int, char *, size_t);
 int stat(const char *, struct stat *);
 int mount(const char *, const char *, const char *, uint32_t);
+
+int chdir(const char *);
+int getwd(char *);
+int getcwd(char *, size_t);
 
 #endif

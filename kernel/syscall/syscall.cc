@@ -17,11 +17,21 @@
 	6 - write(handle ebx, buffer ecx, count edx)	->		size eax
 	7 - close(handle ebx)							->		status eax
 	10- stat(path ebx, dst ecx)						-> 		status eax
-	
+	11- chdir(path ebx)								->		status eax
+	12- getwd(buf ebx)								->		status eax
+	13- getcwd(buf ebx, len ecx)					->		status eax
+
 	resources:
 	8 - request resource(resource_id ebx)			->		resource address eax(0xFFFFFFFF on error)
 		0 - frame buffer address
 	9 - free resource(resource_id)					->		status eax(0 on success, not changed otherwise)
+*/
+
+/*
+
+	TODO: Find a better way to copy from and to usermode
+	Validate if we're not accessing kernel space or NULL memory
+
 */
 
 uint32_t frame_buffer_owner_pid = 0;
@@ -221,10 +231,45 @@ bool do_syscall(interrupt_cpu_state *state) {
 				default:
 					state->eax = 0xFFFFFFFF;
 			}
+
+			break;
 		}
 
 		case 10: {
 			// stat
+			break;
+		}
+
+		case 11: {
+			leave_kernel_directory();
+			void* phys = get_phys((void *)state->ebx);
+			enter_kernel_directory();
+
+			map_page((void*)((uint32_t)phys & 0xFFFFF000), (void *)0xE0000000, 0x3);
+			state->eax = chdir((const char *)(0xE0000000 + (((uint32_t)phys) & 0xFFF)));
+			unmap_page((void *)0xE0000000);
+			break;
+		}
+
+		case 12: {
+			leave_kernel_directory();
+			void* phys = get_phys((void *)state->ebx);
+			enter_kernel_directory();
+
+			map_page((void*)((uint32_t)phys & 0xFFFFF000), (void *)0xE0000000, 0x3);
+			state->eax = getwd((char *)(0xE0000000 + (((uint32_t)phys) & 0xFFF)));
+			unmap_page((void *)0xE0000000);
+			break;
+		}
+
+		case 13: {
+			leave_kernel_directory();
+			void* phys = get_phys((void *)state->ebx);
+			enter_kernel_directory();
+
+			map_page((void*)((uint32_t)phys & 0xFFFFF000), (void *)0xE0000000, 0x3);
+			state->eax = getcwd((char *)(0xE0000000 + (((uint32_t)phys) & 0xFFF)), state->ecx);
+			unmap_page((void *)0xE0000000);
 		}
 	}
 

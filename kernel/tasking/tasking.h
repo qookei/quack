@@ -54,6 +54,8 @@ typedef struct task{
     // file handles
     file_handle_t *files;
 
+    char pwd[1024];
+
 } task_t;
 
 

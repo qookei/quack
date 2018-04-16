@@ -162,6 +162,12 @@ const char *get_init_path(char *cmdline) {
 		return "/bin/init";
 }
 
+uint32_t boot_time;
+
+uint32_t getuptime() {
+	return gettime() - boot_time;
+}
+
 extern "C" { 
 
 
@@ -245,22 +251,39 @@ void kernel_main(multiboot_info_t *d) {
 	ps2_kbd_reset_buffer();
 	
 	ps2mouse_init();
+	boot_time = gettime();
 
 	// printf("[kernel] params: %s\n", (const char*)(0xC0000000 + d->cmdline));
 
 	printf("free memory: %u out of %u bytes free\n", free_pages() * 4096, max_pages() * 4096);
 
-	multiboot_memory_map_t* mmap = (multiboot_memory_map_t*)(d->mmap_addr + 0xC0000000);
-	while((uint32_t)mmap < (d->mmap_addr + 0xC0000000 + d->mmap_length)) {
+	// multiboot_memory_map_t* mmap = (multiboot_memory_map_t*)(d->mmap_addr + 0xC0000000);
+	// while((uint32_t)mmap < (d->mmap_addr + 0xC0000000 + d->mmap_length)) {
 		
-		uint32_t addr = (uint32_t)mmap->addr;
-		uint32_t len = (uint32_t)mmap->len;
+	// 	uint32_t addr = (uint32_t)mmap->addr;
+	// 	uint32_t len = (uint32_t)mmap->len;
 
-		printf("%08x - %08x | %s\n", addr, addr + len, mem_type_names[mmap->type]);
+	// 	printf("%08x - %08x | %s\n", addr, addr + len, mem_type_names[mmap->type]);
 
-		mmap = (multiboot_memory_map_t*) ((uint32_t)mmap + mmap->size + sizeof(mmap->size));
+	// 	mmap = (multiboot_memory_map_t*) ((uint32_t)mmap + mmap->size + sizeof(mmap->size));
+	// }
+	
+	printf("\n");
+
+	for (int i = 0; i < 8; i++) {
+		printf("\e[%um", 40 + i);
+		printf(" ");
 	}
-
+	printf("\e[1m");
+	for (int i = 0; i < 8; i++) {
+		printf("\e[%um", 40 + i);
+		printf(" ");
+	}
+	printf("\e[0m");
+	printf("\e[40m");
+	printf("\e[1m");
+	printf("\e[39m");
+	printf("\e[0m");
 	printf("\n");
 
 	syscall_init();
@@ -280,12 +303,15 @@ void kernel_main(multiboot_info_t *d) {
 	dev_initrd_init();
 	dev_videomode_init();
 	dev_mouse_init();
+	dev_uptime_init();
 
 	mount("/dev/initrd", "/", "ustar", 0);
 
-	char *cmdline = (char *)(0xC0000000+d->cmdline);
+	char *cmdline = (char *)(0xC0000000 + d->cmdline);
 
-	printf("boot time %u\n", gettime());
+
+	printf("boot time %u\n", boot_time);
+	printf("uptime %u\n", getuptime());
 
 	tasking_setup(get_init_path(cmdline));		// default path
 

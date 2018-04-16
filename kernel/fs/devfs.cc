@@ -34,7 +34,7 @@ void devfs_init() {
 bool devfs_register_device(devfs_device *dev) {
 	for (size_t i = 0; i < DEVFS_DEVICES; i++) {
 		if (!devices[i].exists) {
-			printf("devfs: registering %s at index %u\n", dev->name, i);
+			// printf("devfs: registering %s at index %u\n", dev->name, i);
 			memcpy(devices[i].name, dev->name, 64);
 			devices[i].exists = true;
 			devices[i].read = dev->read;

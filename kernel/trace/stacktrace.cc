@@ -20,6 +20,10 @@ void stack_trace(unsigned int max_frames, unsigned int skip) {
 
         ebp = reinterpret_cast<unsigned int *>(ebp[0]);
         //unsigned int *arguments = &ebp[2];
+
+        if ((uint32_t)ebp < 0xC0000000 || (uint32_t)ebp > 0xCFFFFFFF) {
+            return;
+        }
        	
         if (skipped++ >= skip) {
             int trace_id = find_correct_trace(eip);

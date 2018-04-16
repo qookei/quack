@@ -31,6 +31,18 @@ int fork() {
 	return _val;
 }
 
+int chdir(const char *path) {
+	int _val;
+	asm ("int $0x30" : "=a"(_val) : "a"(11), "b"(path));
+	return _val;
+}
+
+int getwd(char *buf) {
+	int _val;
+	asm ("int $0x30" : "=a"(_val) : "a"(12), "b"(buf));
+	return _val;
+}
+
 int waitpid(int pid) {
 	int _val;
 	asm ("int $0x30" : "=a"(_val) : "a"(3), "b"(pid));
@@ -92,6 +104,7 @@ int itoa(int value, char *sp, int radix) {
 
 
 char input[128];
+char path[1024] __attribute__((aligned(4096)));
 
 void _start(void) {
 
@@ -101,28 +114,45 @@ void _start(void) {
 	uint32_t pos = 0;
 
 	while(1) {
+		getwd(path);
+		write(1, path, strlen(path));
 		write(1, "> ", 2);
 		for(int i = 0; i < 128; i++) input[i] = 0;
 		while(kb != '\n') {
 			if (kb != 0)  {
 				if (kb != '\b') {
 					input[pos++] = kb;
-				} else {
+					write(1, &kb, 1);
+				} else if (pos > 0) {
 					input[pos] = 0;
 					pos--;
+					write(1, "\b", 1);
 				}
-				write(1, &kb, 1);
 				kb = 0;
 			}
 			read(0, &kb, 1);
 		}
 		kb = 0;
 		write(1, "\n", 1);
+		if (pos < 1)
+			continue;
 		pos = 0;
+
+		if (input[0] == 'c' && input[1] == 'd' && input[2] == ' ') {
+			// chdir
+			int i = chdir(input + 3);
+			if (i == -5)
+				write(1, "No such file or directory\n", 26);
+			else if (i == -4)
+				write(1, "Name too long\n", 14);
+			else if (i == -6)
+				write(1, "Not a directory\n", 16);
+			continue;
+		}
 
 		int s = open(input, 0);
 		if (s < 0) {
-			write(1, "File not found!\n", 17);
+			write(1, "File not found!\n", 16);
 		} else {
 			close(s);
 			int f = fork();

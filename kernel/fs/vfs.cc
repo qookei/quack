@@ -4,7 +4,6 @@
 #include <tasking/tasking.h>
 
 mountpoint_t *mountpoints;
-char full_path[1024];
 struct stat root_stat;
 
 extern int printf(const char *, ...);
@@ -22,81 +21,146 @@ void vfs_init() {
 	root_stat.st_ctime = 0;
 }
 
-int vfs_determine_mountpoint(char *path) {
-	int mountpoint = 0, mountpoint2 = 0;
-	size_t size = 0, size2 = 0;
+int determine_mountpoint(const char *path) {
+	int mountpoint = 0;
+	size_t s = strlen(mountpoints[0].path);
+	size_t s2 = s;
 
 	while (mountpoint < MAX_MOUNTPOINTS) {
 		if (mountpoints[mountpoint].present != 1) {
 			mountpoint++;
 			continue;
 		}
-		
-		size = strlen(mountpoints[mountpoint].path);
-		if (memcmp(mountpoints[mountpoint].path, path, size) == 0) {
-			if (size > size2) {
-				size2 = size;
-				mountpoint2 = mountpoint;
-			}
+
+		s = strlen(mountpoints[mountpoint].path);
+		if (s > s2) {
+			mountpoint++;
+			continue;
 		}
+		
+		if (!memcmp(mountpoints[mountpoint].path, path, s)) {
+			return mountpoint;
+		}
+
+		s2 = s;
 
 		mountpoint++;
 	}
-
-	if (size2 != 0 && mountpoint2 < MAX_MOUNTPOINTS)
-		return mountpoint2;
-
-	else
-		return -1;
+	
+	return -1;
 }
 
-size_t resolve_path(char *fullpath, const char *path) {
-	size_t i = 0, j = 0;
+size_t resolve_path(char *out_path, char *pwd, const char *in_path) {
+	
+	char *out = out_path;
+	char *path = (char *)in_path;
 
-	if (path[0] == '/') {
-		if (path[1] == 0) {
-			fullpath[0] = '/';
-			fullpath[1] = 0;
-			return 1;
-		}
-
-		fullpath[0] = '/';
-
-		i = 1;
-		j = 1;
+	if (*path == '/') {
+		*out = '/';
+		out ++;
+		path ++;
+	} else {
+		strcpy(out, pwd);
+		out += strlen(pwd);
 	}
 
-	while (path[i] != 0) {
-		if (path[i] == '.' && path[i+1] == '/')
-			i += 2;
-
-		else if (path[i] == '.' && path[i+1] == '.' && path[i+2] == '/') {
-			i += 3;
-			if (j > 1) {
-				while (fullpath[j] != '/')
-					j--;
-
-				j--;
-				while (fullpath[j] != '/')
-					j--;
-
-				j++;
-				fullpath[j] = 0;
+	while (*path != '\0' && out < out_path + 1024) {
+		if (!strncmp(path, "..", 2)) {
+			path += 3;
+			if (out - out_path > 1) {
+				out--;
+				while(*(out - 1) != '/') {
+					out--;
+				}
 			}
+			if (path > in_path + strlen(in_path)) break;
+
+		} else if (!strncmp(path, "./", 2) || !strncmp(path, "/", 1)) {
+			if (!strncmp(path, "/", 1))
+				path += 1;
+			else
+				path += 2;
+
+			if (path > in_path + strlen(in_path)) break;
 		} else {
-			fullpath[j] = path[i];
-			j++;
-			i++;
+			char *pos = strchr(path, '/');
+			
+			size_t len;
+			
+			if (pos == NULL) {
+				len = (in_path + strlen(in_path)) - (path);
+			} else {
+				len = pos - path;
+				
+			}
+
+			strncpy(out, path, len);
+			out += len;
+			if (pos != NULL)
+				*out++ = '/';
+			else 
+				break;
+
+			path += len + 1;
 		}
+
 	}
 
-	while (fullpath[j-1] == '/') {
-		fullpath[j-1] = 0;
-		j--;
+	if (out >= out_path + 1024) {
+		return -1;
 	}
 
-	fullpath[j] = 0;
-	return strlen(fullpath);
+	*out = '\0';
+	return strlen(out_path);
+
+}
+
+int chdir(const char *path) {
+
+	const char *o = path;
+	char _tmp[1024];
+
+	struct stat s;
+
+	int ret = stat(path, &s);
+	if (ret != 0) {
+		memcpy(_tmp, path, strlen(path) + 1);
+		_tmp[strlen(path)] = '/';
+		_tmp[strlen(path) + 1] = '\0';
+		
+		int ret = stat(_tmp, &s);
+		if (ret != 0) 
+			return ENOENT;
+		
+		o = (const char *)_tmp;
+	}
+	if (!(s.st_mode & S_IFDIR))
+		return ENOTDIR;
+
+	char *tmp = (char *)kmalloc(1024);
+	size_t len = resolve_path(tmp, current_task->pwd, o);
+
+	if (len == (size_t)-1) {
+		kfree(tmp);
+		return ENAMETOOLONG;
+	}
+
+	memcpy(current_task->pwd, tmp, len + 1);
+
+	kfree(tmp);
+
+	return 0;
+}
+
+int getwd(char *dest) {
+	memcpy(dest, current_task->pwd, strlen(current_task->pwd) + 1);
+	return 0;
+}
+
+int getcwd(char *dest, size_t len) {
+	if (len < strlen(current_task->pwd)) return ERANGE;
+	strcpy(dest, current_task->pwd);
+	return 0;
 }
 
 int open(const char *path, int flags) {
@@ -110,7 +174,7 @@ int open(const char *path, int flags) {
 		return EBADF;
 
 	char *tmp = (char *)kmalloc(1024);
-	resolve_path(tmp, path);
+	resolve_path(tmp, current_task->pwd, path);
 
 	int handle = 0;
 
@@ -149,14 +213,14 @@ size_t write(int handle, char *buffer, size_t count) {
 
 	char *path = current_task->files[handle].path;
 
-	int mountpoint = vfs_determine_mountpoint(path);
+	int mountpoint = determine_mountpoint(path);
 	if (mountpoint < 0) {
 		return ENOENT;
 	}
 
 	size_t status = 0;
 
-	char *fs_path = path + strlen(mountpoints[mountpoint].path);
+	const char *fs_path = path + strlen(mountpoints[mountpoint].path);
 
 	if (strcmp(mountpoints[mountpoint].fs, "devfs") == 0) {
 		status = devfs_write(fs_path, buffer, count);
@@ -177,14 +241,58 @@ size_t read(int handle, char *buffer, size_t count) {
 
 	char *path = current_task->files[handle].path;
 
-	int mountpoint = vfs_determine_mountpoint(path);
+	int mountpoint = determine_mountpoint(path);
 	if (mountpoint < 0) {
 		return ENOENT;
 	}
 
 	size_t status = 0;
 
-	char *fs_path = path + strlen(mountpoints[mountpoint].path);
+	const char *fs_path = path + strlen(mountpoints[mountpoint].path);
+
+	if (strcmp(mountpoints[mountpoint].fs, "devfs") == 0) {
+		status = devfs_read(fs_path, buffer, count);
+	} else if (strcmp(mountpoints[mountpoint].fs, "ustar") == 0) {
+		status = ustar_read(&mountpoints[mountpoint], fs_path, buffer, count);
+	}
+
+	return status;
+}
+
+size_t kwrite(const char *filename, char *buffer, size_t count) {
+	if (!count)
+		return 0;
+
+	int mountpoint = determine_mountpoint(filename);
+	if (mountpoint < 0) {
+		return ENOENT;
+	}
+
+	size_t status = 0;
+
+	const char *fs_path = filename + strlen(mountpoints[mountpoint].path);
+
+	if (strcmp(mountpoints[mountpoint].fs, "devfs") == 0) {
+		status = devfs_write(fs_path, buffer, count);
+	} else if (strcmp(mountpoints[mountpoint].fs, "ustar") == 0) {
+		status = ustar_write(&mountpoints[mountpoint], fs_path, buffer, count);
+	}
+
+	return status;
+}
+
+size_t kread(const char *filename, char *buffer, size_t count) {
+	if (!count)
+		return 0;
+
+	int mountpoint = determine_mountpoint(filename);
+	if (mountpoint < 0) {
+		return ENOENT;
+	}
+
+	size_t status = 0;
+
+	const char *fs_path = filename + strlen(mountpoints[mountpoint].path);
 
 	if (strcmp(mountpoints[mountpoint].fs, "devfs") == 0) {
 		status = devfs_read(fs_path, buffer, count);
@@ -199,25 +307,24 @@ int stat(const char *path, struct stat *destination) {
 	
 	int status = 0;
 
-	memcpy(full_path, path, 1024);
+	char *tmp = (char *)kmalloc(1024);
+	resolve_path(tmp, current_task->pwd, path);
 
-	if (strcmp(full_path, "/") == 0) {
+	if (strcmp(tmp, "/") == 0) {
 		memcpy(destination, &root_stat, sizeof(struct stat));
 		return 0;
 	}
 
-	if (strcmp(full_path, "/dev") == 0) {
+	if (strcmp(tmp, "/dev") == 0) {
 		memcpy(destination, &_devfs_stat, sizeof(struct stat));
 		return 0;
 	}
 
-	int mountpoint = vfs_determine_mountpoint(full_path);
+	int mountpoint = determine_mountpoint(tmp);
 	if (mountpoint < 0) {
 		return ENOENT;
 	}
 
-	char *tmp = (char *)kmalloc(1024);
-	strcpy(tmp, full_path);
 	const char *fs_path = tmp + strlen(mountpoints[mountpoint].path);
 	
 	if (strcmp(mountpoints[mountpoint].fs, "devfs") == 0) {
@@ -242,14 +349,14 @@ int mount(const char *device, const char *dir, const char *fstype, uint32_t flag
 	if (status != 0)
 		return status;
 
-	if (!stat_info.st_mode & S_IFBLK)
+	if (!(stat_info.st_mode & S_IFBLK))
 		return ENOTBLK;
 
 	status = stat(dir, &stat_info);
 	if (status != 0)
 		return status;
 
-	if (!stat_info.st_mode & S_IFDIR)
+	if (!(stat_info.st_mode & S_IFDIR))
 		return ENOTDIR;
 
 	int mountpoint = 0;
@@ -263,15 +370,18 @@ int mount(const char *device, const char *dir, const char *fstype, uint32_t flag
 	mountpoints[mountpoint].present = 1;
 	memcpy(mountpoints[mountpoint].fs, fstype, strlen(fstype));
 
-	resolve_path(full_path, device);
-	memcpy(mountpoints[mountpoint].dev, full_path, strlen(full_path));
+	char *tmp = (char *)kmalloc(1024);
+	resolve_path(tmp, current_task->pwd, device);
+	memcpy(mountpoints[mountpoint].dev, tmp, strlen(tmp));
 
-	resolve_path(full_path, dir);
-	memcpy(mountpoints[mountpoint].path, full_path, strlen(full_path));
+	resolve_path(tmp, current_task->pwd, dir);
+	memcpy(mountpoints[mountpoint].path, tmp, strlen(tmp));
 
 	mountpoints[mountpoint].flags = flags;
 
 	printf("mounted %s on %s, type '%s'\n", device, dir, fstype);
+
+	kfree(tmp);
 
 	return 0;
 }

@@ -43,13 +43,13 @@ uint32_t pmm_pop() {
 
 page_metadata_t* get_page_metadata(uint32_t addr) {
 	uint32_t d = addr & 0xFFFFF000;
-	d /= 0x1000;
+	d >>= 12;
 	return &pmm_metadata[d];
 }
 
 void set_page_metadata(uint32_t addr, page_metadata_t metadata) {
 	uint32_t d = addr & 0xFFFFF000;
-	d /= 0x1000;
+	d >>= 12;
 	pmm_metadata[d] = metadata;
 }
 

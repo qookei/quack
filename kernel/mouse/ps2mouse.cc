@@ -1,4 +1,7 @@
 #include "ps2mouse.h"
+#include <multiboot.h>
+
+extern multiboot_info_t *mbootinfo;
 
 bool ps2mouse_interrupt(interrupt_cpu_state *state);
 
@@ -20,8 +23,6 @@ extern int printf(const char *, ...);
 extern int kprintf(const char *, ...);
 
 void ps2mouse_init() {
-	printf("ps2 mouse init\n");
-
 	ps2_wait_ready();
 	outb(0x64, 0xD4);
 	ps2_wait_ready();
@@ -41,17 +42,9 @@ void ps2mouse_init() {
 	ps2_wait_ready();
 	outb(0x60, 0xF4);
 
-	// ps2_wait_ready();
-	// outb(0x64, 0xD4);
-	// ps2_wait_ready();
-	// outb(0x60, 0xE8);
-	// ps2_wait_ready();
-	// outb(0x64, 0xD4);
-	// ps2_wait_ready();
-	// outb(0x60, 0x00);
-
-	
 	register_interrupt_handler(0x2C, ps2mouse_interrupt);
+	
+	printf("[ps2mse] init done\n");
 }
 
 int32_t mouse_x = 0;
@@ -131,6 +124,12 @@ bool ps2mouse_interrupt(interrupt_cpu_state *unused) {
 
 		mouse_x += mouse_x_move;
 		mouse_y -= mouse_y_move;
+
+		if (mouse_x < 0) mouse_x = 0;
+		if (mouse_y < 0) mouse_y = 0;
+		
+		if (mouse_x >= mbootinfo->framebuffer_width)  mouse_x = mbootinfo->framebuffer_width - 1;
+		if (mouse_y >= mbootinfo->framebuffer_height) mouse_y = mbootinfo->framebuffer_height - 1;
 
 		ps2mouse_changed = true;
 	}

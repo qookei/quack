@@ -185,6 +185,8 @@ task_t *new_task(uint32_t addr, uint16_t cs, uint16_t ds, uint32_t pd, bool user
     t->files[2].present = 1;
     memcpy(t->files[2].path, "/dev/tty", 9);
 
+    memcpy(t->pwd, "/bin/", 6);
+
     insert(t);
     ntasks++;
     return t;
@@ -215,6 +217,8 @@ uint32_t tasking_fork(interrupt_cpu_state *state) {
 
     t->files = (file_handle_t *)kmalloc(sizeof(file_handle_t) * MAX_FILES);
     memcpy(t->files, current_task->files, sizeof(file_handle_t) * MAX_FILES);
+
+    memcpy(t->pwd, current_task->pwd, 1024);
 
     uint32_t new_proc_pd = create_page_directory(mbootinfo);
     t->cr3 = new_proc_pd;
