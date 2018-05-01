@@ -2,6 +2,8 @@
 
 /**  Durand's Amazing Super Duper Memory functions.  */
 
+#define INFO
+
 #define VERSION 	"1.1"
 #define ALIGNMENT	16ul
 
@@ -49,10 +51,10 @@
 #define LIBALLOC_DEAD	0xdeaddead
 
 #if defined DEBUG || defined INFO
-#include <stdio.h>
-#include <stdlib.h>
+extern int kprintf(const char *, ...);
+#define printf kprintf
 
-#define FLUSH()		fflush( stdout )
+#define FLUSH()	{}
 
 #endif
 
@@ -278,7 +280,7 @@ void *PREFIX(malloc)(size_t req_size)
 		#ifdef DEBUG
 		printf( "liballoc: initialization of liballoc " VERSION "\n" );
 		#endif
-		atexit( liballoc_dump );
+		//atexit( liballoc_dump );
 		FLUSH();
 		#endif
 			

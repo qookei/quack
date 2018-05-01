@@ -20,9 +20,10 @@
 #define EINVAL				-11
 #define EPERM				-12
 #define ENODEV				-13
-#define ENOTBLK				-14
-#define EBUSY				-15
+#define ENOTBLK				-15
+#define EBUSY				-16
 #define ERANGE				-34
+#define EFAULT				-14
 
 #define O_RDONLY			0x0001
 #define O_WRONLY			0x0002

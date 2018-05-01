@@ -2,6 +2,7 @@
 #include <tasking/tasking.h>
 #include <interrupt/isr.h>
 #include <trace/stacktrace.h>
+#include <panic.h>
 
 page_directory dir_;
 
@@ -36,6 +37,15 @@ uint32_t pt_f[1024] __attribute__((aligned(4096))) = {0};
 
 // 0xFFC00000
 #define PT 0xFFC00000
+/*
+void copy_unaligned_src_aligned_dst(void *dst, void *src, size_t len, ) {
+	while (1) {
+		
+	}	
+	
+}
+*/
+
 
 void crosspd_memcpy(uint32_t dst_pd, void *dst_addr, uint32_t src_pd, void *src_addr, size_t sz) {
 	uint32_t src_phys;
@@ -57,25 +67,33 @@ void crosspd_memcpy(uint32_t dst_pd, void *dst_addr, uint32_t src_pd, void *src_
 	dst_off = dst_phys & 0xFFF;
 	dst_phys &= ~0xFFF;
 
-	size_t pages_to_copy = sz / 0x1000;
-	if(sz & 0xFFF) pages_to_copy++;
+	uint32_t copied = 0;
 
-	for (size_t i = 0; i < pages_to_copy; i++) {
-		map_page((void*)(src_phys + i * 0x1000), (void*)0xE0000000, 0x3);
-		map_page((void*)(dst_phys + i * 0x1000), (void*)0xE0001000, 0x3);
+	while (1) {
+		size_t copy_size = sz > 0x1000 ? 0x1000 : sz;
+		// map source
+		map_page((void *)src_phys, (void *)0xE0000000, 0x3);
+		if (src_phys + src_off + copy_size > src_phys + 0x1000)
+			map_page((void *)(src_phys + 0x1000), (void *)0xE0001000, 0x3);
 
-		if (i == 0) {
-			// first copy
-			size_t size_to_cp = sz - sz / 0x1000;
-			memcpy((void*)(0xE0001000 + dst_off), (void*)(0xE0000000 + src_off), size_to_cp);
-		} else {
-			size_t size_to_cp = 0x1000;
-			if (i == pages_to_copy - 1) size_to_cp = sz - i * 0x1000;
-			memcpy((void*)(0xE0001000), (void*)(0xE0000000), size_to_cp);
-		}
+		map_page((void *)dst_phys, (void *)0xE0002000, 0x3);
+		if (dst_phys + dst_off + copy_size > dst_phys + 0x1000)
+			map_page((void *)(dst_phys + 0x1000), (void *)0xE0003000, 0x3);
 
-		unmap_page((void*)0xE0000000);
-		unmap_page((void*)0xE0001000);
+		memcpy((void *)(0xE0002000 + dst_off), (void *)(0xE0000000 + src_off), copy_size);
+
+		unmap_page((void *)0xE0000000);
+		if (src_phys + src_off + copy_size > src_phys + 0x1000)
+			unmap_page((void *)0xE0001000);
+
+		unmap_page((void *)0xE0002000);
+		if (dst_phys + dst_off + copy_size > dst_phys + 0x1000)
+			unmap_page((void *)0xE0003000);
+
+		kprintf("copied %u bytes in one iteration\n", copy_size);
+
+		copied += copy_size;
+		if (copied >= sz) break;
 
 	}
 
@@ -83,7 +101,6 @@ void crosspd_memcpy(uint32_t dst_pd, void *dst_addr, uint32_t src_pd, void *src_
 
 void crosspd_memset(uint32_t dst_pd, void *dst_addr, int num, size_t sz) {
 	uint32_t dst_phys;
-	
 	uint32_t dst_off;
 
 	uint32_t cur = get_cr3();
@@ -94,27 +111,28 @@ void crosspd_memset(uint32_t dst_pd, void *dst_addr, int num, size_t sz) {
 	dst_off = dst_phys & 0xFFF;
 	dst_phys &= ~0xFFF;
 
-	size_t pages_to_copy = sz / 0x1000;
-	if(sz & 0xFFF) pages_to_copy++;
+	uint32_t set = 0;
 
-	for (size_t i = 0; i < pages_to_copy; i++) {
-		map_page((void*)(dst_phys + i * 0x1000), (void*)0xE0000000, 0x3);
+	while (1) {
+		size_t set_size = sz > 0x1000 ? 0x1000 : sz;
+		
+		map_page((void *)dst_phys, (void *)0xE0002000, 0x3);
+		if (dst_phys + dst_off + set_size > dst_phys + 0x1000)
+			map_page((void *)(dst_phys + 0x1000), (void *)0xE0003000, 0x3);
 
-		if (i == 0) {
-			// first set
-			size_t size_to_cp = sz - sz / 0x1000;
-			memset((void*)(0xE0000000 + dst_off), num, size_to_cp);
-		} else {
-			size_t size_to_cp = 0x1000;
-			if (i == pages_to_copy - 1) size_to_cp = sz - i * 0x1000;
-			memset((void*)(0xE0000000), num, size_to_cp);
-		}
+		memset((void *)(0xE0002000 + dst_off), num, set_size);
 
-		unmap_page((void*)0xE0000000);
+		unmap_page((void *)0xE0002000);
+		if (dst_phys + dst_off + set_size > dst_phys + 0x1000)
+			unmap_page((void *)0xE0003000);
+
+		set += set_size;
+		if (set >= sz) break;
 
 	}
 
 }
+
 
 
 void alloc_mem_at(uint32_t pd, uint32_t where, size_t pages, uint32_t flags) {
@@ -240,6 +258,31 @@ void *get_phys(void *virtualaddr) {
  //    return (void *)((pt[ptindex] & ~0xFFF) + ((uint32_t)virtualaddr & 0xFFF));
 }
 
+uint32_t get_flag(void *virtualaddr) {
+    uint32_t pdindex = (uint32_t)virtualaddr >> 22;
+    uint32_t ptindex = (uint32_t)virtualaddr >> 12 & 0x03FF;
+	
+	uint32_t page_dir = get_cr3();
+	set_cr3(def_cr3());
+
+    map_page((void *)page_dir, (void *)0xE0000000, 0x3);
+    uint32_t pt = ((uint32_t *)0xE0000000)[pdindex];
+    unmap_page((void *)0xE0000000);
+    if (!(pt & 0xFFF)) {
+    	set_cr3(page_dir);
+    	kprintf("pt not found in pd\n");
+    	return 0;
+    }
+
+    map_page((void *)(pt & 0xFFFFF000), (void *)0xE0000000, 0x3);
+	uint32_t page = ((uint32_t *)0xE0000000)[ptindex];
+    unmap_page((void *)0xE0000000);
+    
+    set_cr3(page_dir);
+    return page & 0xFFF;
+}
+
+
 uint32_t create_page_directory(multiboot_info_t* mboot) {
 	uint32_t kernel_addr = (0xC0000000 >> 22);
 
@@ -279,6 +322,8 @@ extern task_t* current_task;
 extern uint32_t isr_old_cr3;
 extern bool isr_in_kdir;
 
+extern void mem_dump(void*,size_t,size_t);
+
 bool __attribute__((noreturn)) page_fault(interrupt_cpu_state *state) {
 
 	// if (tasks[current_task]->regs.cs != 0x08) {
@@ -304,11 +349,25 @@ bool __attribute__((noreturn)) page_fault(interrupt_cpu_state *state) {
 	printf("kcr3 is %08x cr3 %08x\n", def_cr3(), isr_old_cr3);
 
 	if (us) {
-	
+
+		uint8_t buf[64];
+
+		set_cr3(isr_old_cr3);
+		memcpy(buf, (void *)state->eip, 64);
+		set_cr3(def_cr3());
+
+		if (present) printf("present ");
+		if (rw)	printf("write ");
+		if (reserved) printf("rb overwritten ");
+		if (id) printf("instr fetch ");	
+		printf("\n");
 		printf("at %08x faulting process regs at crash:\n", fault_addr);
 		printf("eax: %08x ebx:    %08x ecx: %08x edx: %08x ebp: %08x\n", state->eax, state->ebx, state->ecx, state->edx, state->ebp);
 		printf("eip: %08x eflags: %08x esp: %08x edi: %08x esi: %08x\n", state->eip, state->eflags, state->esp, state->edi, state->esi);
 		printf("cs: %04x ds: %04x\n", state->cs, state->ds);
+		printf("code:\n");
+		mem_dump(buf, 64, 8);
+
 
 		set_cr3(def_cr3());
 
@@ -325,6 +384,8 @@ bool __attribute__((noreturn)) page_fault(interrupt_cpu_state *state) {
 	    asm volatile ("add $8, %%esp; mov %0, %%eax; mov %1, %%ebx; jmp tasking_enter" : : "r"(current_task->cr3), "r"(&current_task->st) : "%eax", "%ebx");
 	}
 
+	panic("Page fault", state, true, true);
+	/*
 
 	// TODO: use a logging system and not the standard output
 
@@ -347,7 +408,7 @@ bool __attribute__((noreturn)) page_fault(interrupt_cpu_state *state) {
 	printf("cs: %04x ds: %04x\n", state->cs, state->ds);
 			
 	stack_trace(20, 0);
-	asm volatile ("1:\nhlt\njmp 1b");
+	asm volatile ("1:\nhlt\njmp 1b");*/
 
 }
 

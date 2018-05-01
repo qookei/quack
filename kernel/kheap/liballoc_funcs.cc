@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <paging/paging.h>
 
-extern int kprintf(const char *, ...);
+extern int printf(const char *, ...);
 
 extern "C" {
 
@@ -34,6 +34,14 @@ void* liballoc_alloc(int pages){
 
 int liballoc_free(void* ptr, int pages) {
 	// TODO
+	//printf("free the fucking memory you idiot!!!!\n");
+	for (int n = 0; n < pages; n++) {
+		void *a = get_phys(ptr);
+		unmap_page(ptr);
+		pmm_free(a);
+		//printf("%p %p\n", a, ptr);
+		ptr = (void *)((uint32_t)ptr + 0x1000);
+	}
 }
 
 }

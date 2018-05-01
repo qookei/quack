@@ -13,6 +13,7 @@
 
 extern int printf(const char* , ...);
 extern int kprintf(const char* , ...);
+extern int sprintf(char *, const char *, ...);
 
 extern multiboot_info_t *mbootinfo;
 
@@ -33,7 +34,9 @@ void tasking_setup(const char *init_path) {
     elf_loaded r = prepare_elf_for_exec(init_path);
     
     if (!r.success_ld) {
-        panic("Going nowhere without my init!", NULL, false, false);
+		char buf[1024];
+		sprintf(buf, "Going nowhere without my init! Could not load: %s", init_path);
+        panic(buf, NULL, false, false);
     }
 
     printf("Successfully loaded %s\n", init_path);
@@ -278,6 +281,8 @@ uint32_t tasking_fork(interrupt_cpu_state *state) {
     return t->pid;
 }
 
+extern void mem_dump(void*,size_t,size_t);
+
 int tasking_execve(const char *name, char **argv, char **envp) {
 
     (void)argv;
@@ -321,12 +326,18 @@ int tasking_execve(const char *name, char **argv, char **envp) {
 
     t->cr3 = r.page_direc;
 
+	char buf[64];
+
     set_cr3(t->cr3);
 
     void* map = pmm_alloc();
     map_page(map, (void*)0xA0000000, 0x7);
 
-    set_cr3(def_cr3());
+	memcpy(buf, (void *)r.entry_addr, 64);
+
+	set_cr3(def_cr3());
+
+	//mem_dump(buf, 64, 8);
 
     t->st.ebx = 0;
     t->st.ebx = 0;
@@ -339,6 +350,9 @@ int tasking_execve(const char *name, char **argv, char **envp) {
     t->st.esp = 0xA0001000;
     t->st.eip = r.entry_addr;
     t->st.eflags = 0x202;
+		
+	printf("entry is %08x\n", r.entry_addr);
+	printf("new cr3 is %08x\n", r.page_direc);
 
     return 0;
 }
@@ -363,6 +377,18 @@ void tasking_waitpid(interrupt_cpu_state *state, uint32_t pid) {
 
     t->waiting_status = WAIT_PROC;
     t->waiting_info = pid;
+
+	task_t *t_tmp = task_head;
+    while(t_tmp->next != NULL && t_tmp->pid != pid) {
+        t_tmp = t_tmp->next;
+    }
+
+    if (t_tmp->pid != pid) {
+		t->waiting_status = WAIT_NONE;
+    	t->waiting_info = 0;
+		printf("Process %u tried to wait on a nonexistent process, ignoring!\n", t->pid);
+        return;
+	}
 }
 
 void tasking_schedule_next() {

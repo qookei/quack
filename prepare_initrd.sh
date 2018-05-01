@@ -20,6 +20,12 @@ i686-elf-gcc src/dump.c -o bin/dump -ffreestanding -nostdlib -O0
 echo "prepare_initrd - Compiling uptime"
 i686-elf-gcc src/uptime.c -o bin/uptime -ffreestanding -nostdlib -O0
 
+echo "prepare_initrd - Compiling paint"
+i686-elf-gcc src/paint.c -o bin/paint -ffreestanding -nostdlib -O0
+
+echo "prepare_initrd - Compiling crash"
+i686-elf-gcc src/crash.c -o bin/crash -ffreestanding -nostdlib -O0
+
 echo "prepare_initrd - Packaging"
 tar cf initrd *
 cd ..

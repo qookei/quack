@@ -127,14 +127,16 @@ uint16_t cursor_tilemap[] = {
 
 uint32_t w_x, w_y;
 
+struct mpack mouse;
+struct vmode video;
+
 void _start(void) {
 
-	struct mpack mouse;
-	struct vmode video;
 	int mouse_handle = open("/dev/mouse", 0);
-	
+
 	int video_handle = open("/dev/videomode", 0);
 	read(video_handle, &video, 16);
+
 	close(video_handle);
 
 	uint8_t *vram = (uint8_t *)reqres(RESOURCE_FRAME_BUFFER);
@@ -143,7 +145,7 @@ void _start(void) {
 
 	if ((uint32_t)vram == 0xFFFFFFFF){
 		write(1, err, strlen(err));
-		close(mouse_handle);
+		 close(mouse_handle);
 		exit();
 	}
 

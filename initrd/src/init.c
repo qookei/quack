@@ -57,6 +57,8 @@ void _start(void) {
 	} else {
 		waitpid(i);
 	}
+
+	write(1, "shell quit!\n", 12);
 	
 	exit();
 }

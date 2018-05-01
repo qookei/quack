@@ -13,8 +13,8 @@ CXX = i686-elf-g++
 CC = i686-elf-gcc
 ASM = i686-elf-as
 ASM2 = nasm
-CXXFLAGS = -ffreestanding -O0 -Wall -Wextra -fno-exceptions -fno-rtti -std=c++14 -g -Ikernel -Ikernel/lib
-CFLAGS = -ffreestanding -O0 -nostdlib -g
+CXXFLAGS = -ffreestanding -O0 -Wall -Wextra -fno-exceptions -fno-rtti -std=c++14 -g -Ikernel -Ikernel/lib -fno-omit-frame-pointer
+CFLAGS = -ffreestanding -O0 -nostdlib -g -fno-omit-frame-pointer
 
 iso: quack.iso
 

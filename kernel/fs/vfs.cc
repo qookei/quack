@@ -158,8 +158,8 @@ int getwd(char *dest) {
 }
 
 int getcwd(char *dest, size_t len) {
-	if (len < strlen(current_task->pwd)) return ERANGE;
-	strcpy(dest, current_task->pwd);
+	if (len < strlen(current_task->pwd) + 1) return ERANGE;
+	memcpy(dest, current_task->pwd, strlen(current_task->pwd) + 1);
 	return 0;
 }
 
@@ -312,6 +312,43 @@ int stat(const char *path, struct stat *destination) {
 
 	if (strcmp(tmp, "/") == 0) {
 		memcpy(destination, &root_stat, sizeof(struct stat));
+	//	kfree(tmp);
+		return 0;
+	}
+
+	if (strcmp(tmp, "/dev") == 0) {
+		memcpy(destination, &_devfs_stat, sizeof(struct stat));
+	//	kfree(tmp);
+		return 0;
+	}
+
+	int mountpoint = determine_mountpoint(tmp);
+	if (mountpoint < 0) {
+		return ENOENT;
+	}
+
+	const char *fs_path = tmp + strlen(mountpoints[mountpoint].path);
+	
+	if (strcmp(mountpoints[mountpoint].fs, "devfs") == 0) {
+		status = devfs_stat(fs_path, destination);
+	} else if (strcmp(mountpoints[mountpoint].fs, "ustar") == 0) {
+		status = ustar_stat(&mountpoints[mountpoint], fs_path, destination);
+	}
+
+	kfree(tmp);
+
+	return status;
+
+}
+
+int kstat(const char *path, struct stat *destination) {
+	
+	int status = 0;
+
+	char *tmp = (char *)path;
+
+	if (strcmp(tmp, "/") == 0) {
+		memcpy(destination, &root_stat, sizeof(struct stat));
 		return 0;
 	}
 
@@ -332,8 +369,6 @@ int stat(const char *path, struct stat *destination) {
 	} else if (strcmp(mountpoints[mountpoint].fs, "ustar") == 0) {
 		status = ustar_stat(&mountpoints[mountpoint], fs_path, destination);
 	}
-
-	kfree(tmp);
 
 	return status;
 
