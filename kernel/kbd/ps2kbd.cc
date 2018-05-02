@@ -180,9 +180,11 @@ bool ps2_interrupt(interrupt_cpu_state *state) {
 	else if (sc == SC_CAPSLOCK)
 		caps = !caps;
 	else if (sc == SC_F12) {
-		uint32_t pid = current_task->pid;
+		set_cr3(def_cr3());
+		task_t *t = current_task;
 		tasking_schedule_next();
-		kill_task(pid);
+		kill_task_raw(t);
+		tasking_schedule_next();
 		tasking_schedule_after_kill();
 	} else if (sc < SC_MAX) {
 		

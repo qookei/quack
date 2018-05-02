@@ -375,13 +375,15 @@ bool __attribute__((noreturn)) page_fault(interrupt_cpu_state *state) {
 		task_t *fault_proc = current_task;
 		tasking_schedule_next();
 		kill_task_raw(fault_proc);
-
+		tasking_schedule_next();
 	    printf("Process %u crashed with SIGSEGV!\n", fault_proc->pid);
 
 	    isr_old_cr3 = current_task->cr3;
 	    isr_in_kdir = false;
 
-	    asm volatile ("add $8, %%esp; mov %0, %%eax; mov %1, %%ebx; jmp tasking_enter" : : "r"(current_task->cr3), "r"(&current_task->st) : "%eax", "%ebx");
+
+	    tasking_schedule_after_kill();
+	    //asm volatile ("add $8, %%esp; mov %0, %%eax; mov %1, %%ebx; jmp tasking_enter" : : "r"(current_task->cr3), "r"(&current_task->st) : "%eax", "%ebx");
 	}
 
 	panic("Page fault", state, true, true);

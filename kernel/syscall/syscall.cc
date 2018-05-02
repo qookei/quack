@@ -239,7 +239,7 @@ bool do_syscall(interrupt_cpu_state *state) {
 		
 			//dd = d;
 
-			printf("path: %s\n", buf);
+			//printf("path: %s\n", buf);
 
 			//unmap_page((void*)0xEF000000);
 
@@ -454,7 +454,7 @@ bool do_syscall(interrupt_cpu_state *state) {
 			state->eax = getwd(buf);
 
 			leave_kernel_directory();
-			memcpy((void *)state->ebx, buf, strlen(buf));			
+			memcpy((void *)state->ebx, buf, strlen(buf) + 1);			
 			enter_kernel_directory();
 			break;
 		}
@@ -470,7 +470,7 @@ bool do_syscall(interrupt_cpu_state *state) {
 			state->eax = getcwd(buf, state->ecx);
 
 			leave_kernel_directory();
-			memcpy((void *)state->ebx, buf, strlen(buf));			
+			memcpy((void *)state->ebx, buf, strlen(buf) + 1);			
 			enter_kernel_directory();
 			break;
 		}

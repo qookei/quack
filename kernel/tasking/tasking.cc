@@ -351,8 +351,8 @@ int tasking_execve(const char *name, char **argv, char **envp) {
     t->st.eip = r.entry_addr;
     t->st.eflags = 0x202;
 		
-	printf("entry is %08x\n", r.entry_addr);
-	printf("new cr3 is %08x\n", r.page_direc);
+	//printf("entry is %08x\n", r.entry_addr);
+	//printf("new cr3 is %08x\n", r.page_direc);
 
     return 0;
 }
