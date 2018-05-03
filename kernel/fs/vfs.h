@@ -114,6 +114,10 @@ struct stat {
 	size_t st_blocks;
 };
 
+typedef struct {
+	char name[128];
+} dirent_t;
+
 void vfs_init();
 int open(const char *, int);
 int close(int);
@@ -126,4 +130,5 @@ int chdir(const char *);
 int getwd(char *);
 int getcwd(char *, size_t);
 
+int get_ents(const char *, dirent_t *);
 #endif

@@ -26,6 +26,9 @@ i686-elf-gcc src/paint.c -o bin/paint -ffreestanding -nostdlib -O0
 echo "prepare_initrd - Compiling crash"
 i686-elf-gcc src/crash.c -o bin/crash -ffreestanding -nostdlib -O0
 
+echo "prepare_initrd - Compiling ls"
+i686-elf-gcc src/ls.c -o bin/ls -ffreestanding -nostdlib -O0
+
 echo "prepare_initrd - Packaging"
 tar cf initrd *
 cd ..

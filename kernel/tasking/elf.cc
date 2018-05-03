@@ -127,7 +127,7 @@ elf_loaded prepare_elf_for_exec(const char* name) {
 	result.entry_addr = hdr->entry;
 	result.success_ld = true;
 
-	kfree(elf_file);
+	//kfree(elf_file);
 
 	return result;
 }

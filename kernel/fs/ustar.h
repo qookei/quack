@@ -46,5 +46,6 @@ typedef struct {
 int ustar_read(mountpoint_t *, const char *, char *, size_t);
 int ustar_write(mountpoint_t *, const char *, char *, size_t);
 int ustar_stat(mountpoint_t *, const char *, struct stat *);
+int ustar_get_ents(mountpoint_t *, const char *, dirent_t *);
 
 #endif

@@ -25,5 +25,6 @@ void devfs_init();
 int devfs_stat(const char *, struct stat *);
 size_t devfs_write(const char *, char *, size_t);
 size_t devfs_read(const char *, char *, size_t);
+int devfs_get_ents(mountpoint_t *, const char *, dirent_t *);
 
 #endif

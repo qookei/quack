@@ -7,7 +7,7 @@
 
 	process control:
 	0 - exit()
-	1 - fork() 										->	 	pid eax
+	1 - fork()										->		pid eax
 	2 - execve(path ebx, argv ecx, envp edx)		->		may not return, error eax
 	3 - waitpid(pid ebx)							->		return status eax
 	14- getpid()									->		pid eax
@@ -17,10 +17,11 @@
 	5 - read(handle ebx, buffer ecx, count edx)		->		size eax
 	6 - write(handle ebx, buffer ecx, count edx)	->		size eax
 	7 - close(handle ebx)							->		status eax
-	10- stat(path ebx, dst ecx)						-> 		status eax
+	10- stat(path ebx, dst ecx)						->		status eax
 	11- chdir(path ebx)								->		status eax
 	12- getwd(buf ebx)								->		status eax
 	13- getcwd(buf ebx, len ecx)					->		status eax
+	15- get_ents(path ebx, result ecx, nents edx)	->		status eax
 
 	resources:
 	8 - request resource(resource_id ebx)			->		resource address eax or 0xFFFFFFFF
@@ -163,7 +164,7 @@ bool copy_from_user(void *dst, void *src, size_t len) {
 	while(d_len != 0 && d_len <= len) { 
 		if (!(get_flag((void *)cur_addr) & 0x5)) {
 			failed = true;
-			kprintf("fuckyou\n");
+			
 			//printf("flags: %x\n", flags);
 			break;
 		}
@@ -181,7 +182,7 @@ bool copy_from_user(void *dst, void *src, size_t len) {
 	set_cr3(def_cr3());
 	
 	if (failed) {
-		printf("failed!!\n");
+		kprintf("failed!! addr %08x\n", cur_addr);
 		return false;
 	}
 	
@@ -350,7 +351,7 @@ bool do_syscall(interrupt_cpu_state *state) {
 		case 8: {
 			if (frame_buffer_owner_pid != 0) {
 				state->eax = 0xFFFFFFFF;
-			 	break;
+				break;
 			}
 
 			switch(state->ebx) {
@@ -396,25 +397,25 @@ bool do_syscall(interrupt_cpu_state *state) {
 
 			switch (state->ebx) {
 				case 0: {
-                    uint32_t dst = 0xD0000000;
-                    uint32_t fbuf_size = mbootinfo->framebuffer_pitch * mbootinfo->framebuffer_height;
+					uint32_t dst = 0xD0000000;
+					uint32_t fbuf_size = mbootinfo->framebuffer_pitch * mbootinfo->framebuffer_height;
 
-                    uint32_t pages_to_map = fbuf_size / 4096 + 1;
+					uint32_t pages_to_map = fbuf_size / 4096 + 1;
 
-                    leave_kernel_directory();
+					leave_kernel_directory();
 
-                    for (uint32_t i = 0; i < pages_to_map; i++) {
-                        unmap_page((void*)(dst));
+					for (uint32_t i = 0; i < pages_to_map; i++) {
+						unmap_page((void*)(dst));
 
-                        dst += 0x1000;
+						dst += 0x1000;
 
-                    }
+					}
 
-                    enter_kernel_directory();
+					enter_kernel_directory();
 
 
 
-                    state->eax = 0;
+					state->eax = 0;
 					frame_buffer_owner_pid = 0;
 					break;
 				}
@@ -479,6 +480,28 @@ bool do_syscall(interrupt_cpu_state *state) {
 			state->eax = current_task->pid;
 			break;
 		}
+		
+		case 15: {
+			dirent_t *res = NULL;
+			if (state->ecx != 0) {
+				res = (dirent_t *)kmalloc(state->edx * sizeof(dirent_t));
+			}
+
+			copy_from_user(buf, (void *)state->ebx, 1024);
+
+			int ret = get_ents(buf, res);
+
+			if (res != NULL) {
+				copy_to_user((void *)state->ecx, res, state->edx * sizeof(dirent_t));
+			}
+
+			kfree(res);
+
+			state->eax = ret;
+
+			break;
+		}
+
 	}
 
 	

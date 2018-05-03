@@ -83,7 +83,85 @@ uint64_t ustar_get_file(mountpoint_t *mountpoint, const char *path, ustar_entry_
 	return 1;
 }
 
+bool valid_entry(const char *path) {
+	const char *orig = path;
+	while (*path) {
+		if (*path == '/' && *(path + 1) != '\0') return false;
+		path++;
+	}
+	return strlen(orig) > 0;
+}
 
+int ustar_get_ents(mountpoint_t *mountpoint, const char *path, dirent_t *result) {
+	size_t entries_found = 0;
+	
+	uint64_t block = 0;
+	size_t file_size;
+
+	struct stat s;
+	int st = stat(mountpoint->dev, &s);
+
+	if (st < 0) {
+		printf("ustar: stat failed!\n");
+		return -1;
+	}
+
+	char *buffer = (char *)kmalloc(s.st_size);
+
+	int handle = open(mountpoint->dev, O_RDONLY);
+
+	if (handle < 0) {
+		printf("ustar: open failed!\n");
+		return -1;
+	}
+
+	int r = read(handle, buffer, s.st_size);
+	
+	if (!r) {
+		printf("ustar: read failed!\n");
+		return -1;
+	}
+
+	if (r != s.st_size) {
+		printf("ustar: read %i bytes, while file size is %i bytes\n", r, s.st_size);
+		return -1;
+	}
+
+	close(handle);
+
+	ustar_entry_t *entry = (ustar_entry_t *)buffer;
+
+	while(1) {
+
+		if ((uint32_t)entry > (uint32_t)buffer + s.st_size) {
+			break;
+		}
+
+		if (memcmp(entry->signature, "ustar", 5) != 0) {
+			break;
+		}
+
+		if(!memcmp(entry->name, path, strlen(path)) && valid_entry(entry->name + strlen(path))) {
+
+			if (result) {
+				dirent_t ent;
+				strcpy(ent.name, entry->name + strlen(path));
+				memcpy(&result[entries_found], &ent, sizeof(dirent_t));
+			}
+
+			entries_found++;
+		}
+
+		file_size = oct_to_dec(entry->size);
+		block += (file_size + USTAR_BLOCK_SIZE - 1) / USTAR_BLOCK_SIZE;
+		block++;
+		entry = (ustar_entry_t*)(buffer + (block * USTAR_BLOCK_SIZE));
+		
+	}
+
+	kfree(buffer);
+	return entries_found;
+}
 
 int ustar_read(mountpoint_t *mountpoint, const char *path, char *buffer, size_t count) {
 

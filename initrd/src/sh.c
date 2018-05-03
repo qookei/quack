@@ -104,7 +104,7 @@ int itoa(int value, char *sp, int radix) {
 
 
 char input[128];
-char path[1024] __attribute__((aligned(4096)));
+char path[1024];
 
 void _start(void) {
 
@@ -152,7 +152,11 @@ void _start(void) {
 
 		int s = open(input, 0);
 		if (s < 0) {
-			write(1, "File not found!\n", 16);
+			write(1, "File not found! Error: ", 23);
+			char buf[32];
+			itoa(s, buf, 10);
+			write(1, buf, strlen(buf));
+			write(1, "\n", 1);
 		} else {
 			close(s);
 			int f = fork();

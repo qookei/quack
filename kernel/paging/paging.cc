@@ -90,7 +90,7 @@ void crosspd_memcpy(uint32_t dst_pd, void *dst_addr, uint32_t src_pd, void *src_
 		if (dst_phys + dst_off + copy_size > dst_phys + 0x1000)
 			unmap_page((void *)0xE0003000);
 
-		kprintf("copied %u bytes in one iteration\n", copy_size);
+		//kprintf("copied %u bytes in one iteration\n", copy_size);
 
 		copied += copy_size;
 		if (copied >= sz) break;

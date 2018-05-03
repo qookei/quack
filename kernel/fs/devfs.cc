@@ -47,6 +47,24 @@ bool devfs_register_device(devfs_device *dev) {
 	return false;
 }
 
+int devfs_get_ents(mountpoint_t *mountpoint, const char *path, dirent_t *result) {
+	int found_entries = 0;
+
+	for (size_t i = 0; i < DEVFS_DEVICES; i++) {
+		if (devices[i].exists) {
+			if (result) {
+				dirent_t ent;
+				strcpy(ent.name, devices[i].name);
+				memcpy(&result[found_entries], &ent, sizeof(dirent_t));
+			}
+
+			found_entries++;
+		}
+	}
+
+	return found_entries;
+}
+
 size_t devfs_write(const char *path, char *buffer, size_t count) {
 
 	for (size_t i = 0; i < DEVFS_DEVICES; i++) {

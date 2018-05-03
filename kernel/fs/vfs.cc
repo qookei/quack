@@ -152,6 +152,28 @@ int chdir(const char *path) {
 	return 0;
 }
 
+int get_ents(const char *path, dirent_t *result) {
+
+	int mountpoint = determine_mountpoint(path);
+
+	if (mountpoint < 0) {
+		return ENOENT;
+	}
+
+	int status = 0;
+
+	const char *fs_path = path + strlen(mountpoints[mountpoint].path);
+
+	if (strcmp(mountpoints[mountpoint].fs, "devfs") == 0) {
+		status = devfs_get_ents(&mountpoints[mountpoint], fs_path, result);
+	} else if (strcmp(mountpoints[mountpoint].fs, "ustar") == 0) {
+		status = ustar_get_ents(&mountpoints[mountpoint], fs_path, result);
+	}
+
+	return status;
+
+}
+
 int getwd(char *dest) {
 	memcpy(dest, current_task->pwd, strlen(current_task->pwd) + 1);
 	return 0;

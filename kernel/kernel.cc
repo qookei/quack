@@ -115,6 +115,8 @@ void pit_freq(uint32_t frequency) {
 multiboot_info_t *mbootinfo;
 extern void* memcpy(void*, const void*, size_t);
 
+extern mountpoint_t *mountpoints;
+
 // void fastmemcpy(uint32_t dst, uint32_t src, uint32_t size) {
 // 	asm volatile ("mov %0, %%ecx\nmov %1, %%edi\nmov %2, %%esi\nrep movsb" : : "r"(size), "r"(dst), "r"(src) : "%ecx","%edi","%esi");
 // }
@@ -306,6 +308,17 @@ void kernel_main(multiboot_info_t *d) {
 	dev_uptime_init();
 
 	mount("/dev/initrd", "/", "ustar", 0);
+
+	int i = get_ents("/src/", NULL);
+
+	printf("ents found: %i\n", i);
+
+	if (i > 0) {
+		dirent_t *ents = (dirent_t *)kcalloc(sizeof(dirent_t), i);
+		get_ents("/src/", ents);
+		for (int j = 0; j < i; j++)
+			printf("name: %s\n", ents[j].name);
+	}
 
 	char *cmdline = (char *)(0xC0000000 + d->cmdline);
 
