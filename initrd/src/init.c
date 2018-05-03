@@ -13,9 +13,13 @@ int open(const char *name, uint32_t flags) {
 	return _val;
 }
 
-int write(int handle, void *buffer, size_t count) {
+int print(char *buffer) {
 	int _val;
-	asm ("int $0x30" : "=a"(_val) : "a"(6), "b"(handle), "c"(buffer), "d"(count));
+	size_t count = 0;
+	while (buffer[count])
+		count++;
+
+	asm ("int $0x30" : "=a"(_val) : "a"(6), "b"(1), "c"(buffer), "d"(count));
 	return _val;
 }
 
@@ -34,7 +38,7 @@ int fork() {
 int waitpid(int pid) {
 	int _val;
 	asm ("int $0x30" : "=a"(_val) : "a"(3), "b"(pid));
-	return _val;	
+	return _val;
 }
 
 void exit() {
@@ -49,16 +53,14 @@ int close(int handle) {
 
 void _start(void) {
 	/*do stuff xd*/
-	write(1, "init v1.0\n", 10);
+	print("init v1.0.1\n");
 
 	int i = fork();
-	if(!i) {
+	if (!i)
 		execve("/bin/sh");
-	} else {
+	else
 		waitpid(i);
-	}
 
-	write(1, "shell quit!\n", 12);
-	
+	print("shell quit!\n");
 	exit();
 }
