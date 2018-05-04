@@ -13,6 +13,15 @@ int write(int handle, void *buffer, size_t count) {
 	return _val;
 }
 
+int print(char *buffer) {
+	int _val;
+	size_t count = 0;
+	while (buffer[count])
+		count++;
+
+	return write(1, buffer, count);
+}
+
 size_t strlen(const char *s) {
 	size_t len = 0;
 	while(s[len]) {
@@ -24,14 +33,38 @@ size_t strlen(const char *s) {
 char input[128];
 
 void _start(void) {
+	print("Note v1.0.1!\n");
 
-	write(1, "Note v1.0!\n", 11);
-	
+	char kb = 0;
+	uint32_t pos = 0;
+
 	for (int i = 0; i < 128; i++) input[i] = 0;
 	
 	while(1) {
 		read(0, input, 128);
-		write(1, input, strlen(input));
+		print(input);
 		for (int i = 0; i < 128; i++) input[i] = 0;
+
+		while (kb != '\n') {
+			if (kb != 0)  {
+				if (kb != '\b') {
+					input[pos++] = kb;
+					write(1, &kb, 1);
+				} else if (pos > 0) {
+					pos--;
+					input[pos] = 0;
+					print("\b");
+				}
+				kb = 0;
+			}
+			read(0, &kb, 1);
+		}
+		kb = 0;
+		print("\n");
+		if (pos < 1)
+			continue;
+		pos = 0;
+
 	}
 }
+

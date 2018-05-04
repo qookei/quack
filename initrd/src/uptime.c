@@ -19,6 +19,15 @@ int write(int handle, void *buffer, size_t count) {
 	return _val;
 }
 
+int print(char *buffer) {
+	int _val;
+	size_t count = 0;
+	while (buffer[count])
+		count++;
+
+	return write(1, buffer, count);
+}
+
 void exit() {
 	asm ("int $0x30" : : "a"(0));
 }
@@ -76,7 +85,7 @@ char buf[100];
 
 void _start(void) {
 
-	write(1, "up ", 3);
+	print("up ");
 	
 	uint32_t uptime;
 
@@ -85,8 +94,9 @@ void _start(void) {
 	close(i);
 
 	int s = itoa(uptime, buf, 10);
-	write(1, buf, s);
-	write(1, " seconds\n", 9);
+	print(buf);
+	print(" seconds\n");
 
 	exit();
 }
+

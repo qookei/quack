@@ -11,6 +11,15 @@ int write(int handle, void *buffer, size_t count) {
 	return _val;
 }
 
+int print(char *buffer) {
+	int _val;
+	size_t count = 0;
+	while (buffer[count])
+		count++;
+
+	return write(1, buffer, count);
+}
+
 int get_ents(const char *path, dirent_t *result, size_t count) {
 	int _val;
 	asm ("int $0x30" : "=a"(_val) : "a"(15), "b"(path), "c"(result), "d"(count));
@@ -41,13 +50,12 @@ void _start(void) {
 	
 	if (n > 0) {
 		dirent_t ents[n];
-		write(1, path, strlen(path));
 		get_ents(path, ents, n);
 		for (int i = 0; i < n; i++) {
-
-			write(1, ents[i].name, strlen(ents[i].name));
-			write(1, " ", 1);
+			print(ents[i].name);
+			print(" ");
 		}
+		print("\n");
 	} else {
 		write(1, "Error occured!\n", 16); 
 	}

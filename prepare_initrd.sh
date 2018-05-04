@@ -29,6 +29,9 @@ i686-elf-gcc src/crash.c -o bin/crash -ffreestanding -nostdlib -O0
 echo "prepare_initrd - Compiling ls"
 i686-elf-gcc src/ls.c -o bin/ls -ffreestanding -nostdlib -O0
 
+echo "prepare_initrd - Compiling clear"
+i686-elf-gcc src/clear.c -o bin/clear -ffreestanding -nostdlib -O0
+
 echo "prepare_initrd - Packaging"
 tar cf initrd *
 cd ..
