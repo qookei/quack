@@ -309,22 +309,7 @@ void kernel_main(multiboot_info_t *d) {
 
 	mount("/dev/initrd", "/", "ustar", 0);
 
-	int i = get_ents("/src/", NULL);
-
-	printf("ents found: %i\n", i);
-
-	if (i > 0) {
-		dirent_t *ents = (dirent_t *)kcalloc(sizeof(dirent_t), i);
-		get_ents("/src/", ents);
-		for (int j = 0; j < i; j++)
-			printf("name: %s\n", ents[j].name);
-	}
-
 	char *cmdline = (char *)(0xC0000000 + d->cmdline);
-
-
-	printf("boot time %u\n", boot_time);
-	printf("uptime %u\n", getuptime());
 
 	tasking_setup(get_init_path(cmdline));		// default path
 

@@ -98,7 +98,7 @@ void vesa_putchar(uint16_t c, uint32_t x, uint32_t y, uint8_t r, uint8_t g, uint
 		for (uint32_t y = pitch; y < pitch + font.Height * mboot->framebuffer_pitch; y += mboot->framebuffer_pitch) {
 			uint16_t u = 0;
 			
-			if (font.Width == 16) {
+			if (font.Width == 8) {
 				
 				uint32_t idx = bit_start_idx + (y - pitch) / mboot->framebuffer_pitch;
 				
@@ -275,7 +275,7 @@ void vesa_text_putchar(char c) {
 			vesa_scroll_up(font.Height);
 		}
 
-		vesa_putchar(0x01, cur_x * font.Width, cur_y * font.Height, text_R, text_R, text_R);
+		vesa_putchar(0x80, cur_x * font.Width, cur_y * font.Height, text_R, text_R, text_R);
 
 		return;
 	}
@@ -283,7 +283,7 @@ void vesa_text_putchar(char c) {
 	if (c == '\r') {
 		vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 		cur_x = 0;
-		vesa_putchar(0x01, cur_x * font.Width, cur_y * font.Height, text_R, text_R, text_R);
+		vesa_putchar(0x80, cur_x * font.Width, cur_y * font.Height, text_R, text_R, text_R);
 		return;
 	}
 
@@ -296,7 +296,7 @@ void vesa_text_putchar(char c) {
 			cur_x--;
 		}
 		
-		vesa_putchar(0x01, cur_x * font.Width, cur_y * font.Height, text_R, text_R, text_R);
+		vesa_putchar(0x80, cur_x * font.Width, cur_y * font.Height, text_R, text_R, text_R);
 		return;
 	}
 
@@ -311,7 +311,7 @@ void vesa_text_putchar(char c) {
 		}
 	}
 
-	vesa_putchar(0x01, cur_x * font.Width, cur_y * font.Height, text_R, text_R, text_R);
+	vesa_putchar(0x80, cur_x * font.Width, cur_y * font.Height, text_R, text_R, text_R);
 	
 }
 
@@ -455,7 +455,7 @@ void vesa_text_write(const char* data, size_t size) {
 						case 'A': {
 							vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							cur_y -= csi_nums[0]; 
-							vesa_putchar(0x1, cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
+							vesa_putchar(0x80, cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							break;
 						}
 
@@ -489,28 +489,28 @@ void vesa_text_write(const char* data, size_t size) {
 							cur_x = 0;
 							cur_y = 0;
 
-							vesa_putchar(0x1, cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
+							vesa_putchar(0x80, cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							break;
 						}
 
 						case 'B': {
 							vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							cur_y += csi_nums[0]; 
-							vesa_putchar(0x1, cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
+							vesa_putchar(0x80, cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							break;
 						}
 
 						case 'C': {
 							vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							cur_x += csi_nums[0]; 
-							vesa_putchar(0x1, cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
+							vesa_putchar(0x80, cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							break;
 						}
 
 						case 'D': {
 							vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							cur_x -= csi_nums[0]; 
-							vesa_putchar(0x1, cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
+							vesa_putchar(0x80, cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							break;
 						}
 
@@ -518,7 +518,7 @@ void vesa_text_write(const char* data, size_t size) {
 							vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							cur_y = 0;
 							cur_x += csi_nums[0]; 
-							vesa_putchar(0x1, cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
+							vesa_putchar(0x80, cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							break;
 						}
 
@@ -526,14 +526,14 @@ void vesa_text_write(const char* data, size_t size) {
 							vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							cur_y = 0;
 							cur_x -= csi_nums[0]; 
-							vesa_putchar(0x1, cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
+							vesa_putchar(0x80, cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							break;
 						}
 
 						case 'G': {
 							vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							cur_x = csi_nums[0]; 
-							vesa_putchar(0x1, cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
+							vesa_putchar(0x80, cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							break;
 						}
 
@@ -542,7 +542,7 @@ void vesa_text_write(const char* data, size_t size) {
 							vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							cur_x = csi_nums[0] - 1; 
 							cur_y = csi_nums[1] - 1; 
-							vesa_putchar(0x1, cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
+							vesa_putchar(0x80, cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							break;
 						}
 
@@ -557,7 +557,7 @@ void vesa_text_write(const char* data, size_t size) {
 							vesa_putchar(' ', cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							cur_x = cur_x_sav;
 							cur_y = cur_y_sav;
-							vesa_putchar(0x1, cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
+							vesa_putchar(0x80, cur_x * font.Width, cur_y * font.Height, text_R, text_G, text_B);
 							break;
 						}
 
