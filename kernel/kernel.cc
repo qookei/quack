@@ -300,7 +300,7 @@ void kernel_main(multiboot_info_t *d) {
 
 	tasking_setup(get_init_path(cmdline));		// default path
 
-	//ps2_load_keyboard_map("/kbmaps/kbmap_enUS.kbd");
+	ps2_load_keyboard_map("/kbmaps/kbmap_enUS.kbd");
 
 	asm volatile ("mov %%esp, %0" : "=r"(stack));
 

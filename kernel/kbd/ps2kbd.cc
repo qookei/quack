@@ -196,7 +196,7 @@ bool ps2_load_keyboard_map(const char *path) {
 	size_t len = sizeof(lower_normal);
 
 	printf("ps2: len to write: %u\n", len);
-	printf("ps2: len read from file: %i\n", b);
+	printf("ps2: len read from file: %i\n", b / 4);
 
 	memcpy(lower_normal, data + len * 0, len);
 	memcpy(upper_shift, data + len * 1, len);
