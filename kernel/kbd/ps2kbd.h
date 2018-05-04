@@ -7,6 +7,7 @@
 
 void ps2_kbd_init();
 
+bool ps2_load_keyboard_map(const char *);
 
 void ps2_kbd_reset_buffer();
 char getch();

@@ -255,20 +255,7 @@ void kernel_main(multiboot_info_t *d) {
 	ps2mouse_init();
 	boot_time = gettime();
 
-	// printf("[kernel] params: %s\n", (const char*)(0xC0000000 + d->cmdline));
-
 	printf("free memory: %u out of %u bytes free\n", free_pages() * 4096, max_pages() * 4096);
-
-	// multiboot_memory_map_t* mmap = (multiboot_memory_map_t*)(d->mmap_addr + 0xC0000000);
-	// while((uint32_t)mmap < (d->mmap_addr + 0xC0000000 + d->mmap_length)) {
-		
-	// 	uint32_t addr = (uint32_t)mmap->addr;
-	// 	uint32_t len = (uint32_t)mmap->len;
-
-	// 	printf("%08x - %08x | %s\n", addr, addr + len, mem_type_names[mmap->type]);
-
-	// 	mmap = (multiboot_memory_map_t*) ((uint32_t)mmap + mmap->size + sizeof(mmap->size));
-	// }
 	
 	printf("\n");
 
@@ -312,6 +299,8 @@ void kernel_main(multiboot_info_t *d) {
 	char *cmdline = (char *)(0xC0000000 + d->cmdline);
 
 	tasking_setup(get_init_path(cmdline));		// default path
+
+	//ps2_load_keyboard_map("/kbmaps/kbmap_enUS.kbd");
 
 	asm volatile ("mov %%esp, %0" : "=r"(stack));
 

@@ -145,30 +145,68 @@ void ps2_kbd_init() {
 
 }
 
-const char lower_normal[] = { '\0', '?', '1', '2', '3', '4', '5', '6',     
+char lower_normal[] = { '\0', '?', '1', '2', '3', '4', '5', '6',     
 		'7', '8', '9', '0', '-', '=', '\b', '\t', 'q', 'w', 'e', 'r', 't', 'y', 
 				'u', 'i', 'o', 'p', '[', ']', '\n', '\0', 'a', 's', 'd', 'f', 'g', 
 				'h', 'j', 'k', 'l', ';', '\'', '`', '\0', '\\', 'z', 'x', 'c', 'v', 
 				'b', 'n', 'm', ',', '.', '/', '\0', '\0', '\0', ' '};
 
-const char upper_shift[] = { '\0', '?', '!', '@', '#', '$', '%', '^',     
+char upper_shift[] = { '\0', '?', '!', '@', '#', '$', '%', '^',     
 		'&', '*', '(', ')', '_', '+', '\b', '\t', 'Q', 'W', 'E', 'R', 'T', 'Y', 
 				'U', 'I', 'O', 'P', '{', '}', '\n', '\0', 'A', 'S', 'D', 'F', 'G', 
 				'H', 'J', 'K', 'L', ':', '"', '~', '\0', '|', 'Z', 'X', 'C', 'V', 
 				'B', 'N', 'M', '<', '>', '?', '\0', '\0', '\0', ' '};
 
-const char upper_caps[] = { '\0', '?', '1', '2', '3', '4', '5', '6',     
+char upper_caps[] = { '\0', '?', '1', '2', '3', '4', '5', '6',     
 		'7', '8', '9', '0', '-', '=', '\b', '\t', 'Q', 'W', 'E', 'R', 'T', 'Y', 
 				'U', 'I', 'O', 'P', '[', ']', '\n', '\0', 'A', 'S', 'D', 'F', 'G', 
 				'H', 'J', 'K', 'L', ';', '\'', '`', '\0', '\\', 'Z', 'X', 'C', 'V', 
 				'B', 'N', 'M', ',', '.', '/', '\0', '\0', '\0', ' '};
 
-const char lower_shift_caps[] = { '\0', '?', '!', '@', '#', '$', '%', '^',     
+char lower_shift_caps[] = { '\0', '?', '!', '@', '#', '$', '%', '^',     
 		'&', '*', '(', ')', '_', '+', '\b', '\t', 'q', 'w', 'e', 'r', 't', 'y', 
 				'u', 'i', 'o', 'p', '{', '}', '\n', '\0', 'a', 's', 'd', 'f', 'g', 
 				'h', 'j', 'k', 'l', ':', '"', '~', '\0', '|', 'z', 'x', 'c', 'v', 
 				'b', 'n', 'm', '<', '>', '?', '\0', '\0', '\0', ' '};
 
+
+bool ps2_load_keyboard_map(const char *path) {
+	struct stat st;
+	int i = stat(path, &st);
+	if (i < 0) return false;
+	
+	uint8_t *data = (uint8_t *)kmalloc(st.st_size);
+	
+	int file = open(path, O_RDONLY);
+	if (file < 0) {
+		kfree(data);
+		printf("ps2: open failed!\n");
+		return false;
+	}
+
+	int b = read(file, (char *)data, st.st_size);
+	close(file);
+
+	if (b < 0) {
+		printf("ps2: read failed!\n");
+		kfree(data);
+		return false;
+	}
+
+	size_t len = sizeof(lower_normal);
+
+	printf("ps2: len to write: %u\n", len);
+	printf("ps2: len read from file: %i\n", b);
+
+	memcpy(lower_normal, data + len * 0, len);
+	memcpy(upper_shift, data + len * 1, len);
+	memcpy(upper_caps, data + len * 2, len);
+	memcpy(lower_shift_caps, data + len * 3, len);
+
+	kfree(data);
+
+	return true;
+}
 
 bool ps2_interrupt(interrupt_cpu_state *state) {
 	uint8_t sc = inb(0x60);
