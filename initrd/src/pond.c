@@ -67,9 +67,8 @@ void putpx(uint8_t *vram, struct vmode video, uint32_t x, uint32_t y, uint8_t r,
 	vram[x * (video.b / 8) + y * video.p + 1] = g;
 	vram[x * (video.b / 8) + y * video.p + 2] = b;
 }
-void _start(void) {
 
-	char fP[9][4] = {
+char fP[9][4] = {
 				{'*','*','*',' '},
 				{'*',' ',' ','*'},
 				{'*',' ',' ','*'},
@@ -117,6 +116,7 @@ void _start(void) {
 				{' ','*','*','*'},
 			 };
 
+void _start(void) {
 	struct mpack mouse;
 	struct vmode video;
 	int mouse_handle = open("/dev/mouse", 0);
