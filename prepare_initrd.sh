@@ -32,6 +32,9 @@ i686-elf-gcc src/ls.c -o bin/ls -ffreestanding -nostdlib -O0
 echo "prepare_initrd - Compiling clear"
 i686-elf-gcc src/clear.c -o bin/clear -ffreestanding -nostdlib -O0
 
+echo "prepare_initrd - Compiling pond"
+i686-elf-gcc src/pond.c -o bin/pond -ffreestanding -nostdlib -O0
+
 echo "prepare_initrd - Packaging"
 tar cf initrd *
 cd ..
