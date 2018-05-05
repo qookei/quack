@@ -35,6 +35,9 @@ i686-elf-gcc src/clear.c -o bin/clear -ffreestanding -nostdlib -O0
 echo "prepare_initrd - Compiling pond"
 i686-elf-gcc src/pond.c -o bin/pond -ffreestanding -nostdlib -O0
 
+echo "prepare_initrd - Compiling screenfetch"
+i686-elf-gcc src/screenfetch.c -o bin/screenfetch -ffreestanding -nostdlib -O0
+
 echo "prepare_initrd - Packaging"
 tar cf initrd *
 cd ..
