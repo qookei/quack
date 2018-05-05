@@ -102,7 +102,7 @@ void crosspd_memcpy(uint32_t dst_pd, void *dst_addr, uint32_t src_pd, void *src_
 		if (dst_off + copy_size >= 0x1000 && dst_phys)
 			unmap_page((void *)0xEF003000);
 
-		kprintf("copied %u bytes in one iteration\n", copy_size);
+		//kprintf("copied %u bytes in one iteration\n", copy_size);
 
 		sz -= copy_size;
 		
@@ -242,7 +242,7 @@ void *get_phys(uint32_t pd, void *virtualaddr) {
     uint32_t pt = ((uint32_t *)0xE0000000)[pdindex];
     unmap_page((void *)0xE0000000);
     if (!(pt & 0xFFF)) {
-    	kprintf("pt not found in pd, addr: %08x\n", (uint32_t)virtualaddr);
+    	//kprintf("pt not found in pd, addr: %08x\n", (uint32_t)virtualaddr);
     	return NULL;
     }
 
@@ -250,7 +250,7 @@ void *get_phys(uint32_t pd, void *virtualaddr) {
 	uint32_t page = ((uint32_t *)0xE0000000)[ptindex];
     unmap_page((void *)0xE0000000);
     if (!(page & 0xFFF)) {
-    	kprintf("page not found in pt, addr: %08x\n", (uint32_t)virtualaddr);
+    	//kprintf("page not found in pt, addr: %08x\n", (uint32_t)virtualaddr);
     	return NULL;
     }
     
@@ -280,7 +280,7 @@ uint32_t get_flag(uint32_t pd, void *virtualaddr) {
     uint32_t pt = ((uint32_t *)0xE0000000)[pdindex];
     unmap_page((void *)0xE0000000);
     if (!(pt & 0xFFF)) {
-    	kprintf("pt not found in pd\n");
+    	//kprintf("pt not found in pd\n");
     	return 0;
     }
 

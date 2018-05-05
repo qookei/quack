@@ -172,6 +172,8 @@ char lower_shift_caps[] = { '\0', '?', '!', '@', '#', '$', '%', '^',
 				'b', 'n', 'm', '<', '>', '?', '\0', '\0', '\0', ' '};
 
 
+extern void mem_dump(void *, size_t, size_t);
+
 bool ps2_load_keyboard_map(const char *path) {
 	struct stat st;
 	int i = stat(path, &st);
@@ -204,10 +206,17 @@ bool ps2_load_keyboard_map(const char *path) {
 	ps2_upp_cap = (char *)krealloc(ps2_upp_cap, load);
 	ps2_low_csf = (char *)krealloc(ps2_low_csf, load);
 
-	memcpy(ps2_low_def, data + load * 0, load);
-	memcpy(ps2_upp_sft, data + load * 1, load);
-	memcpy(ps2_upp_cap, data + load * 2, load);
-	memcpy(ps2_low_csf, data + load * 3, load);
+	memcpy(ps2_low_def, data, load);
+	memcpy(ps2_upp_sft, &data[load * 1], load);
+	memcpy(ps2_upp_cap, &data[load * 2], load);
+	memcpy(ps2_low_csf, &data[load * 3], load);
+
+	mem_dump(ps2_low_def, load, 16);
+	mem_dump(ps2_upp_sft, load, 16);
+	mem_dump(ps2_upp_cap, load, 16);
+	mem_dump(ps2_low_csf, load, 16);
+
+	mem_dump(data, b, 16);
 
 	kfree(data);
 

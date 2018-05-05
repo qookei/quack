@@ -114,6 +114,8 @@ bool copy_from_user(void *dst, void *src, size_t len) {
 
 char buf[1024];
 
+extern char *ps2_low_def;
+
 bool do_syscall(interrupt_cpu_state *state) {
 
 	switch(state->eax) {
@@ -201,6 +203,9 @@ bool do_syscall(interrupt_cpu_state *state) {
 
 			state->eax = ret;
 			kfree(d);
+
+
+			//em_dump(ps2_low_def, 58, 16);
 
 			break;
 

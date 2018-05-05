@@ -1,7 +1,7 @@
 #ifndef VFS
 #define VFS
 
-#include <kheap/heap.h>
+#include <kheap/liballoc.h>
 #include <string.h>
 
 #define MAX_FILES 			128

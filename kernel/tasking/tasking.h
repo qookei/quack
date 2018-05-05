@@ -1,7 +1,7 @@
 #ifndef TASKING_H
 #define TASKING_H
 
-#include <kheap/heap.h>
+#include <kheap/liballoc.h>
 #include <fs/vfs.h>
 #include <paging/paging.h>
 #include <stddef.h>

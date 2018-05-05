@@ -1,7 +1,7 @@
 #include "vesa_text.h"
 #include "vesa_font.h"
 
-#include <kheap/heap.h>
+#include <kheap/liballoc.h>
 #include <ctype.h>
 #include <stdlib.h>
 
