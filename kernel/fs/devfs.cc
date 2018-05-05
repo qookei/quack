@@ -28,7 +28,7 @@ void devfs_init() {
 	memcpy(mountpoints[0].path, "/dev/", 6);
 	memcpy(mountpoints[0].dev, "?", 2);
 
-	devices = (devfs_device *)kcalloc(sizeof(devfs_device), DEVFS_DEVICES);
+	devices = (devfs_device *)kmalloc(sizeof(devfs_device) * DEVFS_DEVICES);
 }
 
 bool devfs_register_device(devfs_device *dev) {

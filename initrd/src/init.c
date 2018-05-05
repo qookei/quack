@@ -55,11 +55,14 @@ void _start(void) {
 	/*do stuff xd*/
 	print("init v1.0.1\n");
 
-	int i = fork();
-	if (!i)
-		execve("/bin/sh");
-	else
-		waitpid(i);
+	while (1) {
+		int i = fork();
+		if (!i)
+			execve("/bin/sh");
+		else {
+			waitpid(i);
+		}
+	}
 
 	print("shell quit!\n");
 	exit();

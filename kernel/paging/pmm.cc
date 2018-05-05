@@ -1,4 +1,5 @@
 #include "pmm.h"
+#include <string.h>
 
 uint32_t pmm_stack[1048576]={0x0};
 page_metadata_t pmm_metadata[1048576]={{0}};
@@ -6,6 +7,8 @@ page_metadata_t pmm_metadata[1048576]={{0}};
 uint32_t pmm_stack_pointer = 0;
 uint32_t pmm_stack_size = 0;
 uint32_t pmm_stack_max_size = 0;
+
+bool pmm_reset_pages = false;
 
 extern int kprintf(const char*, ...);
 
@@ -78,10 +81,28 @@ void pmm_init(multiboot_info_t *mbt) {
 	kprintf("[kernel] pmm ok\n");
 }
 
+extern void map_page(void *, void *, unsigned int);
+extern void unmap_page(void *);
+extern uint32_t get_cr3();
+extern void set_cr3(uint32_t);
+extern uint32_t def_cr3();
+
 void *pmm_alloc() {
 	uint32_t addr = pmm_pop();
 
 	get_page_metadata(addr)->refcount = 1;
+
+	if (pmm_reset_pages) {
+		uint32_t stored = get_cr3();
+		set_cr3(def_cr3());
+		
+		map_page((void *)addr, (void *)0xE0F00000, 0x7);
+		
+		memset((void *)0xE0F00000, 0, 0x1000);
+		
+		unmap_page((void *)0xE0F00000);	
+		set_cr3(stored);
+	}
 
 	return (void *)addr;
 }

@@ -71,7 +71,8 @@ elf_loaded prepare_elf_for_exec(const char* name) {
 	
 	size_t filesize = get_file_size(name);
 
-	void* elf_file = kmalloc(filesize + 1);
+	void* elf_file = kmalloc(filesize);
+	
 	int u = read(r, (char*)elf_file, filesize);
 	close(r);
 
@@ -101,16 +102,11 @@ elf_loaded prepare_elf_for_exec(const char* name) {
 		if (phdr->size_in_mem & 0xFFF) sz++;
 
 		alloc_mem_at(pagedir, phdr->load_to & 0xFFFFF000, sz, 0x7);
-		crosspd_memset(pagedir, (void *)phdr->load_to, 0, phdr->size_in_mem);
 		
-		if (phdr->size_in_file > 0)
-			crosspd_memcpy(pagedir, (void *)phdr->load_to, def_cr3(), (void *)((uint32_t)elf_file + (phdr->data_offset)), phdr->size_in_file);
-		//else
-			//printf("size not > 0, not copying from disk!\n");
-		//mem_dump((void *)((uint32_t)elf_file + (phdr->data_offset % phdr->align)), phdr->size_in_mem, 8);
-		//printf("dump of hdr section ^, ld to %08x from %08x align %x offset %x\n", phdr->load_to, (uint32_t)elf_file + (phdr->data_offset % phdr->align), phdr->align, phdr->data_offset);
-	}
+		crosspd_memcpy(pagedir, (void *)phdr->load_to, def_cr3(), (void *)((uint32_t)elf_file + (phdr->data_offset)), phdr->size_in_mem);
 
+	}
+/*
 	for(int i=0; i<hdr->sh_ent_cnt; i++) {
 		elf_section_header *shdr = (elf_section_header *)((uint8_t *)(elf_file) + hdr->shoff + hdr->sh_ent_size * i);
 
@@ -121,13 +117,16 @@ elf_loaded prepare_elf_for_exec(const char* name) {
 				crosspd_memcpy(pagedir, (void *)shdr->addr, def_cr3(), (uint8_t *)(elf_file) + shdr->offset, shdr->size > 0x1000 ? 0x1000 : shdr->size);
 			}
 		}
-	}
+	}*/
+
+	
+
 
 	result.page_direc = pagedir;
 	result.entry_addr = hdr->entry;
 	result.success_ld = true;
 
-	//kfree(elf_file);
+	kfree(elf_file);
 
 	return result;
 }

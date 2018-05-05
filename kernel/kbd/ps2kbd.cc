@@ -37,6 +37,8 @@ bool ps2_interrupt(interrupt_cpu_state *state);
 char ps2_keyboard_buffer[512] = {0};
 uint32_t ps2_keyboard_buffer_idx = 0;
 
+char *ps2_low_def, *ps2_upp_sft, *ps2_upp_cap, *ps2_low_csf;
+
 #define PS2_KBD_INIT_CONT
 
 void ps2_kbd_init() {
@@ -45,7 +47,7 @@ void ps2_kbd_init() {
 
 	outb(PS2_COMM_PORT, 0xAD);									// disable ports
 	outb(PS2_COMM_PORT, 0xA7);
-	while (BITTEST(inb(PS2_STAT_PORT), 1)) inb(PS2_DATA_PORT); 	// flush buffers
+	while (BITTEST(inb(PS2_STAT_PORT), 1)) inb(PS2_DATA_PORT);	// flush buffers
 
 	// printf("[ps2kbd] buffer flush ok\n");
 
@@ -124,7 +126,7 @@ void ps2_kbd_init() {
 	// printf("[ps2kbd] enable interrupts ok\n");
 
 	ps2_wait_ready();
-	outb(PS2_DATA_PORT, 0xFF); 									// keyboard should work now, i hope
+	outb(PS2_DATA_PORT, 0xFF);									// keyboard should work now, i hope
 
 	ps2_wait_ready();
 	outb(PS2_DATA_PORT, 0xF0);
@@ -145,25 +147,25 @@ void ps2_kbd_init() {
 
 }
 
-char lower_normal[] = { '\0', '?', '1', '2', '3', '4', '5', '6',     
+char lower_normal[] = { '\0', '?', '1', '2', '3', '4', '5', '6',	 
 		'7', '8', '9', '0', '-', '=', '\b', '\t', 'q', 'w', 'e', 'r', 't', 'y', 
 				'u', 'i', 'o', 'p', '[', ']', '\n', '\0', 'a', 's', 'd', 'f', 'g', 
 				'h', 'j', 'k', 'l', ';', '\'', '`', '\0', '\\', 'z', 'x', 'c', 'v', 
 				'b', 'n', 'm', ',', '.', '/', '\0', '\0', '\0', ' '};
 
-char upper_shift[] = { '\0', '?', '!', '@', '#', '$', '%', '^',     
+char upper_shift[] = { '\0', '?', '!', '@', '#', '$', '%', '^',		
 		'&', '*', '(', ')', '_', '+', '\b', '\t', 'Q', 'W', 'E', 'R', 'T', 'Y', 
 				'U', 'I', 'O', 'P', '{', '}', '\n', '\0', 'A', 'S', 'D', 'F', 'G', 
 				'H', 'J', 'K', 'L', ':', '"', '~', '\0', '|', 'Z', 'X', 'C', 'V', 
 				'B', 'N', 'M', '<', '>', '?', '\0', '\0', '\0', ' '};
 
-char upper_caps[] = { '\0', '?', '1', '2', '3', '4', '5', '6',     
+char upper_caps[] = { '\0', '?', '1', '2', '3', '4', '5', '6',	   
 		'7', '8', '9', '0', '-', '=', '\b', '\t', 'Q', 'W', 'E', 'R', 'T', 'Y', 
 				'U', 'I', 'O', 'P', '[', ']', '\n', '\0', 'A', 'S', 'D', 'F', 'G', 
 				'H', 'J', 'K', 'L', ';', '\'', '`', '\0', '\\', 'Z', 'X', 'C', 'V', 
 				'B', 'N', 'M', ',', '.', '/', '\0', '\0', '\0', ' '};
 
-char lower_shift_caps[] = { '\0', '?', '!', '@', '#', '$', '%', '^',     
+char lower_shift_caps[] = { '\0', '?', '!', '@', '#', '$', '%', '^',	 
 		'&', '*', '(', ')', '_', '+', '\b', '\t', 'q', 'w', 'e', 'r', 't', 'y', 
 				'u', 'i', 'o', 'p', '{', '}', '\n', '\0', 'a', 's', 'd', 'f', 'g', 
 				'h', 'j', 'k', 'l', ':', '"', '~', '\0', '|', 'z', 'x', 'c', 'v', 
@@ -193,15 +195,19 @@ bool ps2_load_keyboard_map(const char *path) {
 		return false;
 	}
 
-	size_t len = sizeof(lower_normal);
+	size_t load = b / 4;
 
-	printf("ps2: len to write: %u\n", len);
 	printf("ps2: len read from file: %i\n", b / 4);
 
-	memcpy(lower_normal, data + len * 0, len);
-	memcpy(upper_shift, data + len * 1, len);
-	memcpy(upper_caps, data + len * 2, len);
-	memcpy(lower_shift_caps, data + len * 3, len);
+	ps2_low_def = (char *)krealloc(ps2_low_def, load);
+	ps2_upp_sft = (char *)krealloc(ps2_upp_sft, load);
+	ps2_upp_cap = (char *)krealloc(ps2_upp_cap, load);
+	ps2_low_csf = (char *)krealloc(ps2_low_csf, load);
+
+	memcpy(ps2_low_def, data + load * 0, load);
+	memcpy(ps2_upp_sft, data + load * 1, load);
+	memcpy(ps2_upp_cap, data + load * 2, load);
+	memcpy(ps2_low_csf, data + load * 3, load);
 
 	kfree(data);
 
@@ -229,13 +235,13 @@ bool ps2_interrupt(interrupt_cpu_state *state) {
 		char c = 0;
 		
 		if (caps && !shift)
-			c = upper_caps[sc];
+			c = ps2_upp_cap[sc];
 		else if (!caps && shift)
-			c = upper_shift[sc];
+			c = ps2_upp_sft[sc];
 		else if (caps && shift)
-			c = lower_shift_caps[sc];
+			c = ps2_low_csf[sc];
 		else
-			c = lower_normal[sc];
+			c = ps2_low_def[sc];
 	
 		if (ps2_keyboard_buffer_idx < 512) {
 			ps2_keyboard_buffer[ps2_keyboard_buffer_idx++] = c;
@@ -249,8 +255,8 @@ bool ps2_interrupt(interrupt_cpu_state *state) {
 void ps2_kbd_reset_buffer() {
 
 	uint8_t tmp = 0x01;
-    while (inb(0x64) & 0x01)
-        tmp = inb(0x60);
+	while (inb(0x64) & 0x01)
+		tmp = inb(0x60);
 
 	ps2_keyboard_buffer_idx = 0;
 	memset(ps2_keyboard_buffer, 0, 512);

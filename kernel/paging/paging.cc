@@ -46,6 +46,9 @@ void copy_unaligned_src_aligned_dst(void *dst, void *src, size_t len, ) {
 }
 */
 
+void *get_phys_at_next(uint32_t pd, void *addr) {
+	return get_phys(pd, (void *)(((uint32_t)addr + 0x1000) & 0xFFFFF000));
+}
 
 void crosspd_memcpy(uint32_t dst_pd, void *dst_addr, uint32_t src_pd, void *src_addr, size_t sz) {
 	uint32_t src_phys;
@@ -54,46 +57,58 @@ void crosspd_memcpy(uint32_t dst_pd, void *dst_addr, uint32_t src_pd, void *src_
 	uint32_t src_off;
 	uint32_t dst_off;
 
-	uint32_t cur = get_cr3();
-	set_cr3(src_pd);
-	src_phys = (uint32_t)get_phys(src_addr);
-	set_cr3(dst_pd);
-	dst_phys = (uint32_t)get_phys(dst_addr);
-	set_cr3(cur);
+	src_phys = (uint32_t)get_phys(src_pd, src_addr);
+	dst_phys = (uint32_t)get_phys(dst_pd, dst_addr);
 
-	src_off = src_phys & 0xFFF;
-	src_phys &= ~0xFFF;
+	src_off = (uint32_t)src_addr & 0xFFF;
+	src_phys = src_phys & 0xFFFFF000; 
+	
+	dst_off = (uint32_t)dst_addr & 0xFFF;
+	dst_phys = dst_phys & 0xFFFFF000;
 
-	dst_off = dst_phys & 0xFFF;
-	dst_phys &= ~0xFFF;
-
-	uint32_t copied = 0;
-
-	while (1) {
+	//printf("src phys: %08x off: %08x \n", src_phys, src_off);
+	//printf("dst phys: %08x off: %08x\n", dst_phys, dst_off);
+	
+	while (sz > 0) {
 		size_t copy_size = sz > 0x1000 ? 0x1000 : sz;
 		// map source
-		map_page((void *)src_phys, (void *)0xE0000000, 0x3);
-		if (src_phys + src_off + copy_size > src_phys + 0x1000)
-			map_page((void *)(src_phys + 0x1000), (void *)0xE0001000, 0x3);
+		map_page((void *)src_phys, (void *)0xEF000000, 0x3);
 
-		map_page((void *)dst_phys, (void *)0xE0002000, 0x3);
-		if (dst_phys + dst_off + copy_size > dst_phys + 0x1000)
-			map_page((void *)(dst_phys + 0x1000), (void *)0xE0003000, 0x3);
+		src_addr = (void *)((uint32_t)src_addr + 0x1000);
+		src_phys = (uint32_t)get_phys(src_pd, src_addr) & 0xFFFFF000;
 
-		memcpy((void *)(0xE0002000 + dst_off), (void *)(0xE0000000 + src_off), copy_size);
+		if (src_off + copy_size >= 0x1000 && src_phys)
+			map_page((void *)src_phys, (void *)0xEF001000, 0x3);
 
-		unmap_page((void *)0xE0000000);
-		if (src_phys + src_off + copy_size > src_phys + 0x1000)
-			unmap_page((void *)0xE0001000);
+		// map destination
+		map_page((void *)dst_phys, (void *)0xEF002000, 0x3);
 
-		unmap_page((void *)0xE0002000);
-		if (dst_phys + dst_off + copy_size > dst_phys + 0x1000)
-			unmap_page((void *)0xE0003000);
+		dst_addr = (void *)((uint32_t)dst_addr + 0x1000);		
+		dst_phys = (uint32_t)get_phys(dst_pd, dst_addr) & 0xFFFFF000;
 
-		//kprintf("copied %u bytes in one iteration\n", copy_size);
+		if (dst_off + copy_size >= + 0x1000 && dst_phys)
+			map_page((void *)dst_phys, (void *)0xEF003000, 0x3);
 
-		copied += copy_size;
-		if (copied >= sz) break;
+		// copy
+		memcpy((void *)(0xEF002000 + dst_off), (void *)(0xEF000000 + src_off), copy_size);
+
+		// unmap source
+		unmap_page((void *)0xEF000000);
+		if (src_off + copy_size >= 0x1000 && src_phys)
+			unmap_page((void *)0xEF001000);
+
+		// unmap destination
+		unmap_page((void *)0xEF002000);
+		if (dst_off + copy_size >= 0x1000 && dst_phys)
+			unmap_page((void *)0xEF003000);
+
+		kprintf("copied %u bytes in one iteration\n", copy_size);
+
+		sz -= copy_size;
+		
+		
+		
+		
 
 	}
 
@@ -103,10 +118,7 @@ void crosspd_memset(uint32_t dst_pd, void *dst_addr, int num, size_t sz) {
 	uint32_t dst_phys;
 	uint32_t dst_off;
 
-	uint32_t cur = get_cr3();
-	set_cr3(dst_pd);
-	dst_phys = (uint32_t)get_phys(dst_addr);
-	set_cr3(cur);
+	dst_phys = (uint32_t)get_phys(dst_pd, dst_addr);
 
 	dst_off = dst_phys & 0xFFF;
 	dst_phys &= ~0xFFF;
@@ -135,14 +147,17 @@ void crosspd_memset(uint32_t dst_pd, void *dst_addr, int num, size_t sz) {
 
 
 
-void alloc_mem_at(uint32_t pd, uint32_t where, size_t pages, uint32_t flags) {
+void *alloc_mem_at(uint32_t pd, uint32_t where, size_t pages, uint32_t flags) {
 	uint32_t opd = get_cr3();
+	void *dst_phys;
 	set_cr3(pd);
 	for (size_t i = 0; i < pages; i++) {
-		void *mem = pmm_alloc();
-		map_page(mem, (void *)(where + i * 0x1000), flags);
+		void *p = pmm_alloc();
+		map_page(p, (void *)(where + i * 0x1000), flags);
+		if (!i) dst_phys = p;
 	}
 	set_cr3(opd);
+	return dst_phys;
 }
 
 uint32_t alloc_clean_page() {
@@ -168,7 +183,11 @@ uint32_t alloc_clean_page() {
 	return pt_f[0] & 0xFFFFF000;
 }
 
+extern bool pmm_reset_pages;
+
 void map_page(void *physaddr, void *virtualaddr, unsigned int flags) {
+	bool ostat = pmm_reset_pages;
+	pmm_reset_pages = false;
 	if ((((uint32_t)physaddr) & 0xFFF) != 0 || (((uint32_t)virtualaddr)&0xFFF) != 0) {
 		kprintf("map_page with unaligned address(es)!\n");
 		return;
@@ -191,6 +210,7 @@ void map_page(void *physaddr, void *virtualaddr, unsigned int flags) {
     pt[ptindex] = ((uint32_t)physaddr) | (flags & 0xFFF) | 0x01; // Present
 
     tlb_flush_entry((uint32_t)virtualaddr);
+	pmm_reset_pages = ostat;
 }
 
 void unmap_page(void *virtualaddr) {
@@ -214,19 +234,15 @@ void unmap_page(void *virtualaddr) {
 
 }
 
-void *get_phys(void *virtualaddr) {
+void *get_phys(uint32_t pd, void *virtualaddr) {
     uint32_t pdindex = (uint32_t)virtualaddr >> 22;
     uint32_t ptindex = (uint32_t)virtualaddr >> 12 & 0x03FF;
-	
-	uint32_t page_dir = get_cr3();
-	set_cr3(def_cr3());
 
-    map_page((void *)page_dir, (void *)0xE0000000, 0x3);
+    map_page((void *)pd, (void *)0xE0000000, 0x3);
     uint32_t pt = ((uint32_t *)0xE0000000)[pdindex];
     unmap_page((void *)0xE0000000);
     if (!(pt & 0xFFF)) {
-    	set_cr3(page_dir);
-    	kprintf("pt not found in pd\n");
+    	kprintf("pt not found in pd, addr: %08x\n", (uint32_t)virtualaddr);
     	return NULL;
     }
 
@@ -234,12 +250,10 @@ void *get_phys(void *virtualaddr) {
 	uint32_t page = ((uint32_t *)0xE0000000)[ptindex];
     unmap_page((void *)0xE0000000);
     if (!(page & 0xFFF)) {
-    	set_cr3(page_dir);
-    	kprintf("page not found in pt\n");
+    	kprintf("page not found in pt, addr: %08x\n", (uint32_t)virtualaddr);
     	return NULL;
     }
     
-    set_cr3(page_dir);
     return (void*)((page & 0xFFFFF000) + ((uint32_t)virtualaddr & 0xFFF));
 
  //    uint32_t *pd = (uint32_t *)0xFFFFF000;
@@ -258,18 +272,14 @@ void *get_phys(void *virtualaddr) {
  //    return (void *)((pt[ptindex] & ~0xFFF) + ((uint32_t)virtualaddr & 0xFFF));
 }
 
-uint32_t get_flag(void *virtualaddr) {
+uint32_t get_flag(uint32_t pd, void *virtualaddr) {
     uint32_t pdindex = (uint32_t)virtualaddr >> 22;
     uint32_t ptindex = (uint32_t)virtualaddr >> 12 & 0x03FF;
-	
-	uint32_t page_dir = get_cr3();
-	set_cr3(def_cr3());
 
-    map_page((void *)page_dir, (void *)0xE0000000, 0x3);
+    map_page((void *)pd, (void *)0xE0000000, 0x3);
     uint32_t pt = ((uint32_t *)0xE0000000)[pdindex];
     unmap_page((void *)0xE0000000);
     if (!(pt & 0xFFF)) {
-    	set_cr3(page_dir);
     	kprintf("pt not found in pd\n");
     	return 0;
     }
@@ -277,8 +287,7 @@ uint32_t get_flag(void *virtualaddr) {
     map_page((void *)(pt & 0xFFFFF000), (void *)0xE0000000, 0x3);
 	uint32_t page = ((uint32_t *)0xE0000000)[ptindex];
     unmap_page((void *)0xE0000000);
-    
-    set_cr3(page_dir);
+   
     return page & 0xFFF;
 }
 
@@ -352,7 +361,7 @@ bool __attribute__((noreturn)) page_fault(interrupt_cpu_state *state) {
 
 		uint8_t buf[64];
 
-		set_cr3(isr_old_cr3);
+		set_cr3(current_task->cr3);
 		memcpy(buf, (void *)state->eip, 64);
 		set_cr3(def_cr3());
 
@@ -414,6 +423,8 @@ bool __attribute__((noreturn)) page_fault(interrupt_cpu_state *state) {
 
 }
 
+//extern bool pmm_reset_pages;
+
 void paging_init(void) {
 
 	register_interrupt_handler(14, page_fault);
@@ -446,5 +457,7 @@ void paging_init(void) {
 
 
 	kprintf("[kernel] paging ok\n");
+
+	//pmm_reset_pages = true;
 
 }

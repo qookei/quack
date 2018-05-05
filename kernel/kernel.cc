@@ -14,7 +14,7 @@
 #include <paging/paging.h>
 #include <tty/tty.h>
 #include <tty/backends/vesa_text.h>
-#include <kheap/liballoc.h>
+#include <kheap/heap.h>
 #include <io/rtc.h>
 #include <kbd/ps2kbd.h>
 #include <mouse/ps2mouse.h>
@@ -48,6 +48,8 @@ bool axc = false;
 char lastkey = '\0';
 
 uint8_t u = 0;
+
+extern bool pmm_reset_pages;
 
 extern uint8_t minute;
 extern uint8_t hour;
@@ -232,10 +234,14 @@ void kernel_main(multiboot_info_t *d) {
 
 	paging_init();
 
+	heap_init();
+
 	vesa_text_tty_set_mboot(d);
 	tty_setdev(vesa_text_tty_dev);
 
 	tty_init();
+
+	//pmm_reset_pages = true;
 
 	mbootinfo = d;
 

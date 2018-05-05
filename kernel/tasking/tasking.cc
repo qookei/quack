@@ -226,9 +226,7 @@ uint32_t tasking_fork(interrupt_cpu_state *state) {
     uint32_t new_proc_pd = create_page_directory(mbootinfo);
     t->cr3 = new_proc_pd;
 
-    set_cr3(current_task->cr3);
-
-    uint32_t pd_addr = (uint32_t)get_phys((void *)0xFFFFF000);
+    uint32_t pd_addr = (uint32_t)get_phys(current_task->cr3, (void *)0xFFFFF000);
 
 
     uint32_t kernel_addr = (0xC0000000 >> 22);
@@ -326,18 +324,12 @@ int tasking_execve(const char *name, char **argv, char **envp) {
 
     t->cr3 = r.page_direc;
 
-	char buf[64];
-
     set_cr3(t->cr3);
 
     void* map = pmm_alloc();
     map_page(map, (void*)0xA0000000, 0x7);
 
-	memcpy(buf, (void *)r.entry_addr, 64);
-
 	set_cr3(def_cr3());
-
-	//mem_dump(buf, 64, 8);
 
     t->st.ebx = 0;
     t->st.ebx = 0;
@@ -351,9 +343,6 @@ int tasking_execve(const char *name, char **argv, char **envp) {
     t->st.eip = r.entry_addr;
     t->st.eflags = 0x202;
 		
-	//printf("entry is %08x\n", r.entry_addr);
-	//printf("new cr3 is %08x\n", r.page_direc);
-
     return 0;
 }
 
