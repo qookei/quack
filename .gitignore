@@ -5,3 +5,4 @@ kernel.elf
 serial.txt
 /bochsout.txt
 initrd/bin/*
+initrd/initrd
