@@ -14,7 +14,7 @@
 #include <paging/paging.h>
 #include <tty/tty.h>
 #include <tty/backends/vesa_text.h>
-#include <kheap/liballoc.h>
+#include <kheap/heap.h>
 #include <io/rtc.h>
 #include <kbd/ps2kbd.h>
 #include <mouse/ps2mouse.h>

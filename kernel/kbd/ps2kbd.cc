@@ -178,8 +178,10 @@ bool ps2_load_keyboard_map(const char *path) {
 	struct stat st;
 	int i = stat(path, &st);
 	if (i < 0) return false;
-	
-	uint8_t *data = (uint8_t *)kmalloc(st.st_size);
+
+	if (ps2_low_def) kfree(ps2_low_def);
+
+	char *data = (char *)kmalloc(st.st_size);
 	
 	int file = open(path, O_RDONLY);
 	if (file < 0) {
@@ -188,7 +190,7 @@ bool ps2_load_keyboard_map(const char *path) {
 		return false;
 	}
 
-	int b = read(file, (char *)data, st.st_size);
+	int b = read(file, data, st.st_size);
 	close(file);
 
 	if (b < 0) {
@@ -201,24 +203,11 @@ bool ps2_load_keyboard_map(const char *path) {
 
 	printf("ps2: len read from file: %i\n", b / 4);
 
-	ps2_low_def = (char *)krealloc(ps2_low_def, load);
-	ps2_upp_sft = (char *)krealloc(ps2_upp_sft, load);
-	ps2_upp_cap = (char *)krealloc(ps2_upp_cap, load);
-	ps2_low_csf = (char *)krealloc(ps2_low_csf, load);
-
-	memcpy(ps2_low_def, data, load);
-	memcpy(ps2_upp_sft, &data[load * 1], load);
-	memcpy(ps2_upp_cap, &data[load * 2], load);
-	memcpy(ps2_low_csf, &data[load * 3], load);
-
-	mem_dump(ps2_low_def, load, 16);
-	mem_dump(ps2_upp_sft, load, 16);
-	mem_dump(ps2_upp_cap, load, 16);
-	mem_dump(ps2_low_csf, load, 16);
-
-	mem_dump(data, b, 16);
-
-	kfree(data);
+	
+	ps2_low_def = data;
+	ps2_upp_sft = data + load;
+	ps2_upp_cap = data + load * 2;
+	ps2_low_csf = data + load * 3;	
 
 	return true;
 }

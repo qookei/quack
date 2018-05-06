@@ -185,6 +185,8 @@ bool do_syscall(interrupt_cpu_state *state) {
 
 			state->eax = open((const char *)d, state->ecx);
 
+			kfree(d);
+
 			break;
 		}
 
@@ -225,6 +227,8 @@ bool do_syscall(interrupt_cpu_state *state) {
 			}
 
 			kfree(d);
+
+			//mem_dump(ps2_low_def, 58, 16);
 					
 			break;
 		}
@@ -382,9 +386,8 @@ bool do_syscall(interrupt_cpu_state *state) {
 
 			if (res != NULL) {
 				copy_to_user((void *)state->ecx, res, state->edx * sizeof(dirent_t));
+				kfree(res);
 			}
-
-			kfree(res);
 
 			state->eax = ret;
 

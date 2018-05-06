@@ -184,11 +184,11 @@ int ustar_read(mountpoint_t *mountpoint, const char *path, char *buffer, size_t 
 
 	if (size < count) {
 		memcpy(buffer, data, size);
-		kfree(buffer);
+		kfree(_buffer);
 		return size;
 	} else {
 		memcpy(buffer, data, count);
-		kfree(buffer);
+		kfree(_buffer);
 		return count;
 	}
 
