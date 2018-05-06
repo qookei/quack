@@ -183,7 +183,7 @@ void _start(void) {
 			close(s);
 			int f = fork();
 			if (!f) {
-				int i = execve(input);
+				int i = execve(comm);
 				if (i < 0)
 					print("Failed to exec!\n");
 				exit();

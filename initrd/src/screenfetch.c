@@ -84,20 +84,17 @@ void _start(void) {
 
 	int s = itoa(uptime, buf, 10);
 
-	write(1, "\e[1m", 4);
-	write(1, "\e[33m", 5);
-	write(1, "            ..        OS: Quack\n", 32);
-	write(1, "           ( '`<      Kernel: i686 Quack\n", 41);
-	write(1, "            )(        Shell: Quack Bash\n", 40);
-	//print(buf);
-	//print("s\n");
-	write(1, "     ( ----'  '.      DE: Pond 1.0\n", 35);
-	write(1, "     (         ;\n", 17);
-	write(1, "      (_______,'\n", 17);
-	write(1, "\e[0m", 4);
-	write(1, "\e[34m", 5);
-	write(1, " ~^~^~^~^~^~^~^~^~^~^~\n", 23);
-	write(1, "\e[37m", 5);
+	print("\e[1m");
+	print("\e[33m");
+	print("          ..         OS: ");	print("\e[0m"); print("\e[37m"); print("quack\n");		print("\e[1m");	print("\e[33m");
+	print("          ( '`<      Kernel: ");	print("\e[0m"); print("\e[37m"); print("i686 quack\n");		print("\e[1m"); print("\e[33m");
+	print("           )(        Shell: ");	print("\e[0m"); print("\e[37m"); print("sh\n");			print("\e[1m"); print("\e[33m");
+	print("    ( ----'  '.      Uptime: ");	print("\e[0m"); print("\e[37m"); print(buf); print("sec\n");	print("\e[1m"); print("\e[33m");
+	print("    (         ;      DE: ");	print("\e[0m"); print("\e[37m"); print("Pond 1.0\n");		print("\e[1m"); print("\e[33m");
+	print("     (_______,'\n");		print("\e[0m"); 
+	print("\e[34m");
+	print("~^~^~^~^~^~^~^~^~^~^~\n");
+	print("\e[37m");
 	exit();
 }
 
