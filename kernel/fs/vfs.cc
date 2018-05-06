@@ -334,13 +334,13 @@ int stat(const char *path, struct stat *destination) {
 
 	if (strcmp(tmp, "/") == 0) {
 		memcpy(destination, &root_stat, sizeof(struct stat));
-	//	kfree(tmp);
+		kfree(tmp);
 		return 0;
 	}
 
 	if (strcmp(tmp, "/dev") == 0) {
 		memcpy(destination, &_devfs_stat, sizeof(struct stat));
-	//	kfree(tmp);
+		kfree(tmp);
 		return 0;
 	}
 
@@ -358,6 +358,43 @@ int stat(const char *path, struct stat *destination) {
 	}
 
 	kfree(tmp);
+
+	return status;
+
+}
+
+int fstat(int handle, struct stat *destination) {
+
+	int status = 0;
+
+	if (current_task->files[handle].present != 1) {
+		return EBADF;
+	}
+
+	char *path = current_task->files[handle].path;
+
+	if (strcmp(path, "/") == 0) {
+		memcpy(destination, &root_stat, sizeof(struct stat));
+		return 0;
+	}
+
+	if (strcmp(path, "/dev") == 0) {
+		memcpy(destination, &_devfs_stat, sizeof(struct stat));
+		return 0;
+	}
+
+	int mountpoint = determine_mountpoint(path);
+	if (mountpoint < 0) {
+		return ENOENT;
+	}
+
+	const char *fs_path = path + strlen(mountpoints[mountpoint].path);
+	
+	if (strcmp(mountpoints[mountpoint].fs, "devfs") == 0) {
+		status = devfs_stat(fs_path, destination);
+	} else if (strcmp(mountpoints[mountpoint].fs, "ustar") == 0) {
+		status = ustar_stat(&mountpoints[mountpoint], fs_path, destination);
+	}
 
 	return status;
 

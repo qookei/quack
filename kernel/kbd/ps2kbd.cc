@@ -21,11 +21,11 @@ bool ps2_dual_channel;
 
 bool caps, shift;
 
-void inline ps2_wait_response () {
+void inline ps2_wait_response() {
 	while (!BITTEST(inb(PS2_STAT_PORT), 0));
 }
 
-void inline ps2_wait_ready () {
+void inline ps2_wait_ready() {
 	while (BITTEST(inb(PS2_STAT_PORT), 1));
 }
 
@@ -38,6 +38,23 @@ char ps2_keyboard_buffer[512] = {0};
 uint32_t ps2_keyboard_buffer_idx = 0;
 
 char *ps2_low_def, *ps2_upp_sft, *ps2_upp_cap, *ps2_low_csf;
+
+void ps2_set_led(bool _caps, bool _num, bool _scroll) {
+
+	uint8_t val = 0;
+	if (_scroll) val |= 1;
+	if (_num)	val |= 2;
+	if (_caps)	val |= 4;
+
+	ps2_wait_ready();
+	outb(PS2_DATA_PORT, 0xED);
+
+	ps2_wait_ready();
+	outb(PS2_DATA_PORT, val);
+	
+	ps2_wait_response();
+	uint8_t a = inb(PS2_DATA_PORT);
+}
 
 #define PS2_KBD_INIT_CONT
 
@@ -126,7 +143,7 @@ void ps2_kbd_init() {
 	// printf("[ps2kbd] enable interrupts ok\n");
 
 	ps2_wait_ready();
-	outb(PS2_DATA_PORT, 0xFF);									// keyboard should work now, i hope
+	outb(PS2_DATA_PORT, 0xFF);						// keyboard should work now, i hope
 
 	ps2_wait_ready();
 	outb(PS2_DATA_PORT, 0xF0);
@@ -137,6 +154,7 @@ void ps2_kbd_init() {
 
 	printf("[ps2kbd] init done\n");
 
+	//ps2_set_led(true, true, true);
 
 	// asm volatile ("sti");
 
@@ -215,13 +233,15 @@ bool ps2_load_keyboard_map(const char *path) {
 bool ps2_interrupt(interrupt_cpu_state *state) {
 	uint8_t sc = inb(0x60);
 	
+
 	if (sc == SC_RIGHT_SHIFT_REL || sc == SC_LEFT_SHIFT_REL)
 		shift = false;
 	else if (sc == SC_RIGHT_SHIFT || sc == SC_LEFT_SHIFT)
 		shift = true;
-	else if (sc == SC_CAPSLOCK)
+	else if (sc == SC_CAPSLOCK) {
 		caps = !caps;
-	else if (sc == SC_F12) {
+		ps2_set_led(caps, false, true);
+	} else if (sc == SC_F12) {
 		set_cr3(def_cr3());
 		task_t *t = current_task;
 		tasking_schedule_next();
@@ -246,15 +266,13 @@ bool ps2_interrupt(interrupt_cpu_state *state) {
 		}
 	}
 
-
 	return true;
 }
 
 void ps2_kbd_reset_buffer() {
 
-	uint8_t tmp = 0x01;
 	while (inb(0x64) & 0x01)
-		tmp = inb(0x60);
+		(void)inb(0x60);
 
 	ps2_keyboard_buffer_idx = 0;
 	memset(ps2_keyboard_buffer, 0, 512);

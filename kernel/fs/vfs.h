@@ -124,6 +124,7 @@ int close(int);
 size_t read(int, char *, size_t);
 size_t write(int, char *, size_t);
 int stat(const char *, struct stat *);
+int fstat(int, struct stat *);
 int mount(const char *, const char *, const char *, uint32_t);
 
 int chdir(const char *);

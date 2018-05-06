@@ -22,6 +22,7 @@
 	12- getwd(buf ebx)								->		status eax
 	13- getcwd(buf ebx, len ecx)					->		status eax
 	15- get_ents(path ebx, result ecx, nents edx)	->		status eax
+	16- fstat(handle ebx, dst ecx)					->		status eax
 
 	resources:
 	8 - request resource(resource_id ebx)			->		resource address eax or 0xFFFFFFFF
@@ -103,7 +104,6 @@ bool copy_from_user(void *dst, void *src, size_t len) {
 		return false;
 	
 	if (!verify_addr((uint32_t)current_task->cr3, (uint32_t)src, len, 0x5)) {
-		printf("failed addr %08x", (uint32_t) src);
 		return false;
 	}
 	
@@ -319,6 +319,46 @@ bool do_syscall(interrupt_cpu_state *state) {
 
 		case 10: {
 			// stat
+			
+			char *path = (char *)kmalloc(1024);
+			bool out = copy_from_user(path, (void *)state->ebx, 1024);
+			if (!out) {
+				state->eax = EFAULT;
+				kfree(path);
+				break;
+			}
+			struct stat st;
+			int status = stat(path, &st);
+			
+			kfree(path);
+
+			out = copy_to_user((void *)state->ecx, &st, sizeof(struct stat));
+
+			if (!out) {
+				state->eax = EFAULT;
+				break;
+			}
+
+			state->eax = out;
+
+			break;
+		}
+
+		case 16: {
+			// fstat
+			
+			struct stat st;
+			int status = fstat(state->ebx, &st);
+
+			bool out = copy_to_user((void *)state->ecx, &st, sizeof(struct stat));
+
+			if (!out) {
+				state->eax = EFAULT;
+				break;
+			}
+
+			state->eax = out;
+
 			break;
 		}
 

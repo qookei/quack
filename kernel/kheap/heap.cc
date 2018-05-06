@@ -152,7 +152,7 @@ void kfree(void *pointer) {
 	block->used = false;
 	block->magic = MAGIC_FREED;
 	
-	kprintf("heap: freeing block of size %u bytes at %08p\n", block->size, pointer);
+	//kprintf("heap: freeing block of size %u bytes at %08p\n", block->size, pointer);
 
 	/*
 	if (block->prev) {
