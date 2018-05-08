@@ -2,6 +2,11 @@
 
 cd initrd
 
+if [ ! -d bin ]; then
+	echo "prepare_initrd - Creating directory bin"
+	mkdir bin
+fi
+
 echo "prepare_initrd - Compiling sh"
 i686-elf-gcc src/sh.c -o bin/sh -ffreestanding -nostdlib -O0
 

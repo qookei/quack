@@ -32,7 +32,7 @@ quack.iso: kernel.elf
 	mkdir -p isodir/boot/grub
 	cp grub.cfg isodir/boot/grub/grub.cfg
 	cp kernel.elf isodir/boot/kernel.elf
-	rm initrd/initrd
+	- rm initrd/initrd
 	./prepare_initrd.sh
 	cp initrd/initrd isodir/boot/initrd
 	grub-mkrescue -o quack.iso isodir
@@ -43,7 +43,7 @@ strip-quack.iso: kernel.elf
 	cp grub.cfg isodir/boot/grub/grub.cfg
 	i686-elf-strip kernel.elf
 	cp kernel.elf isodir/boot/kernel.elf
-	rm initrd/initrd
+	- rm initrd/initrd
 	./prepare_initrd.sh
 	grub-mkrescue -o strip-quack.iso isodir
 	@echo "Done, thank you for patience"
