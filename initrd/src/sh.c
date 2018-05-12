@@ -55,7 +55,7 @@ int getwd(char *buf) {
 int waitpid(int pid) {
 	int _val;
 	asm ("int $0x30" : "=a"(_val) : "a"(3), "b"(pid));
-	return _val;	
+	return _val;
 }
 
 void exit() {
@@ -66,6 +66,14 @@ int close(int handle) {
 	int _val;
 	asm ("int $0x30" : "=a"(_val) : "a"(7), "b"(handle));
 	return _val;
+}
+
+size_t strlen(const char *s) {
+	size_t len = 0;
+	while(s[len]) {
+		len++;
+	}
+	return len;
 }
 
 int itoa(int value, char *sp, int radix) {
@@ -99,22 +107,33 @@ int itoa(int value, char *sp, int radix) {
 	return len;
 }
 
-char input[128], path[1024], comm[1024];
+void separate(int a, char *from, char *b) {
+	for (int i = 0; i < 128; i++) {
+		if (from[i + a] == ' ' || from[i + a] == 0)
+			break;
+		b[i] = from[i + a];
+	}
+}
+
+char input[128], curr_path[1024], comm[128], open_path[128],
+     PS1[128] = {'>', ' '}, comm_path[128] = {'/', 'b', 'i', 'n', '/'};
 
 void _start(void) {
 
 	print("sh v1.1\n");
-	
+
 	char kb = 0;
 	uint32_t pos = 0;
 
 	while(1) {
-		getwd(path);
-		print(path);
-		print("> ");
+		getwd(curr_path);
+		print(curr_path);
+		print(PS1);
+
 		for (int i = 0; i < 128; i++) {
 			input[i] = 0;
 			comm[i] = 0;
+			open_path[i] = 0;
 		}
 		while (kb != '\n') {
 			if (kb != 0)  {
@@ -136,34 +155,64 @@ void _start(void) {
 			continue;
 		pos = 0;
 
-		for (int i = 0; i < 1024; i++) {
-			if (input[i] == ' ' || input[i] == 0)
-				break;
-			comm[i] = input[i];
-		}
+		separate(0, input, comm);
 
 		if (comm[0] == 'c' && comm[1] == 'd') {
 			// chdir
 			int i = chdir(input + 3);
 			if (i == -5)
 				print("No such file or directory\n");
-			else if (i == -4)
+		else if (i == -4)
 				print("Name too long\n");
 			else if (i == -6)
 				print("Not a directory\n");
 			continue;
 		} else if (comm[0] == 'p' && comm[1] == 'w' && comm[2] == 'd') {
-			print(path);
+			print(curr_path);
 			print("\n");
 			continue;
 		} else if (comm[0] == 'e' && comm[1] == 'c' && comm[2] == 'h' && comm[3] == 'o') {
 			print(input + 5);
 			print("\n");
 			continue;
+		} else if (comm[0] == 's' && comm[1] == 'e' && comm[2] == 't') {
+			char arg[128], arg2[128];
+			int argstart = strlen(comm) + 1, arg2start;
+
+			separate(argstart, input, arg);
+			argstart += strlen(arg) + 1;
+			separate(argstart, input, arg2);
+
+			for (int i = 0; i < 128; i++) {
+				if (arg[0] == 'P' && arg[1] == 'A' && arg[2] == 'T' && arg[3] == 'H') {
+					comm_path[i] = arg2[i];
+				} else if (arg[0] == 'P' && arg[1] == 'S' && arg[2] == '1') {
+					PS1[i] = arg2[i];
+				}
+			}
+			continue;
 		} else if (comm[0] == '#')
 			continue;
+		else if (comm[0] == '.' && comm[1] == '/')
+			for (int i = 0; i < 128; i++)
+				open_path[i] = comm[i+2];
+		else if (comm[0] == '/')
+			for (int i = 0; i < 128; i++)
+				open_path[i] = comm[i];
+		else {
+			for (int i = 0; i < strlen(comm_path) + strlen(comm); i++) {
+				if (comm_path[i] != 0)
+					open_path[i] = comm_path[i];
+				else {
+					for (int f = 0; f < strlen(comm); f++)
+						open_path[i++] = comm[f];
+				}
+			}
 
-		int s = open(comm, 0);
+		}
+
+		int s = open(open_path, 0);
+
 		if (s < 0) {
 			char buf[32];
 			itoa(s, buf, 10);
@@ -183,7 +232,7 @@ void _start(void) {
 			close(s);
 			int f = fork();
 			if (!f) {
-				int i = execve(comm);
+				int i = execve(open_path);
 				if (i < 0)
 					print("Failed to exec!\n");
 				exit();

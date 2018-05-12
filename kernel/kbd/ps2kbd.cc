@@ -14,12 +14,13 @@
 #define SC_RIGHT_SHIFT_REL 0xB6
 #define SC_LEFT_SHIFT_REL 0xAA
 #define SC_F12 0x58
+#define SC_NUMLOCK 0x45
 
 #define BITTEST(var,pos) ((var) & (1 << (pos)))
 
 bool ps2_dual_channel;
 
-bool caps, shift;
+bool caps, shift, num;
 
 void inline ps2_wait_response() {
 	while (!BITTEST(inb(PS2_STAT_PORT), 0));
@@ -37,7 +38,8 @@ bool ps2_interrupt(interrupt_cpu_state *state);
 char ps2_keyboard_buffer[512] = {0};
 uint32_t ps2_keyboard_buffer_idx = 0;
 
-char *ps2_low_def, *ps2_upp_sft, *ps2_upp_cap, *ps2_low_csf;
+char *ps2_low_def, *ps2_upp_sft, *ps2_upp_cap, *ps2_low_csf,
+     *ps2_low_def_num, *ps2_upp_sft_num, *ps2_upp_cap_num, *ps2_low_csf_num;
 
 void ps2_set_led(bool _caps, bool _num, bool _scroll) {
 
@@ -51,7 +53,7 @@ void ps2_set_led(bool _caps, bool _num, bool _scroll) {
 
 	ps2_wait_ready();
 	outb(PS2_DATA_PORT, val);
-	
+
 	ps2_wait_response();
 	uint8_t a = inb(PS2_DATA_PORT);
 }
@@ -75,7 +77,7 @@ void ps2_kbd_init() {
 	ps2_dual_channel = !BITTEST(config, 5);
 
 	config &= ~((1<<6));										// patch it around
-	
+
 	outb(PS2_COMM_PORT, 0x60);									// write it back
 	ps2_wait_ready();
 	outb(PS2_DATA_PORT, config);
@@ -165,31 +167,6 @@ void ps2_kbd_init() {
 
 }
 
-char lower_normal[] = { '\0', '?', '1', '2', '3', '4', '5', '6',	 
-		'7', '8', '9', '0', '-', '=', '\b', '\t', 'q', 'w', 'e', 'r', 't', 'y', 
-				'u', 'i', 'o', 'p', '[', ']', '\n', '\0', 'a', 's', 'd', 'f', 'g', 
-				'h', 'j', 'k', 'l', ';', '\'', '`', '\0', '\\', 'z', 'x', 'c', 'v', 
-				'b', 'n', 'm', ',', '.', '/', '\0', '\0', '\0', ' '};
-
-char upper_shift[] = { '\0', '?', '!', '@', '#', '$', '%', '^',		
-		'&', '*', '(', ')', '_', '+', '\b', '\t', 'Q', 'W', 'E', 'R', 'T', 'Y', 
-				'U', 'I', 'O', 'P', '{', '}', '\n', '\0', 'A', 'S', 'D', 'F', 'G', 
-				'H', 'J', 'K', 'L', ':', '"', '~', '\0', '|', 'Z', 'X', 'C', 'V', 
-				'B', 'N', 'M', '<', '>', '?', '\0', '\0', '\0', ' '};
-
-char upper_caps[] = { '\0', '?', '1', '2', '3', '4', '5', '6',	   
-		'7', '8', '9', '0', '-', '=', '\b', '\t', 'Q', 'W', 'E', 'R', 'T', 'Y', 
-				'U', 'I', 'O', 'P', '[', ']', '\n', '\0', 'A', 'S', 'D', 'F', 'G', 
-				'H', 'J', 'K', 'L', ';', '\'', '`', '\0', '\\', 'Z', 'X', 'C', 'V', 
-				'B', 'N', 'M', ',', '.', '/', '\0', '\0', '\0', ' '};
-
-char lower_shift_caps[] = { '\0', '?', '!', '@', '#', '$', '%', '^',	 
-		'&', '*', '(', ')', '_', '+', '\b', '\t', 'q', 'w', 'e', 'r', 't', 'y', 
-				'u', 'i', 'o', 'p', '{', '}', '\n', '\0', 'a', 's', 'd', 'f', 'g', 
-				'h', 'j', 'k', 'l', ':', '"', '~', '\0', '|', 'z', 'x', 'c', 'v', 
-				'b', 'n', 'm', '<', '>', '?', '\0', '\0', '\0', ' '};
-
-
 extern void mem_dump(void *, size_t, size_t);
 
 bool ps2_load_keyboard_map(const char *path) {
@@ -200,7 +177,7 @@ bool ps2_load_keyboard_map(const char *path) {
 	if (ps2_low_def) kfree(ps2_low_def);
 
 	char *data = (char *)kmalloc(st.st_size);
-	
+
 	int file = open(path, O_RDONLY);
 	if (file < 0) {
 		kfree(data);
@@ -217,22 +194,27 @@ bool ps2_load_keyboard_map(const char *path) {
 		return false;
 	}
 
-	size_t load = b / 4;
+	size_t load = b / 8;
 
-	printf("ps2: len read from file: %i\n", b / 4);
+	printf("ps2: len read from file: %i\n", load);
 
-	
+
 	ps2_low_def = data;
 	ps2_upp_sft = data + load;
 	ps2_upp_cap = data + load * 2;
-	ps2_low_csf = data + load * 3;	
+	ps2_low_csf = data + load * 3;
+
+	ps2_low_def_num = data + load * 4;
+	ps2_upp_sft_num = data + load * 5;
+	ps2_upp_cap_num = data + load * 6;
+	ps2_low_csf_num = data + load * 7;
 
 	return true;
 }
 
 bool ps2_interrupt(interrupt_cpu_state *state) {
 	uint8_t sc = inb(0x60);
-	
+
 
 	if (sc == SC_RIGHT_SHIFT_REL || sc == SC_LEFT_SHIFT_REL)
 		shift = false;
@@ -240,7 +222,10 @@ bool ps2_interrupt(interrupt_cpu_state *state) {
 		shift = true;
 	else if (sc == SC_CAPSLOCK) {
 		caps = !caps;
-		ps2_set_led(caps, false, true);
+		ps2_set_led(caps, num, true);
+	} else if (sc == SC_NUMLOCK) {
+		num = !num;
+		ps2_set_led(caps, num, true);
 	} else if (sc == SC_F12) {
 		set_cr3(def_cr3());
 		task_t *t = current_task;
@@ -249,18 +234,26 @@ bool ps2_interrupt(interrupt_cpu_state *state) {
 		tasking_schedule_next();
 		tasking_schedule_after_kill();
 	} else if (sc < SC_MAX) {
-		
+
 		char c = 0;
-		
-		if (caps && !shift)
+
+		if (caps && !shift && !num)
 			c = ps2_upp_cap[sc];
-		else if (!caps && shift)
+		else if (!caps && shift && !num)
 			c = ps2_upp_sft[sc];
-		else if (caps && shift)
+		else if (caps && shift && !num)
 			c = ps2_low_csf[sc];
-		else
+		else if (!caps && !shift && !num)
 			c = ps2_low_def[sc];
-	
+		else if (caps && !shift && num)
+			c = ps2_upp_cap_num[sc];
+		else if (!caps && shift && num)
+			c = ps2_upp_sft_num[sc];
+		else if (caps && shift && num)
+			c = ps2_low_csf_num[sc];
+		else
+			c = ps2_low_def_num[sc];
+
 		if (ps2_keyboard_buffer_idx < 512) {
 			ps2_keyboard_buffer[ps2_keyboard_buffer_idx++] = c;
 		}
