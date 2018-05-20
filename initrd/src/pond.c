@@ -62,8 +62,8 @@ typedef enum { false, true } bool;
 
 void fillpx(uint8_t *vram, struct vmode video, uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t rgb) {
 	uint8_t r = rgb >> 16,
-		g = rgb >> 8 & 0xFF,
-		b = rgb & 0xFF;
+			g = rgb >> 8 & 0xFF,
+			b = rgb & 0xFF;
 
 	uint32_t orig_pos = x * (video.b / 8) + y * video.p,
 		 bb = (video.b / 8);
@@ -83,8 +83,8 @@ void fillpx(uint8_t *vram, struct vmode video, uint32_t x, uint32_t y, uint32_t 
 
 void bitmappx(uint16_t *bitmap, uint8_t *vram, struct vmode video, uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t rgb) {
 	uint8_t r = rgb >> 16,
-		g = rgb >> 8 & 0xFF,
-		b = rgb & 0xFF;
+			g = rgb >> 8 & 0xFF,
+			b = rgb & 0xFF;
 
 	uint32_t orig_pos = x * (video.b / 8) + y * video.p,
 		 bb = (video.b / 8),
@@ -182,14 +182,110 @@ uint16_t cursor_tilemap[15] = {
 	0b1111,
 	0b1000,
 	0b0111,
-}, fm[9] = {
+}, fa[9] = {
 	0b0000,
 	0b0000,
+	0b0111,
+	0b1001,
+	0b1001,
+	0b1011,
+	0b0101,
+}, fb[9] = {
+	0b1000,
+	0b1000,
+	0b1110,
+	0b1001,
+	0b1001,
+	0b1001,
+	0b1110,
+}, fu[9] = {
+	0b0000,
+	0b0000,
+	0b1001,
+	0b1001,
+	0b1001,
+	0b1001,
+	0b0111,
+}, ft[9] = {
+	0b0000,
+	0b0100,
+	0b1110,
+	0b0100,
+	0b0100,
+	0b0100,
+	0b0010,
+}, fA[9] = {
+	0b0000,
+	0b0110,
+	0b1001,
 	0b1001,
 	0b1111,
+	0b1001,
+	0b1001,
+}, fD[9] = {
+	0b0000,
+	0b1110,
+	0b1001,
+	0b1001,
+	0b1001,
+	0b1001,
+	0b1110,
+}, fE[9] = {
+	0b0000,
+	0b1111,
+	0b1000,
+	0b1110,
+	0b1000,
+	0b1000,
+	0b1111,
+}, fV[9] = {
+	0b0000,
+	0b1001,
+	0b1001,
+	0b1001,
+	0b0110,
+	0b0110,
+	0b0110,
+}, fr[9] = {
+	0b0000,
+	0b0000,
 	0b1011,
+	0b1100,
+	0b1000,
+	0b1000,
+	0b1000,
+}, fh[9] = {
+	0b1000,
+	0b1000,
+	0b1110,
 	0b1001,
 	0b1001,
+	0b1001,
+	0b1001,	
+}, f0[9] = {
+	0b0000,
+	0b0110,
+	0b1001,
+	0b1011,
+	0b1101,
+	0b1001,
+	0b0110,
+}, f1[9] = {
+	0b0000,
+	0b0100,
+	0b1100,
+	0b0100,
+	0b0100,
+	0b0100,
+	0b0100,
+}, fdot[9] = {
+	0b0000,
+	0b0000,
+	0b0000,
+	0b0000,
+	0b0000,
+	0b0100,
+	0b0100,
 }, iclose[5] = {
 	0b10001,
 	0b01010,
@@ -220,25 +316,112 @@ void _start(void) {
 		exit();
 	}
 
-	uint32_t oldx			 = 0,		menuw = 200,
-		 oldy			 = 0,		menuh = 400,
-		 background_rgb		 = 0x282828,	app_x = 300,
-		 statusbar_rgb		 = 0x1d2021,	app_y = 200,
-		 statusbar_text_rgb	 = 0xebdbb2,	fontw = 4,
-		 menu_rgb		 = 0x1d2021,	fonth = 9,
-		 menu_text_rgb		 = 0xebdbb2,
-		 app_bar_active_rgb	 = 0x689d6a,
-		 app_bar_active_text_rgb = 0xebdbb2,
-		 statusbar		 = 18,	wy	      = (statusbar - fonth) / 2;
+	uint32_t statusbar_rgb		= 0x1d2021, statusbar_text_rgb		= 0xebdbb2,
+			 menu_rgb			= 0x1d2021, menu_text_rgb			= 0xebdbb2,
+			 app_bar_active_rgb	= 0x303030, app_bar_active_text_rgb = 0xc0c0c0,
+			 app_rgb			= 0x212121, app_text_rgb			= 0xd9d9d9,
+			 background_rgb		= 0x151515;
+	uint16_t oldx = 0, fontw = 4, menuw = 200, app_x = 300, statusbar = 18,
+			 oldy = 0, fonth = 9, menuh = 400, app_y = 200, wy		 = (statusbar - fonth) / 2;
+
 	bool menu = false, app = false;
 
+	void letterdraw(char *t, int wx, int wya, uint32_t rgb) {
+		size_t len = 0;
+		while(t[len])
+			len++;
+		for (int i = 0; i < len; i++) {
+			if (t[i] == 'A')
+				bitmappx(fA, vram, video, wx += 5, wya, fontw, fonth, rgb);
+			else if (t[i] == 'D')
+				bitmappx(fD, vram, video, wx += 5, wya, fontw, fonth, rgb);
+			else if (t[i] == 'E')
+				bitmappx(fE, vram, video, wx += 5, wya, fontw, fonth, rgb);
+			else if (t[i] == 'P')
+				bitmappx(fP, vram, video, wx += 5, wya, fontw, fonth, rgb);
+			else if (t[i] == 'V')
+				bitmappx(fV, vram, video, wx += 5, wya, fontw, fonth, rgb);
+			else if (t[i] == 'a')
+				bitmappx(fa, vram, video, wx += 5, wya, fontw, fonth, rgb);
+			else if (t[i] == 'b')
+				bitmappx(fb, vram, video, wx += 5, wya, fontw, fonth, rgb);
+			else if (t[i] == 'd')
+				bitmappx(fd, vram, video, wx += 5, wya, fontw, fonth, rgb);
+			else if (t[i] == 'e')
+				bitmappx(fe, vram, video, wx += 5, wya, fontw, fonth, rgb);
+			else if (t[i] == 'o')
+				bitmappx(fo, vram, video, wx += 5, wya, fontw, fonth, rgb);
+			else if (t[i] == 'u')
+				bitmappx(fu, vram, video, wx += 5, wya, fontw, fonth, rgb);
+			else if (t[i] == 't')
+				bitmappx(ft, vram, video, wx += 5, wya, fontw, fonth, rgb);
+			else if (t[i] == 'h')
+				bitmappx(fh, vram, video, wx += 5, wya, fontw, fonth, rgb);
+			else if (t[i] == 'n')
+				bitmappx(fn, vram, video, wx += 5, wya, fontw, fonth, rgb);
+			else if (t[i] == 'r')
+				bitmappx(fr, vram, video, wx += 5, wya, fontw, fonth, rgb);
+			else if (t[i] == 'h')
+				bitmappx(fh, vram, video, wx += 5, wya, fontw, fonth, rgb);
+			else if (t[i] == '0')
+				bitmappx(f0, vram, video, wx += 5, wya, fontw, fonth, rgb);
+			else if (t[i] == '1')
+				bitmappx(f1, vram, video, wx += 5, wya, fontw, fonth, rgb);
+			else if (t[i] == '.')
+				bitmappx(fdot, vram, video, wx += 5, wya, fontw, fonth, rgb);
+			else if (t[i] == ' ')
+				wx += 5;
+		}
+	}
+
+	void demodraw(int a) {
+		if (a == 0 || a == 2) {
+			int wya = app_y + statusbar + 10,
+				wx = app_x + 5;
+			fillpx(vram, video, app_x, app_y + statusbar, 300, 200, app_rgb);
+
+			letterdraw("About the Pond DE", wx, wya, app_text_rgb);
+
+			wya += fonth + 2;
+			wx = app_x + 5;
+
+			letterdraw("Ver 0.1", wx, wya, app_text_rgb);
+		}
+		if (a == 1 || a == 2) {
+			int wx = app_x,
+			    wya = wy + app_y;
+			fillpx(vram, video, app_x, app_y, 300, statusbar, app_bar_active_rgb);
+			letterdraw("about", wx, wya, app_bar_active_text_rgb);
+			bitmappx(iclose, vram, video, app_x + 290, app_y + 6, 5, 5, app_bar_active_text_rgb);
+		}
+		if (a == 3)
+			fillpx(vram, video, app_x, app_y, 300, 218, background_rgb);
+	}
+
+	void paneldraw(int a) {
+		if (a == 0 || a == 3)
+			fillpx(vram,video, 0, 0, video.w, statusbar, statusbar_rgb);
+		if (a == 1 || a == 3 || a == 4) {
+			int wx = 0;
+			letterdraw("Pond", wx, wy, statusbar_text_rgb);
+		}
+		if (a == 2 || a == 3 || a == 4)
+			bitmappx(ipower, vram, video, video.w - 15, wy, 5, 5, menu_text_rgb);
+	}
+
+	void menudraw(int a) {
+		if (a == 0 || a == 2)
+			fillpx(vram, video, 0, statusbar, menuw, menuh, menu_rgb);
+		if (a == 1 || a == 2) {
+			int wx = 0;
+			letterdraw("about", wx, 40, menu_text_rgb);
+		}
+		if (a == 3)
+			fillpx(vram, video, 0, statusbar, menuw, menuh, background_rgb);
+	}
+
 	fillpx(vram, video, 0, 0, video.w, video.h, background_rgb);
-	fillpx(vram, video, 0, 0, video.w, statusbar, statusbar_rgb);
-	bitmappx(fP, vram, video, 5, wy, fontw, fonth, statusbar_text_rgb);
-	bitmappx(fo, vram, video, 10, wy, fontw, fonth, statusbar_text_rgb);
-	bitmappx(fn, vram, video, 15, wy, fontw, fonth, statusbar_text_rgb);
-	bitmappx(fd, vram, video, 20, wy, fontw, fonth, statusbar_text_rgb);
-	bitmappx(ipower, vram, video, video.w - 15, wy, 5, 5, statusbar_text_rgb);
+	paneldraw(3);
 
 	while (1) {
 		// mouse
@@ -248,39 +431,38 @@ void _start(void) {
 				if (mouse.y <= statusbar && mouse.x > video.w - 35)
 					exit();
 				else if (menu && mouse.y <= 50 && mouse.y >= 30 && mouse.x <= menuw) {
-					fillpx(vram, video, 0, statusbar, menuw, menuh, background_rgb);
-					fillpx(vram, video, app_x, app_y, 300, statusbar, app_bar_active_rgb);
-					fillpx(vram, video, app_x, app_y + statusbar, 300, 200, 0x000000);
-					bitmappx(fd, vram, video, app_x + 5, app_y + 4, fontw, fonth, app_bar_active_text_rgb);
-					bitmappx(fe, vram, video, app_x + 10, app_y + 4, fontw, fonth, app_bar_active_text_rgb);
-					bitmappx(fm, vram, video, app_x + 15, app_y + 4, fontw, fonth, app_bar_active_text_rgb);
-					bitmappx(fo, vram, video, app_x + 20, app_y + 4, fontw, fonth, app_bar_active_text_rgb);
-					bitmappx(iclose, vram, video, app_x + 290, app_y + 6, 5, 5, app_bar_active_text_rgb);
+					menudraw(3);
+					demodraw(2);
 					menu = !menu;
 					app = true;
 				} else if (app && mouse.x >= app_x && mouse.x < app_x + 282 && mouse.y >= app_y && mouse.y < app_y + 18) {
-					fillpx(vram, video, app_x, app_y, 300, 218, background_rgb);
+					demodraw(3);
 
 					if (menu) {
 						menu = !menu;
-						fillpx(vram, video, 0, statusbar, menuw, menuh, background_rgb);
+						menudraw(3);
 					} if (app_x > 0 || mouse.x - oldx <= 1)
 						app_x = app_x + mouse.x - oldx;
 					if (app_y > statusbar || mouse.y - oldy <= 1)
 						app_y = app_y + mouse.y - oldy;
 
-					fillpx(vram, video, app_x, app_y, 300, statusbar, app_bar_active_rgb);
-					fillpx(vram, video, app_x, app_y + statusbar, 300, 200, 0x000000);
-					bitmappx(fd, vram, video, app_x + 5, app_y + 4, fontw, fonth, app_bar_active_text_rgb);
-					bitmappx(fe, vram, video, app_x + 10, app_y + 4, fontw, fonth, app_bar_active_text_rgb);
-					bitmappx(fm, vram, video, app_x + 15, app_y + 4, fontw, fonth, app_bar_active_text_rgb);
-					bitmappx(fo, vram, video, app_x + 20, app_y + 4, fontw, fonth, app_bar_active_text_rgb);
-					bitmappx(iclose, vram, video, app_x + 290, app_y + 6, 5, 5, app_bar_active_text_rgb);
+					demodraw(2);
 				} else if (app && mouse.y <= app_y + 18 && mouse.y >= app_y && mouse.x <= app_x + 300 && mouse.x >= app_x + 282) {
-					fillpx(vram, video, app_x, app_y, 300, 218, background_rgb);
+					demodraw(3);
 					app_x = 300;
 					app_y = 200;
 					app = false;
+				}
+
+				if (mouse.y <= statusbar && mouse.x <= 48) {
+					menu = !menu;
+					if (menu)
+						menudraw(2);
+					else {
+						menudraw(3);
+						if (app)
+							demodraw(2);
+					}
 				}
 			}
 
@@ -289,63 +471,22 @@ void _start(void) {
 					bitmappx(cursor_tilemap, vram, video, oldx, oldy, 8, 14, background_rgb); // clear mouse track
 					if (app && mouse.x >= app_x && mouse.x < app_x + 290) {
 						if (mouse.y >= app_y + statusbar && mouse.y < app_y + 200 + statusbar)
-							fillpx(vram, video, app_x, app_y + statusbar, 300, 200, 0x000000);
-						else if (mouse.y >= app_y && mouse.y < app_y + statusbar) {
-							fillpx(vram, video, app_x, app_y, 300, statusbar, app_bar_active_rgb);
-							bitmappx(fd, vram, video, app_x + 5, app_y + 4, fontw, fonth, app_bar_active_text_rgb);
-							bitmappx(fe, vram, video, app_x + 10, app_y + 4, fontw, fonth, app_bar_active_text_rgb);
-							bitmappx(fm, vram, video, app_x + 15, app_y + 4, fontw, fonth, app_bar_active_text_rgb);
-							bitmappx(fo, vram, video, app_x + 20, app_y + 4, fontw, fonth, app_bar_active_text_rgb);
-							bitmappx(iclose, vram, video, app_x + 290, app_y + 6, 5, 5, app_bar_active_text_rgb);
-						}
+							demodraw(0);
+						else if (mouse.y >= app_y && mouse.y < app_y + statusbar)
+							demodraw(1);
+					}
+					if (menu) {
+						if (mouse.x < menuw && mouse.y >= statusbar && mouse.y < menuh + statusbar)
+							bitmappx(cursor_tilemap, vram, video, oldx, oldy, 8, 14, menu_rgb);
+						if (mouse.x < menuw && mouse.y >= 30 && mouse.y < 50)
+							menudraw(1);
 					}
 				} else if (mouse.y <= 20) { // refresh statusbar
-					int wx = 0;
-					bitmappx(cursor_tilemap, vram, video, oldx, oldy, 8, 14, statusbar_rgb); // clear mouse track
-
-					// refresh letters
-					bitmappx(fP, vram, video, wx += 5, wy, fontw, fonth, statusbar_text_rgb);
-					bitmappx(fo, vram, video, wx += 5, wy, fontw, fonth, statusbar_text_rgb);
-					bitmappx(fn, vram, video, wx += 5, wy, fontw, fonth, statusbar_text_rgb);
-					bitmappx(fd, vram, video, wx += 5, wy, fontw, fonth, statusbar_text_rgb);
-					bitmappx(ipower, vram, video, video.w - 15, wy, 5, 5, menu_text_rgb);
-				}
-
-				if (mouse.y >= 18) {
-					if (menu && mouse.x < menuw && mouse.y >= statusbar && mouse.y < menuh + statusbar)
-						bitmappx(cursor_tilemap, vram, video, oldx, oldy, 8, 14, menu_rgb);
-					if (menu && mouse.x < menuw && mouse.y >= 30 && mouse.y < 50) {
-						int wx = 5;
-						bitmappx(fd, vram, video, wx += 5, 40, fontw, fonth, menu_text_rgb);
-						bitmappx(fe, vram, video, wx += 5, 40, fontw, fonth, menu_text_rgb);
-						bitmappx(fm, vram, video, wx += 5, 40, fontw, fonth, menu_text_rgb);
-						bitmappx(fo, vram, video, wx += 5, 40, fontw, fonth, menu_text_rgb);
-					}
-				}
-			}
-
-			if (mouse.b & (1<<2)) { // left mouse button
-				if (mouse.y <= statusbar && mouse.x <= 48) {
-					menu = !menu;
-					if (menu) {
-						int wx[2] = {5, 5};
-						fillpx(vram, video, 0, statusbar, menuw, menuh, menu_rgb);
-						bitmappx(fd, vram, video, wx[0] += 5, 40, fontw, fonth, menu_text_rgb);
-						bitmappx(fe, vram, video, wx[0] += 5, 40, fontw, fonth, menu_text_rgb);
-						bitmappx(fm, vram, video, wx[0] += 5, 40, fontw, fonth, menu_text_rgb);
-						bitmappx(fo, vram, video, wx[0] += 5, 40, fontw, fonth, menu_text_rgb);
-					} else {
-						fillpx(vram, video, 0, statusbar, menuw, menuh, background_rgb);
-						if (app) {
-							fillpx(vram, video, app_x, app_y, 300, statusbar, app_bar_active_rgb);
-							fillpx(vram, video, app_x, app_y + statusbar, 300, 200, 0x000000);
-							bitmappx(fd, vram, video, app_x + 5, app_y + 4, fontw, fonth, app_bar_active_text_rgb);
-							bitmappx(fe, vram, video, app_x + 10, app_y + 4, fontw, fonth, app_bar_active_text_rgb);
-							bitmappx(fm, vram, video, app_x + 15, app_y + 4, fontw, fonth, app_bar_active_text_rgb);
-							bitmappx(fo, vram, video, app_x + 20, app_y + 4, fontw, fonth, app_bar_active_text_rgb);
-							bitmappx(iclose, vram, video, app_x + 290, app_y + 6, 5, 5, app_bar_active_text_rgb);
-						}
-					}
+					bitmappx(cursor_tilemap, vram, video, oldx, oldy, 8, 14, statusbar_rgb);
+					if (mouse.x < 48)
+						paneldraw(1);
+					else if (mouse.x > video.w - 35)
+						paneldraw(2);
 				}
 			}
 
