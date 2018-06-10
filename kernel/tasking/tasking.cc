@@ -52,7 +52,6 @@ void tasking_setup(const char *init_path) {
 
 int64_t ntasks = 0;
 
-
 void insert(task_t *t) {
     task_t* temp = task_head;
     if(task_head == NULL) {
@@ -396,8 +395,72 @@ void tasking_schedule_next() {
     }
 }
 
+void tasking_init_heap(size_t size) {
+	size_t pages = (size / 0x1000) + (size & 0xFFF) ? 1 : 0;
+	
+	alloc_mem_at(current_task->cr3, 0x30000000, pages, 0x7);
+
+	current_task->heap_pages = pages;
+	current_task->heap_begin = 0x30000000;
+	current_task->heap_end = 0x30000000 + size;
+	
+}
+
+void *tasking_sbrk(int increment) {
+	
+	if (!increment) return (void *)current_task->heap_end;
+
+	if (!current_task->heap_begin) {
+		if (increment < 0) {
+			return (void *)-1;
+		} else {
+			// init heap
+			tasking_init_heap(increment);
+			return (void *)current_task->heap_begin;
+		}
+	} else {
+		current_task->heap_end += increment;
+		if (increment < 0) {
+			// decrement heap size
+			if (current_task->heap_end < current_task->heap_begin) return (void *)EFAULT;
+			size_t new_sz = current_task->heap_end - current_task->heap_begin;
+			size_t new_pages = new_sz / 0x1000 + ((new_sz & 0xFFF) ? 1 : 0);
+			
+			if (new_pages < current_task->heap_pages) {
+				
+				size_t pages_delete = current_task->heap_pages - new_pages;
+				for (size_t i = 0; i < pages_delete; i++) {
+					uint32_t addr = current_task->heap_begin + (new_pages + i) * 0x1000;
+					
+					void *phys = get_phys(current_task->cr3, (void *)addr);
+					pmm_free(phys);
+					
+					set_cr3(current_task->cr3);
+					unmap_page((void *)addr);
+					set_cr3(def_cr3());
+				}
+				current_task->heap_pages = new_pages;
+			}
+			
+			
+			return (void *)current_task->heap_end;
+		} else {
+			// increment heap size
+			
+			size_t new_sz = current_task->heap_end - current_task->heap_begin;
+			size_t new_pages = new_sz / 0x1000 + ((new_sz & 0xFFF) ? 1 : 0);
+			alloc_mem_at(current_task->cr3, current_task->heap_begin + current_task->heap_pages * 0x1000, new_pages, 0x7);
+			current_task->heap_pages = new_pages;
+			
+			return (void *)(current_task->heap_end - increment);
+		}
+	}
+	
+}
+
+
 void tasking_schedule_after_kill() {
-    asm volatile ("mov %0, %%eax; mov %1, %%ebx; jmp tasking_enter" : : "r"(current_task->cr3), "r"(&(current_task->st)) : "%eax", "%ebx");
+    asm volatile ("jmp tasking_enter" : : "a"(current_task->cr3), "b"(&(current_task->st)));
 }
 
 extern "C" {
@@ -417,8 +480,8 @@ uint32_t tasking_handler(uint32_t esp) {
         init = true;
     }
 
-    asm volatile ("mov %0, %%eax; mov %1, %%ebx; jmp tasking_enter" : : "r"(current_task->cr3), "r"(&(current_task->st)) : "%eax", "%ebx");
-
+    tasking_schedule_after_kill();
+    
     return esp;
 }
 

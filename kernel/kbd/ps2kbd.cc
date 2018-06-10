@@ -54,8 +54,6 @@ void ps2_set_led(bool _caps, bool _num, bool _scroll) {
 	ps2_wait_ready();
 	outb(PS2_DATA_PORT, val);
 
-	ps2_wait_response();
-	uint8_t a = inb(PS2_DATA_PORT);
 }
 
 #define PS2_KBD_INIT_CONT
@@ -213,6 +211,8 @@ bool ps2_load_keyboard_map(const char *path) {
 }
 
 bool ps2_interrupt(interrupt_cpu_state *state) {
+	(void)state;
+	
 	uint8_t sc = inb(0x60);
 
 

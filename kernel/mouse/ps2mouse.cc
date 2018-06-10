@@ -128,8 +128,8 @@ bool ps2mouse_interrupt(interrupt_cpu_state *unused) {
 		if (mouse_x < 0) mouse_x = 0;
 		if (mouse_y < 0) mouse_y = 0;
 		
-		if (mouse_x >= mbootinfo->framebuffer_width)  mouse_x = mbootinfo->framebuffer_width - 1;
-		if (mouse_y >= mbootinfo->framebuffer_height) mouse_y = mbootinfo->framebuffer_height - 1;
+		if (mouse_x >= (signed)mbootinfo->framebuffer_width)  mouse_x = mbootinfo->framebuffer_width - 1;
+		if (mouse_y >= (signed)mbootinfo->framebuffer_height) mouse_y = mbootinfo->framebuffer_height - 1;
 
 		ps2mouse_changed = true;
 	}

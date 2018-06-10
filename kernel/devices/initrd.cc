@@ -72,5 +72,8 @@ size_t dev_initrd_read(char *buffer, size_t count) {
 }
 
 size_t dev_initrd_write(char *buffer, size_t count) {
+	(void)buffer;
+	(void)count;
+	
 	return EIO;
 }

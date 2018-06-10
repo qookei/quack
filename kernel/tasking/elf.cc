@@ -73,14 +73,9 @@ elf_loaded prepare_elf_for_exec(const char* name) {
 
 	void* elf_file = kmalloc(filesize);
 	
-	int u = read(r, (char*)elf_file, filesize);
+	read(r, (char*)elf_file, filesize);
 	close(r);
 
-	if (u != filesize) {
-		printf("elf: Read %i bytes while should have read %i bytes\n", u, filesize);
-		kfree(elf_file);
-		return result;
-	}
 	if(!elf_check_header((elf_hdr *)elf_file)){
 		printf("elf: Failed to verify header for '%s'\n", name);
 		kfree(elf_file);

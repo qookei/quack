@@ -55,6 +55,11 @@ typedef struct task{
     file_handle_t *files;
 
     char pwd[1024];
+    
+    uint32_t heap_begin;
+    uint32_t heap_end;
+    uint32_t heap_pages;
+    
 
 } task_t;
 
@@ -71,6 +76,6 @@ void tasking_waitpid(interrupt_cpu_state *, uint32_t);
 int tasking_execve(const char *name, char **argv, char **envp);
 void kill_task(uint32_t);
 void kill_task_raw(task_t*);
-
+void *tasking_sbrk(int);
 
 #endif  // TASKING_H

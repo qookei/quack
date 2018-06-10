@@ -33,7 +33,6 @@ void serial_writestring(const char* data) {
 	serial_writestr(data, strlen(data));
 }
 
-
 int kprintf(const char *fmt, ...) {
 	char buf[1024];
 	va_list va;
@@ -44,22 +43,7 @@ int kprintf(const char *fmt, ...) {
 	return ret;
 }
 
-bool axc = false;
-char lastkey = '\0';
-
-uint8_t u = 0;
-
 extern bool pmm_reset_pages;
-
-extern uint8_t minute;
-extern uint8_t hour;
-extern uint8_t second;
-
-extern uint8_t day;
-extern uint8_t month;
-extern uint32_t year;
-
-const char* months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 
 void mem_dump(void *data, size_t nbytes, size_t bytes_per_line) {
 	uint8_t *mem = (uint8_t *)data;
@@ -98,13 +82,6 @@ void mem_dump(void *data, size_t nbytes, size_t bytes_per_line) {
 	printf("\n");
 }
 
-const char lower_normal[] = { '\0', '?', '1', '2', '3', '4', '5', '6',     
-		'7', '8', '9', '0', '-', '=', '\b', '\t', 'q', 'w', 'e', 'r', 't', 'y', 
-				'u', 'i', 'o', 'p', '[', ']', '\n', '\0', 'a', 's', 'd', 'f', 'g', 
-				'h', 'j', 'k', 'l', ';', '\'', '`', '\0', '\\', 'z', 'x', 'c', 'v', 
-				'b', 'n', 'm', ',', '.', '/', '\0', '\0', '\0', ' '};
-
-
 void pit_freq(uint32_t frequency) {
     uint16_t x = 1193182 / frequency;
     if ((1193182 % frequency) > (frequency / 2))
@@ -115,16 +92,8 @@ void pit_freq(uint32_t frequency) {
 }
 
 multiboot_info_t *mbootinfo;
-extern void* memcpy(void*, const void*, size_t);
 
 extern mountpoint_t *mountpoints;
-
-// void fastmemcpy(uint32_t dst, uint32_t src, uint32_t size) {
-// 	asm volatile ("mov %0, %%ecx\nmov %1, %%edi\nmov %2, %%esi\nrep movsb" : : "r"(size), "r"(dst), "r"(src) : "%ecx","%edi","%esi");
-// }
-
-
-const char* mem_type_names[] = {"", "Available", "Reserved", "ACPI", "NVS", "Bad RAM"};
 
 void gdt_new_setup(void);
 
@@ -245,8 +214,6 @@ void kernel_main(multiboot_info_t *d) {
 
 	mbootinfo = d;
 
-	//asm volatile ("sti");
-	
 	uint32_t brand[12];
 	__cpuid(0x80000002 , brand[0], brand[1], brand[2], brand[3]);
 	__cpuid(0x80000003 , brand[4], brand[5], brand[6], brand[7]);
@@ -263,22 +230,6 @@ void kernel_main(multiboot_info_t *d) {
 
 	printf("free memory: %u out of %u bytes free\n", free_pages() * 4096, max_pages() * 4096);
 	
-	printf("\n");
-
-	for (int i = 0; i < 8; i++) {
-		printf("\e[%um", 40 + i);
-		printf(" ");
-	}
-	printf("\e[1m");
-	for (int i = 0; i < 8; i++) {
-		printf("\e[%um", 40 + i);
-		printf(" ");
-	}
-	printf("\e[0m");
-	printf("\e[40m");
-	printf("\e[1m");
-	printf("\e[39m");
-	printf("\e[0m");
 	printf("\n");
 
 	syscall_init();

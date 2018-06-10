@@ -48,6 +48,9 @@ bool devfs_register_device(devfs_device *dev) {
 }
 
 int devfs_get_ents(mountpoint_t *mountpoint, const char *path, dirent_t *result) {
+	(void)mountpoint;
+	(void)path;
+	
 	int found_entries = 0;
 
 	for (size_t i = 0; i < DEVFS_DEVICES; i++) {

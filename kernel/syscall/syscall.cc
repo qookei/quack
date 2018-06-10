@@ -11,6 +11,7 @@
 	2 - execve(path ebx, argv ecx, envp edx)		->		may not return, error eax
 	3 - waitpid(pid ebx)							->		return status eax
 	14- getpid()									->		pid eax
+	17- sbrk(increment ebx)							->		break ptr eax
 
 	vfs:
 	4 - open(path ebx, flags ecx)					->		file handle eax
@@ -63,7 +64,7 @@ bool verify_addr(uint32_t pd, uint32_t addr, uint32_t len, uint32_t flags) {
 	
 	while (caddr < addr + len) {
 		uint32_t fl = get_flag(pd, (void *)caddr);
-		if (fl & flags != flags) {
+		if ((fl & flags) != flags) {
 			failed = true;
 			break;
 		}
@@ -339,7 +340,7 @@ bool do_syscall(interrupt_cpu_state *state) {
 				break;
 			}
 
-			state->eax = out;
+			state->eax = status;
 
 			break;
 		}
@@ -357,7 +358,7 @@ bool do_syscall(interrupt_cpu_state *state) {
 				break;
 			}
 
-			state->eax = out;
+			state->eax = status;
 
 			break;
 		}
@@ -431,6 +432,12 @@ bool do_syscall(interrupt_cpu_state *state) {
 
 			state->eax = ret;
 
+			break;
+		}
+		
+		case 17: {
+			state->eax = (uint32_t)tasking_sbrk(state->ebx);
+			
 			break;
 		}
 

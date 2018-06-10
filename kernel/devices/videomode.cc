@@ -52,5 +52,8 @@ size_t dev_videomode_read(char *buffer, size_t count) {
 }
 
 size_t dev_videomode_write(char *buffer, size_t count) {
+	(void)buffer;
+	(void)count;
+	
 	return EIO;
 }

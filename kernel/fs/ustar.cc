@@ -7,7 +7,7 @@ size_t oct_to_dec(char *string) {
 	size_t multiplier = 1;
 	size_t i = strlen(string) - 1;
 
-	while(i >= 0 && string[i] >= '0' && string[i] <= '7') {
+	while(i > 0 && string[i] >= '0' && string[i] <= '7') {
 		integer += (string[i] - 48) * multiplier;
 		multiplier *= 8;
 		i--;
@@ -42,11 +42,6 @@ uint64_t ustar_get_file(mountpoint_t *mountpoint, const char *path, ustar_entry_
 	
 	if (!r) {
 		printf("ustar: read failed!\n");
-		return 1;
-	}
-
-	if (r != s.st_size) {
-		printf("ustar: read %i bytes, while file size is %i bytes\n", r, s.st_size);
 		return 1;
 	}
 
@@ -122,11 +117,6 @@ int ustar_get_ents(mountpoint_t *mountpoint, const char *path, dirent_t *result)
 		return -1;
 	}
 
-	if (r != s.st_size) {
-		printf("ustar: read %i bytes, while file size is %i bytes\n", r, s.st_size);
-		return -1;
-	}
-
 	close(handle);
 
 	ustar_entry_t *entry = (ustar_entry_t *)buffer;
@@ -175,7 +165,7 @@ int ustar_read(mountpoint_t *mountpoint, const char *path, char *buffer, size_t 
 	char *_buffer = (char *)kmalloc(s.st_size);
 	
 	int handle = open(mountpoint->dev, O_RDONLY);
-	int c = read(handle, _buffer, s.st_size);
+	read(handle, _buffer, s.st_size);
 	close(handle);
 
 	char *data = _buffer + offset + 512;

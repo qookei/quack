@@ -52,9 +52,9 @@ section .text
 align 4
 
 STACKSIZE equ 0x4000
- 
+
+global loader 
 loader equ (_loader - 0xC0000000)
-global loader
  
 _loader:
     mov ecx, (page_dir - KERNEL_VIRTUAL_BASE)
@@ -78,6 +78,8 @@ higher_half:
     invlpg [0x40000]
  
     mov esp, stack+STACKSIZE
+    
+    
     
     add ebx, 0xC0000000
     push ebx

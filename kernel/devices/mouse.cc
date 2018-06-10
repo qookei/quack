@@ -46,8 +46,8 @@ size_t dev_mouse_read(char *buffer, size_t count) {
 	if (x < 0) x = 0;
 	if (y < 0) y = 0;
 	
-	if (x >= mbootinfo->framebuffer_width)  x = mbootinfo->framebuffer_width - 1;
-	if (y >= mbootinfo->framebuffer_height) y = mbootinfo->framebuffer_height - 1;
+	if (x >= (signed)mbootinfo->framebuffer_width)  x = mbootinfo->framebuffer_width - 1;
+	if (y >= (signed)mbootinfo->framebuffer_height) y = mbootinfo->framebuffer_height - 1;
 
 	char mbuffer[12] = {0};
 	((int32_t*)mbuffer)[0] = x;
@@ -64,5 +64,8 @@ size_t dev_mouse_read(char *buffer, size_t count) {
 }
 
 size_t dev_mouse_write(char *buffer, size_t count) {
+	(void)buffer;
+	(void)count;
+	
 	return EIO;
 }

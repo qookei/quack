@@ -3,7 +3,7 @@ OBJS = boot/boot.o kernel/kernel.o kernel/io/serial.o kernel/io/ports.o kernel/c
 	   kernel/interrupt/interrupt.o kernel/pic/pic.o kernel/tty/tty.o \
 	   kernel/paging/pmm.o kernel/paging/paging.o kernel/tty/backends/vesa_text.o \
 	   kernel/tty/backends/vesa_font.o kernel/io/rtc.o kernel/kbd/ps2kbd.o \
-	   kernel/tasking/tasking.o kernel/syscall/syscall.o kernel/cpu/gdt_new.o kernel/cpu/usermode_switch.o \
+	   kernel/tasking/tasking.o kernel/syscall/syscall.o kernel/cpu/gdt_new.o \
 	   kernel/tasking/tasking_enter.o kernel/fs/vfs.o kernel/fs/devfs.o kernel/fs/ustar.o kernel/lib/string.o \
 	   kernel/lib/stdlib.o kernel/lib/ctype.o kernel/kheap/heap.o \
 	   kernel/tasking/elf.o kernel/mouse/ps2mouse.o kernel/devices/tty.o kernel/devices/initrd.o \
@@ -19,63 +19,56 @@ CFLAGS = -ffreestanding -O0 -nostdlib -g -fno-omit-frame-pointer
 iso: quack.iso
 
 run: quack.iso
-	qemu-system-i386 -cdrom quack.iso -serial file:serial.txt -monitor stdio
-
-strip-iso: strip-quack.iso
-
+	@qemu-system-i386 -cdrom quack.iso -serial file:serial.txt -monitor stdio
 
 debug-run: quack.iso
-	echo "To debug, start gdb(or any debugger which uses gdb), load the kernel executable and execute the command \"target remote localhost:1234\""
-	qemu-system-i386 -cdrom quack.iso -serial file:serial.txt -monitor stdio -s -S
+	@echo "To debug, start gdb(or any debugger which uses gdb), load the kernel executable and execute the command \"target remote localhost:1234\""
+	@qemu-system-i386 -cdrom quack.iso -serial file:serial.txt -monitor stdio -s -S
 
 quack.iso: kernel.elf
-	mkdir -p isodir/boot/grub
-	cp grub.cfg isodir/boot/grub/grub.cfg
-	cp kernel.elf isodir/boot/kernel.elf
-	- rm initrd/initrd
-	./prepare_initrd.sh
-	cp initrd/initrd isodir/boot/initrd
-	grub-mkrescue -o quack.iso isodir
-	@echo "Done, thank you for patience"
-
-strip-quack.iso: kernel.elf
-	mkdir -p isodir/boot/grub
-	cp grub.cfg isodir/boot/grub/grub.cfg
-	i686-elf-strip kernel.elf
-	cp kernel.elf isodir/boot/kernel.elf
-	- rm initrd/initrd
-	./prepare_initrd.sh
-	grub-mkrescue -o strip-quack.iso isodir
-	@echo "Done, thank you for patience"
+	@mkdir -p isodir/boot/grub
+	@cp grub.cfg isodir/boot/grub/grub.cfg
+	@cp kernel.elf isodir/boot/kernel.elf
+	- @rm initrd/initrd
+	@./prepare_initrd.sh
+	@cp initrd/initrd isodir/boot/initrd
+	@grub-mkrescue -o quack.iso isodir > /dev/null 2>&1
+	@echo "Done, thank you for waiting"
 
 kernel.elf: kernel.o kernel/trace/trace.o
-	$(CC) -T linker.ld -o kernel.elf -lgcc $(CFLAGS) $^
-	rm kernel/trace/trace.o kernel/trace/trace.cc
+	@$(CC) -T linker.ld -o kernel.elf -lgcc $(CFLAGS) $^
+	@printf "LINK\t\t%s\n" $@
+	@rm kernel/trace/trace.o kernel/trace/trace.cc
 
 kernel/trace/trace.o: kernel/trace/trace.cc
-	$(CXX) -c $< -o $@ $(CXXFLAGS) -Wno-narrowing
+	@$(CXX) -c $< -o $@ $(CXXFLAGS) -Wno-narrowing
+	@printf "CXX\t\t%s\n" $@
 
 kernel/trace/trace.cc:
-	python2 utils/trace_map.py > kernel/trace/trace.cc
+	@python2 utils/trace_map.py > kernel/trace/trace.cc
+	@printf "TRACE\t\tkernel.o\n"
 
 kernel.o: $(OBJS)
-	$(CC) -T linker.ld -r -o kernel.o -lgcc $(CFLAGS) $^
+	@$(CC) -T linker.ld -r -o kernel.o -lgcc $(CFLAGS) $^
+	@printf "LINK\t\t%s\n" $@
 
 %.o: %.cc
-	$(CXX) -c $< -o $@ $(CXXFLAGS)
+	@$(CXX) -c $< -o $@ $(CXXFLAGS)
+	@printf "CXX\t\t%s\n" $@
 
 %.o: %.s
 	$(ASM) $< -o $@
 
 %.o: %.asm
-	$(ASM2) -g -felf32 -F dwarf $< -o $@
+	@$(ASM2) -g -felf32 -F dwarf $< -o $@
+	@printf "ASM\t\t%s\n" $@
 
 .PHONY: clean run
 
 clean:
-	-rm $(OBJS)
-	-rm kernel.elf
-	-rm kernel.o
-	-rm quack.iso
-	-rm strip-quack.iso
-	-rm kernel/trace/trace.o kernel/trace/trace.cc
+	@printf "cleaning\n"
+	-@rm $(OBJS)
+	-@rm kernel.elf
+	-@rm kernel.o
+	-@rm quack.iso
+	
