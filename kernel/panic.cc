@@ -14,6 +14,7 @@ void panic(const char *message, interrupt_cpu_state *state, bool regs, bool pf_e
 	// TODO: use a logging system and not the standard output
 
 	//printf("\ec");
+	#ifdef PANIC_NICE
 	printf("\e[1m");
 	printf("\e[33m");
 	printf("           ..\n");
@@ -26,6 +27,7 @@ void panic(const char *message, interrupt_cpu_state *state, bool regs, bool pf_e
 	printf("\e[34m");
 	printf(" ~^~^~^~^~^~^~^~^~^~^~\n");  
 	printf("\e[37m");
+	#endif
 	printf("Kernel panic!\n");
 	printf("Message: '%s'\n", message);
 	if (regs) {

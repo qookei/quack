@@ -21,6 +21,12 @@ int write(int handle, void *buffer, size_t count) {
 	return _val;
 }
 
+int fork() {
+	int _val;
+	asm ("mov $1, %%eax; int $0x30; mov %%eax, %0" : "=g"(_val));
+	return _val;
+}
+
 uint32_t reqres(uint32_t type) {
 	uint32_t _val;
 	asm ("int $0x30" : "=a"(_val) : "a"(8), "b"(type));
@@ -29,6 +35,12 @@ uint32_t reqres(uint32_t type) {
 
 void exit() {
 	asm ("int $0x30" : : "a"(0));
+}
+
+int get_pid() {
+	int val;
+	asm ("int $0x30" : "=a"(val) : "a"(14));
+	return val;
 }
 
 int close(int handle) {
@@ -47,6 +59,27 @@ size_t strlen(const char *s) {
 
 char *err = "Failed to acquire a frame buffer!\n";
 
+void ipc_wait() {
+	asm ("int $0x30" : : "a"(22));
+}
+
+void ipc_remove() {
+	asm ("int $0x30" : : "a"(20));
+}
+
+int ipc_recv(void *dst) {
+	int _val;
+	asm ("int $0x30" : "=a"(_val) : "a"(19), "b"(dst));
+	return _val;
+}
+
+int execve(const char *path) {
+	int _val;
+	asm ("int $0x30" : "=a"(_val) : "a"(2), "b"(path));
+	return _val;
+}
+
+
 struct vmode {
 	uint32_t w, h;
 	uint32_t p, b;
@@ -57,6 +90,11 @@ struct mpack {
 	uint32_t y;
 	uint32_t b;
 };
+
+void memcpy(void *dst, const void *src, size_t s) {
+	while (s--)
+		*((char *)dst++) = *((char *)src++);
+}
 
 typedef enum { false, true } bool;
 
@@ -79,6 +117,12 @@ void fillpx(uint8_t *vram, struct vmode video, uint32_t x, uint32_t y, uint32_t 
 		}
 		orig_pos += video.p;
 	}
+}
+
+void *sbrk(int increment) {
+	uint32_t _val;
+	asm ("int $0x30" : "=a"(_val) : "a"(17), "b"(increment));
+	return (void *)_val;
 }
 
 void bitmappx(uint16_t *bitmap, uint8_t *vram, struct vmode video, uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t rgb) {
@@ -300,11 +344,45 @@ uint16_t cursor_tilemap[15] = {
 	0b01110,
 };
 
+int serial_handle;
+
+int itoa(int value, char *sp, int radix) {
+	char tmp[16], *tp = tmp;
+	unsigned v;
+	int i, sign = (radix == 10 && value < 0);
+
+	if (sign)
+		v = -value;
+	else
+		v = (unsigned)value;
+
+	while (v || tp == tmp) {
+		i = v % radix;
+		v /= radix; // v/=radix uses less CPU clocks than v=v/radix does
+		if (i < 10)
+			*tp++ = i+'0';
+		else
+			*tp++ = i + 'a' - 10;
+	}
+	int len = tp - tmp;
+
+	if (sign) {
+		*sp++ = '-';
+		len++;
+	}
+
+	while (tp > tmp)
+		*sp++ = *--tp;
+
+	return len;
+}
+
 void _start(void) {
 	struct mpack mouse;
 	struct vmode video;
 	int mouse_handle = open("/dev/mouse", 0),
 	    video_handle = open("/dev/videomode", 0);
+	serial_handle = open("/dev/serial", 0);
 	read(video_handle, &video, 16);
 	close(video_handle);
 
@@ -375,6 +453,7 @@ void _start(void) {
 	}
 
 	void demodraw(int a) {
+		
 		if (a == 0 || a == 2) {
 			int wya = app_y + statusbar + 10,
 				wx = app_x + 5;

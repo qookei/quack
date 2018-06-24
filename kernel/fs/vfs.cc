@@ -338,14 +338,15 @@ int stat(const char *path, struct stat *destination) {
 		return 0;
 	}
 
-	if (strcmp(tmp, "/dev") == 0) {
+	/*if (strcmp(tmp, "/dev") == 0) {
 		memcpy(destination, &_devfs_stat, sizeof(struct stat));
 		kfree(tmp);
 		return 0;
-	}
+	}*/
 
 	int mountpoint = determine_mountpoint(tmp);
 	if (mountpoint < 0) {
+		kfree(tmp);
 		return ENOENT;
 	}
 
@@ -378,10 +379,10 @@ int fstat(int handle, struct stat *destination) {
 		return 0;
 	}
 
-	if (strcmp(path, "/dev") == 0) {
+	/*if (strcmp(path, "/dev") == 0) {
 		memcpy(destination, &_devfs_stat, sizeof(struct stat));
 		return 0;
-	}
+	}*/
 
 	int mountpoint = determine_mountpoint(path);
 	if (mountpoint < 0) {
@@ -411,10 +412,10 @@ int kstat(const char *path, struct stat *destination) {
 		return 0;
 	}
 
-	if (strcmp(tmp, "/dev") == 0) {
+	/*if (strcmp(tmp, "/dev") == 0) {
 		memcpy(destination, &_devfs_stat, sizeof(struct stat));
 		return 0;
-	}
+	}*/
 
 	int mountpoint = determine_mountpoint(tmp);
 	if (mountpoint < 0) {
@@ -434,9 +435,6 @@ int kstat(const char *path, struct stat *destination) {
 }
 
 int mount(const char *device, const char *dir, const char *fstype, uint32_t flags) {
-	if (!flags & MS_MGC_MASK) {
-		flags = 0;
-	}
 
 	struct stat stat_info;
 	int status = stat(device, &stat_info);

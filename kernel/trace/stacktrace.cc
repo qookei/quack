@@ -10,6 +10,7 @@ uint32_t find_correct_trace(uint32_t addr) {
 }
 
 extern int printf(const char*, ...);
+extern int kprintf(const char*, ...);
 
 void stack_trace(unsigned int max_frames, unsigned int skip) {
 	unsigned int *ebp = &max_frames - 2;
@@ -37,4 +38,12 @@ void stack_trace(unsigned int max_frames, unsigned int skip) {
         	break;
 
     }
+}
+
+void function_addr(uint32_t addr) {
+	int trace_id = find_correct_trace(addr);
+	if (trace_id == -1) {
+		kprintf("<%08x> ?+?\n", addr);
+	} else 
+		kprintf("<%08x> %s+0x%x\n", addr, trace_elems[trace_id].func_name, addr - trace_elems[trace_id].addr);
 }

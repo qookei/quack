@@ -17,12 +17,13 @@
 #include <kheap/heap.h>
 #include <io/rtc.h>
 #include <kbd/ps2kbd.h>
-#include <mouse/ps2mouse.h>
 #include <tasking/tasking.h>
 #include <syscall/syscall.h>
 #include <fs/devfs.h>
 #include <fs/ustar.h>
 #include <devices/devices.h>
+#include <mesg.h>
+#include <drivers/drv.h>
 
 void serial_writestr(const char* data, size_t size) {
 	for (size_t i = 0; i < size; i++)
@@ -111,16 +112,42 @@ const char *get_init_path(char *cmdline) {
 		uint32_t len = 0;
 
 		char *tmp = where + 5;
+		char *tmp2 = tmp;
+
+		while (*tmp2 != ' ' && *tmp2 != '\0') tmp2++;
+
+		len = (uint32_t)(tmp2 - tmp);
+
+		char *path = (char *)kmalloc(len + 1);
+		memset(path, 0, len + 1);
+		memcpy(path, tmp, len);
+
+		return path;
+	} else
+		return "/bin/init";
+}
+
+const char *tty_path;
+
+const char *get_tty_path(char *cmdline) {
+	if (strlen(cmdline)) {
+		char *where = strstr(cmdline, "tty=");
+
+		if (where == NULL)
+			return "/dev/tty";
+
+		uint32_t len = 0;
+
+		char *tmp = where + 4;
 
 		char *a = strchr(tmp, ',');
 		char *b = strchr(tmp, '\0');
 		char *c = strchr(tmp, ' ');
 		char *d;
-		char *e;
 
-		if (a == NULL) e = b;
-		if (b == NULL) e = a;
-		if (c == NULL) d = e;
+		if (a == NULL) d = b;
+		if (b == NULL) d = a;
+		if (c == NULL) c = d;
 		if (d == NULL) 
 			d = tmp + strlen(tmp);
 
@@ -132,7 +159,7 @@ const char *get_init_path(char *cmdline) {
 
 		return path;
 	} else
-		return "/bin/init";
+		return "/dev/tty";
 }
 
 uint32_t boot_time;
@@ -184,6 +211,8 @@ void kernel_main(multiboot_info_t *d) {
 
 	/* Initialize terminal interface */
 	serial_init();
+	
+	kprintf("\ec");
 
 	if (((uint32_t)d) - 0xC0000000 > 0x800000) {
 		kprintf("[kernel] mboot hdr out of page");
@@ -221,11 +250,13 @@ void kernel_main(multiboot_info_t *d) {
 
 	printf("[kernel] cpu brand: %s\n", (const char*)brand);	
 
+	ps2_kbd_reset_buffer();
+
 	ps2_kbd_init();
 
 	ps2_kbd_reset_buffer();
 	
-	ps2mouse_init();
+	//ps2mouse_init();
 	boot_time = gettime();
 
 	printf("free memory: %u out of %u bytes free\n", free_pages() * 4096, max_pages() * 4096);
@@ -250,11 +281,22 @@ void kernel_main(multiboot_info_t *d) {
 	dev_videomode_init();
 	dev_mouse_init();
 	dev_uptime_init();
+	dev_time_init();
+	dev_serial_init();
 
 	mount("/dev/initrd", "/", "ustar", 0);
 
+	drv_register_devices();
+	pci_bus_scan();
+	drv_detect_manual();
+	
+	list_devices();
+
 	char *cmdline = (char *)(0xC0000000 + d->cmdline);
 
+	tty_path = get_tty_path(cmdline);
+	
+	printf("kernel tty path %s\n", tty_path);
 	tasking_setup(get_init_path(cmdline));		// default path
 
 	ps2_load_keyboard_map("/kbmaps/kbmap_enUS.kbd");

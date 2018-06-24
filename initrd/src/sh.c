@@ -135,8 +135,8 @@ void _start(void) {
 			comm[i] = 0;
 			open_path[i] = 0;
 		}
-		while (kb != '\n') {
-			if (kb != 0)  {
+		while (kb != '\r' && kb != '\n') {
+			if (kb != 0) {
 				if (kb != '\b') {
 					input[pos++] = kb;
 					write(1, &kb, 1);

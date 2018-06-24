@@ -1,3 +1,5 @@
+include config.mk
+
 OBJS = boot/boot.o kernel/kernel.o kernel/io/serial.o kernel/io/ports.o kernel/cpu/gdt.o kernel/vsprintf.o \
 	   kernel/trace/stacktrace.o kernel/interrupt/idt_load.o kernel/interrupt/isr.o kernel/interrupt/idt.o \
 	   kernel/interrupt/interrupt.o kernel/pic/pic.o kernel/tty/tty.o \
@@ -6,14 +8,15 @@ OBJS = boot/boot.o kernel/kernel.o kernel/io/serial.o kernel/io/ports.o kernel/c
 	   kernel/tasking/tasking.o kernel/syscall/syscall.o kernel/cpu/gdt_new.o \
 	   kernel/tasking/tasking_enter.o kernel/fs/vfs.o kernel/fs/devfs.o kernel/fs/ustar.o kernel/lib/string.o \
 	   kernel/lib/stdlib.o kernel/lib/ctype.o kernel/kheap/heap.o \
-	   kernel/tasking/elf.o kernel/mouse/ps2mouse.o kernel/devices/tty.o kernel/devices/initrd.o \
-	   kernel/devices/mouse.o kernel/devices/videomode.o kernel/devices/uptime.o kernel/panic.o
+	   kernel/tasking/elf.o kernel/devices/tty.o kernel/devices/initrd.o \
+	   kernel/devices/mouse.o kernel/devices/videomode.o kernel/devices/uptime.o kernel/panic.o \
+	   kernel/devices/time.o kernel/ubsan.o kernel/devices/serial.o kernel/mesg.o kernel/drivers/pci.o kernel/drivers/drv.o $(DRIVERS_OBJS)
 
 CXX = i686-elf-g++
 CC = i686-elf-gcc
 ASM = i686-elf-as
 ASM2 = nasm
-CXXFLAGS = -ffreestanding -O0 -Wall -Wextra -fno-exceptions -fno-rtti -std=c++14 -g -Ikernel -Ikernel/lib -fno-omit-frame-pointer
+CXXFLAGS = -ffreestanding -O0 -Wall -Wextra -fno-exceptions -fno-rtti -std=c++14 -g -Ikernel -Ikernel/lib -fno-omit-frame-pointer -fsanitize=undefined $(FLAGS_CXX) $(DRIVERS_FLAGS)
 CFLAGS = -ffreestanding -O0 -nostdlib -g -fno-omit-frame-pointer
 
 iso: quack.iso
@@ -22,15 +25,14 @@ run: quack.iso
 	@qemu-system-i386 -cdrom quack.iso -serial file:serial.txt -monitor stdio
 
 debug-run: quack.iso
-	@echo "To debug, start gdb(or any debugger which uses gdb), load the kernel executable and execute the command \"target remote localhost:1234\""
+	@echo "To debug, start gdb(or any debugger which uses gdb), load the kernel executable and execute the command \"tar rem :1234\""
 	@qemu-system-i386 -cdrom quack.iso -serial file:serial.txt -monitor stdio -s -S
 
 quack.iso: kernel.elf
 	@mkdir -p isodir/boot/grub
 	@cp grub.cfg isodir/boot/grub/grub.cfg
 	@cp kernel.elf isodir/boot/kernel.elf
-	- @rm initrd/initrd
-	@./prepare_initrd.sh
+	@make -C initrd all
 	@cp initrd/initrd isodir/boot/initrd
 	@grub-mkrescue -o quack.iso isodir > /dev/null 2>&1
 	@echo "Done, thank you for waiting"

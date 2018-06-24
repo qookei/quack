@@ -1,6 +1,5 @@
 #include "devfs.h"
 #include <tty/tty.h>
-#include <mouse/ps2mouse.h>
 #include <tasking/tasking.h>
 #include <string.h>
 
@@ -29,12 +28,12 @@ void devfs_init() {
 	memcpy(mountpoints[0].dev, "?", 2);
 
 	devices = (devfs_device *)kmalloc(sizeof(devfs_device) * DEVFS_DEVICES);
+	memset(devices, 0, sizeof(devfs_device) * DEVFS_DEVICES);
 }
 
 bool devfs_register_device(devfs_device *dev) {
 	for (size_t i = 0; i < DEVFS_DEVICES; i++) {
 		if (!devices[i].exists) {
-			// printf("devfs: registering %s at index %u\n", dev->name, i);
 			memcpy(devices[i].name, dev->name, 64);
 			devices[i].exists = true;
 			devices[i].read = dev->read;
@@ -72,20 +71,23 @@ size_t devfs_write(const char *path, char *buffer, size_t count) {
 
 	for (size_t i = 0; i < DEVFS_DEVICES; i++) {
 		if (devices[i].exists && !strcmp(path, devices[i].name)) {	
-			return devices[i].write(buffer, count);
+			if (devices[i].write)
+				return devices[i].write(buffer, count);
+			return EIO;
 		}
 	}
 
 	return EIO;
 }
 
-
-
 size_t devfs_read(const char *path, char *buffer, size_t count) {
 
 	for (size_t i = 0; i < DEVFS_DEVICES; i++) {
 		if (devices[i].exists && !strcmp(path, devices[i].name)) {	
-			return devices[i].read(buffer, count);
+			if (devices[i].read)
+				return devices[i].read(buffer, count);
+			else
+				return EIO;
 		}
 	}
 
@@ -97,7 +99,10 @@ int devfs_stat(const char *path, struct stat *destination) {
 
 	for (size_t i = 0; i < DEVFS_DEVICES; i++) {
 		if (devices[i].exists && !strcmp(path, devices[i].name)) {	
-			return devices[i].stat(destination);
+			if (devices[i].stat)
+				return devices[i].stat(destination);
+			else
+				return EIO;
 		}
 	}
 

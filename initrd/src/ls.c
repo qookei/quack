@@ -53,9 +53,8 @@ void _start(void) {
 		get_ents(path, ents, n);
 		for (int i = 0; i < n; i++) {
 			print(ents[i].name);
-			print(" ");
+			print("\n");
 		}
-		print("\n");
 	} else {
 		write(1, "Error occured!\n", 16); 
 	}

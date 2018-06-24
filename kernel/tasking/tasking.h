@@ -12,11 +12,14 @@
 #define PROCESS_ZOMBIE 1
 #define PROCESS_DEAD 2
 
+#define IPC_MAX_QUEUE 64
+
 #define SIGTERM 15
 #define SIGILL 4
 
 #define WAIT_NONE 0
 #define WAIT_PROC 1
+#define WAIT_IPC 1
 
 typedef struct {
 
@@ -37,6 +40,13 @@ typedef struct {
     uint32_t ss;
 
 } cpu_state_t;
+
+typedef struct ipc_message {
+	
+	uint32_t size;
+	void *data;
+	
+} ipc_message_t;
 
 typedef struct task{
     
@@ -60,6 +70,7 @@ typedef struct task{
     uint32_t heap_end;
     uint32_t heap_pages;
     
+    ipc_message_t **ipc_message_queue;
 
 } task_t;
 
@@ -73,6 +84,11 @@ void tasking_schedule_after_kill();
 task_t *new_task(uint32_t, uint16_t, uint16_t, uint32_t, bool, uint32_t);
 uint32_t tasking_fork(interrupt_cpu_state *);
 void tasking_waitpid(interrupt_cpu_state *, uint32_t);
+void tasking_waitipc(interrupt_cpu_state *);
+bool tasking_ipcsend(uint32_t pid, uint32_t size, void *data);
+uint32_t tasking_ipcrecv(void **data);
+void tasking_ipcremov();
+uint32_t tasking_ipcqueuelen();
 int tasking_execve(const char *name, char **argv, char **envp);
 void kill_task(uint32_t);
 void kill_task_raw(task_t*);

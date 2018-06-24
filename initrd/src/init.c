@@ -51,19 +51,30 @@ int close(int handle) {
 	return _val;
 }
 
+void ipc_wait() {
+	asm ("int $0x30" : : "a"(22));
+}
+
+void ipc_remove() {
+	asm ("int $0x30" : : "a"(20));
+}
+
+int ipc_recv(void *dst) {
+	int _val;
+	asm ("int $0x30" : "=a"(_val) : "a"(19), "b"(dst));
+	return _val;
+}
+
 void _start(void) {
 	/*do stuff xd*/
 	print("init v1.0.1\n");
 
-	while (1) {
-		int i = fork();
-		if (!i)
-			execve("/bin/sh");
-		else {
-			waitpid(i);
-		}
+	int i = fork();
+	if (!i)
+		execve("/bin/sh");
+	else {
+		waitpid(i);
 	}
 
-	print("shell quit!\n");
 	exit();
 }

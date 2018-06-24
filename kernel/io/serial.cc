@@ -11,11 +11,13 @@ void serial_init(void) {
 }
 
 uint8_t serial_read_byte(void) {
-	while((inb(PORT + 5) & 1) == 0);
-	return inb(PORT);
+	if ((inb(PORT + 5) & 1) == 0) return 0;
+	uint8_t i = inb(PORT);
+	return i == '\r' ? '\n' : i;
 }
 
 void serial_write_byte(uint8_t byte) {
+	if (byte == '\n') serial_write_byte('\r');
 	while((inb(PORT + 5) & 0x20) == 0);
 	outb(PORT, byte);
 }

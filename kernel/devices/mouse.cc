@@ -1,6 +1,6 @@
 #include "devices.h"
 #include <multiboot.h>
-#include <mouse/ps2mouse.h>
+#include <drivers/drv.h>
 
 int dev_mouse_stat(struct stat *destination);
 size_t dev_mouse_read(char *buffer, size_t count);
@@ -38,10 +38,12 @@ int dev_mouse_stat(struct stat *destination) {
 }
 
 size_t dev_mouse_read(char *buffer, size_t count) {
-	if (!ps2mouse_haschanged()) return 0;
-	int32_t x = ps2mouse_get_mouse_x();
-	int32_t y = ps2mouse_get_mouse_y();
-	uint8_t i = ps2mouse_get_mouse_buttons();
+	mouse_info_t m;
+	if (!drv_mouse_info_global(&m)) return 0;
+	
+	int32_t x = m.x;
+	int32_t y = m.y;
+	uint8_t i = m.btn;
 
 	if (x < 0) x = 0;
 	if (y < 0) y = 0;
@@ -49,10 +51,10 @@ size_t dev_mouse_read(char *buffer, size_t count) {
 	if (x >= (signed)mbootinfo->framebuffer_width)  x = mbootinfo->framebuffer_width - 1;
 	if (y >= (signed)mbootinfo->framebuffer_height) y = mbootinfo->framebuffer_height - 1;
 
-	char mbuffer[12] = {0};
-	((int32_t*)mbuffer)[0] = x;
-	((int32_t*)mbuffer)[1] = y;
-	((uint32_t*)mbuffer)[2] = i;
+	uint32_t mbuffer[3] = {0};
+	mbuffer[0] = x;
+	mbuffer[1] = y;
+	mbuffer[2] = i;
 
 	size_t s = count;
 	if (s > 12) s = 12;

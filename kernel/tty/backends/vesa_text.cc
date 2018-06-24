@@ -214,8 +214,6 @@ void vesa_text_init() {
 
 	cur_max_x = mboot->framebuffer_width / font.Width;
 	cur_max_y = mboot->framebuffer_height / font.Height;
-	kprintf("%u %u\n", cur_max_x, cur_max_y);
-	kprintf("%u\n", mboot->framebuffer_pitch * mboot->framebuffer_height);
 
 }
 

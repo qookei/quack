@@ -29,13 +29,13 @@
 	8 - request resource(resource_id ebx)			->		resource address eax or 0xFFFFFFFF
 		0 - frame buffer address
 	9 - free resource(resource_id)					->		status eax(0 on success, not changed otherwise)
-*/
-
-/*
-
-	TODO: Find a better way to copy from and to usermode
-	Validate if we're not accessing kernel space or NULL memory
-
+	18- ipc_send(pid ebx, size ecx, data edx)		->		status eax
+	19- ipc_recv(dst ebx)							->		size(status on error) eax		dst can be null to get only the size
+	20- ipc_remove()								->		none
+	21- ipc_queue_length()							->		length(status on error) eax
+	22- ipc_wait_recv()								->		none
+	
+	
 */
 
 uint32_t frame_buffer_owner_pid = 0;
@@ -438,6 +438,76 @@ bool do_syscall(interrupt_cpu_state *state) {
 		case 17: {
 			state->eax = (uint32_t)tasking_sbrk(state->ebx);
 			
+			break;
+		}
+		
+		case 18: {
+			// ipc send
+			
+			uint32_t size = state->ecx;
+			uint32_t data = state->edx;
+			uint32_t pid = state->ebx;
+			
+			if (size > 8388608) {		// 8 MiB limit
+				state->eax = ERANGE;
+				break;
+			}
+			
+			if (!verify_addr(isr_old_cr3, data, size, 0x5)) {
+				state->eax = EFAULT;
+				break;
+			}
+			
+			void *kdata = kmalloc(size);
+			copy_from_user(kdata, (void *)data, size);
+			
+			if (!tasking_ipcsend(pid, size, kdata))
+				state->eax = ENOBUFS;
+			
+			break;
+		}
+		
+		case 19: {
+			// ipc recv
+			
+			uint32_t data = state->ebx;
+			void *kdata;
+			size_t size = tasking_ipcrecv(&kdata);
+			
+			if (!data) {
+				state->eax = size;
+				break;
+			}
+			
+			if (!verify_addr(isr_old_cr3, data, size, 0x7)) {
+				state->eax = EFAULT;
+				break;
+			}
+			
+			state->eax = size;
+			
+			copy_to_user((void *)data, kdata, size);
+			
+			break;
+		}
+		
+		case 20: {
+			// ipc remove
+			tasking_ipcremov();
+			break;
+		}
+		
+		case 21: {
+			// ipc queue length
+			state->eax = tasking_ipcqueuelen();
+			break;
+		}
+		
+		case 22: {
+			// ipc wait recv
+			tasking_waitipc(state);
+			tasking_schedule_next();
+			tasking_schedule_after_kill();
 			break;
 		}
 

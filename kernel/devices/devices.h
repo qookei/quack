@@ -9,5 +9,7 @@ void dev_initrd_init();
 void dev_videomode_init();
 void dev_mouse_init();
 void dev_uptime_init();
+void dev_time_init();
+void dev_serial_init();
 
 #endif

@@ -76,6 +76,7 @@ void kill_task(uint32_t pid) {
 
 }
 
+
 void kill_task_raw(task_t *t) {
 
     uint32_t dead_pid = t->pid;
@@ -135,6 +136,7 @@ void kill_task_raw(task_t *t) {
 
 extern uint32_t current_pd;
 
+extern const char *tty_path;
 
 task_t *new_task(uint32_t addr, uint16_t cs, uint16_t ds, uint32_t pd, bool user, uint32_t pid) {
 
@@ -175,17 +177,20 @@ task_t *new_task(uint32_t addr, uint16_t cs, uint16_t ds, uint32_t pd, bool user
     t->st.eflags = 0x202;
     t->st.ss = ds;
     
+    t->ipc_message_queue = (ipc_message_t **)kmalloc(IPC_MAX_QUEUE * sizeof(ipc_message_t *));
+    memset(t->ipc_message_queue, 0, IPC_MAX_QUEUE * sizeof(ipc_message_t *));
+    
     t->files = (file_handle_t *)kmalloc(sizeof(file_handle_t) * MAX_FILES);
     memset(t->files, 0, sizeof(file_handle_t) * MAX_FILES);
 
     t->files[0].present = 1;
-    memcpy(t->files[0].path, "/dev/tty", 9);
+    memcpy(t->files[0].path, tty_path, strlen(tty_path) + 1);
 
     t->files[1].present = 1;
-    memcpy(t->files[1].path, "/dev/tty", 9);
+    memcpy(t->files[1].path, tty_path, strlen(tty_path) + 1);
 
     t->files[2].present = 1;
-    memcpy(t->files[2].path, "/dev/tty", 9);
+    memcpy(t->files[2].path, tty_path, strlen(tty_path) + 1);
 
     memcpy(t->pwd, "/bin/", 6);
 
@@ -216,6 +221,9 @@ uint32_t tasking_fork(interrupt_cpu_state *state) {
     t->st.cs = state->cs;
     t->st.ebx = state->ebx;
     t->pid = __pid++;
+
+	t->ipc_message_queue = (ipc_message_t **)kmalloc(IPC_MAX_QUEUE * sizeof(ipc_message_t *));
+    memset(t->ipc_message_queue, 0, IPC_MAX_QUEUE * sizeof(ipc_message_t *));
 
     t->files = (file_handle_t *)kmalloc(sizeof(file_handle_t) * MAX_FILES);
     memcpy(t->files, current_task->files, sizeof(file_handle_t) * MAX_FILES);
@@ -280,6 +288,82 @@ uint32_t tasking_fork(interrupt_cpu_state *state) {
 
 extern void mem_dump(void*,size_t,size_t);
 
+bool tasking_ipcsend(uint32_t pid, uint32_t size, void *data) {
+
+	task_t *t = task_head;
+    while(t->next != NULL && t->pid != pid) {
+        t = t->next;
+    }
+
+	if (t->pid != pid)
+		return false;
+
+	uint32_t i = 0;
+	
+	for (; i < IPC_MAX_QUEUE; i++) {
+		if (!t->ipc_message_queue[i])
+			break;
+	}
+	
+	if (i == IPC_MAX_QUEUE)
+		return false;
+
+	t->ipc_message_queue[i] = (ipc_message_t *)kmalloc(sizeof(ipc_message_t));
+	t->ipc_message_queue[i]->size = size;
+	t->ipc_message_queue[i]->data = data;
+
+	if (t->waiting_status == WAIT_IPC) {
+		// wake up!!
+		t->waiting_status = WAIT_NONE;
+	}
+
+	return true;
+}
+
+
+
+uint32_t tasking_ipcrecv(void **data) {
+	if (!current_task->ipc_message_queue[0])
+		return -1;
+
+	if (data)	
+		*data = current_task->ipc_message_queue[0]->data;
+	return current_task->ipc_message_queue[0]->size;
+}
+
+
+void tasking_ipcremov() {
+	
+	if (!current_task->ipc_message_queue[0])
+		return;
+	
+	kfree(current_task->ipc_message_queue[0]);
+	
+	uint32_t i = 1;
+	
+	for (; i < IPC_MAX_QUEUE; i++) {
+		if (!current_task->ipc_message_queue[i])
+			break;
+	}
+	
+	for (uint32_t j = 1; j < i; j++) {
+		current_task->ipc_message_queue[j - 1] = current_task->ipc_message_queue[j];
+	}
+	
+	current_task->ipc_message_queue[i - 1] = NULL;
+	
+}
+
+uint32_t tasking_ipcqueuelen() {
+	
+	for (uint32_t i = 0; i < IPC_MAX_QUEUE; i++) {
+		if (!current_task->ipc_message_queue[i])
+			return i;
+	}
+	
+	return IPC_MAX_QUEUE;
+}
+
 int tasking_execve(const char *name, char **argv, char **envp) {
 
     (void)argv;
@@ -294,6 +378,18 @@ int tasking_execve(const char *name, char **argv, char **envp) {
     task_t* t = current_task;
 
     tasking_schedule_next();
+
+	if (t->ipc_message_queue) {
+		for (uint32_t i = 0; i < IPC_MAX_QUEUE; i++) {
+			if (t->ipc_message_queue[i]) {
+				void *data2free = t->ipc_message_queue[i]->data;
+				kfree(t->ipc_message_queue[i]);
+				if (data2free)
+					kfree(data2free);
+			}
+		}
+		kfree(t->ipc_message_queue);
+	}
 
     set_cr3(t->cr3);
 
@@ -341,6 +437,9 @@ int tasking_execve(const char *name, char **argv, char **envp) {
     t->st.esp = 0xA0001000;
     t->st.eip = r.entry_addr;
     t->st.eflags = 0x202;
+    
+    t->ipc_message_queue = (ipc_message_t **)kmalloc(IPC_MAX_QUEUE * sizeof(ipc_message_t *));
+    memset(t->ipc_message_queue, 0, IPC_MAX_QUEUE * sizeof(ipc_message_t *));
 		
     return 0;
 }
@@ -379,6 +478,27 @@ void tasking_waitpid(interrupt_cpu_state *state, uint32_t pid) {
 	}
 }
 
+void tasking_waitipc(interrupt_cpu_state *state) {
+    task_t *t = current_task;
+
+    t->st.eax = state->eax;
+    t->st.ebx = state->ebx;
+    t->st.ecx = state->ecx;
+    t->st.edx = state->edx;
+    t->st.esi = state->esi;
+    t->st.edi = state->edi;
+    t->st.esp = state->esp;
+    t->st.ebp = state->ebp;
+    t->st.eip = state->eip;
+    t->st.eflags = state->eflags;
+    t->st.seg = state->ds;
+    t->st.ss = state->ds;
+    t->st.cs = state->cs;
+    t->st.ebx = state->ebx;
+
+    t->waiting_status = WAIT_IPC;
+}
+
 void tasking_schedule_next() {
 
     if (ntasks < 1) {
@@ -396,7 +516,7 @@ void tasking_schedule_next() {
 }
 
 void tasking_init_heap(size_t size) {
-	size_t pages = (size / 0x1000) + (size & 0xFFF) ? 1 : 0;
+	size_t pages = (size + 0x1000 - 1) / 0x1000;
 	
 	alloc_mem_at(current_task->cr3, 0x30000000, pages, 0x7);
 
@@ -424,7 +544,7 @@ void *tasking_sbrk(int increment) {
 			// decrement heap size
 			if (current_task->heap_end < current_task->heap_begin) return (void *)EFAULT;
 			size_t new_sz = current_task->heap_end - current_task->heap_begin;
-			size_t new_pages = new_sz / 0x1000 + ((new_sz & 0xFFF) ? 1 : 0);
+			size_t new_pages = (new_sz + 0x1000 - 1) / 0x1000;
 			
 			if (new_pages < current_task->heap_pages) {
 				
@@ -448,7 +568,7 @@ void *tasking_sbrk(int increment) {
 			// increment heap size
 			
 			size_t new_sz = current_task->heap_end - current_task->heap_begin;
-			size_t new_pages = new_sz / 0x1000 + ((new_sz & 0xFFF) ? 1 : 0);
+			size_t new_pages = (new_sz + 0x1000 - 1) / 0x1000;
 			alloc_mem_at(current_task->cr3, current_task->heap_begin + current_task->heap_pages * 0x1000, new_pages, 0x7);
 			current_task->heap_pages = new_pages;
 			

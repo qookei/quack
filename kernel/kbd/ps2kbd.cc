@@ -1,5 +1,6 @@
 #include "ps2kbd.h"
 #include <tasking/tasking.h>
+#include <mesg.h>
 
 #define PS2_DATA_PORT 0x60
 #define PS2_COMM_PORT 0x64
@@ -56,11 +57,9 @@ void ps2_set_led(bool _caps, bool _num, bool _scroll) {
 
 }
 
-#define PS2_KBD_INIT_CONT
-
 void ps2_kbd_init() {
 
-#ifdef PS2_KBD_INIT_CONT
+#ifndef DISABLE_PS2_INIT
 
 	outb(PS2_COMM_PORT, 0xAD);									// disable ports
 	outb(PS2_COMM_PORT, 0xA7);
