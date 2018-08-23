@@ -96,7 +96,9 @@ elf_loaded prepare_elf_for_exec(const char* name) {
 		uint32_t sz = phdr->size_in_mem / 0x1000;
 		if (phdr->size_in_mem & 0xFFF) sz++;
 
-		alloc_mem_at(pagedir, phdr->load_to & 0xFFFFF000, sz, 0x7);
+		if (!alloc_mem_at(pagedir, phdr->load_to & 0xFFFFF000, sz, 0x7)) {
+			return result;
+		}
 		
 		crosspd_memcpy(pagedir, (void *)phdr->load_to, def_cr3(), (void *)((uint32_t)elf_file + (phdr->data_offset)), phdr->size_in_mem);
 

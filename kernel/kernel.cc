@@ -295,8 +295,7 @@ void kernel_main(multiboot_info_t *d) {
 	char *cmdline = (char *)(0xC0000000 + d->cmdline);
 
 	tty_path = get_tty_path(cmdline);
-	
-	printf("kernel tty path %s\n", tty_path);
+
 	tasking_setup(get_init_path(cmdline));		// default path
 
 	ps2_load_keyboard_map("/kbmaps/kbmap_enUS.kbd");

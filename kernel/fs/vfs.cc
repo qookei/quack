@@ -1,6 +1,7 @@
 #include "vfs.h"
 #include "devfs.h"
 #include "ustar.h"
+#include <mesg.h>
 #include <tasking/tasking.h>
 
 mountpoint_t *mountpoints;
@@ -22,30 +23,28 @@ void vfs_init() {
 }
 
 int determine_mountpoint(const char *path) {
-	int mountpoint = 0;
-	size_t s = strlen(mountpoints[0].path);
-	size_t s2 = s;
+	int mountpoint = 0, mountpoint2 = 0;
+	size_t size = 0, size2 = 0;
 
-	while (mountpoint < MAX_MOUNTPOINTS) {
-		if (mountpoints[mountpoint].present != 1) {
+	while(mountpoint < MAX_MOUNTPOINTS) {
+		if(!mountpoints[mountpoint].present) {
 			mountpoint++;
 			continue;
 		}
 
-		s = strlen(mountpoints[mountpoint].path);
-		if (s > s2) {
-			mountpoint++;
-			continue;
+		size = strlen(mountpoints[mountpoint].path);
+		if(!memcmp(mountpoints[mountpoint].path, path, size)) {
+			if(size > size2) {
+				size2 = size;
+				mountpoint2 = mountpoint;
+			}
 		}
-		
-		if (!memcmp(mountpoints[mountpoint].path, path, s)) {
-			return mountpoint;
-		}
-
-		s2 = s;
 
 		mountpoint++;
 	}
+
+	if(size2 != 0 && mountpoint2 < MAX_MOUNTPOINTS)
+		return mountpoint2;
 	
 	return -1;
 }
@@ -117,34 +116,32 @@ size_t resolve_path(char *out_path, char *pwd, const char *in_path) {
 
 int chdir(const char *path) {
 
-	const char *o = path;
-	char _tmp[1024];
+	char ptmp[1024];
+	memcpy(ptmp, path, 1024);
+	if (ptmp[strlen(ptmp) - 1] == '/' && strlen(ptmp) > 1)
+		ptmp[strlen(ptmp) - 1] = 0;
 
 	struct stat s;
 
-	int ret = stat(path, &s);
+	int ret = stat(ptmp, &s);
 	if (ret != 0) {
-		memcpy(_tmp, path, strlen(path) + 1);
-		_tmp[strlen(path)] = '/';
-		_tmp[strlen(path) + 1] = '\0';
-		
-		int ret = stat(_tmp, &s);
-		if (ret != 0) 
-			return ENOENT;
-		
-		o = (const char *)_tmp;
+		return ENOENT;
 	}
 	if (!(s.st_mode & S_IFDIR))
 		return ENOTDIR;
 
 	char *tmp = (char *)kmalloc(1024);
-	size_t len = resolve_path(tmp, current_task->pwd, o);
+	size_t len = resolve_path(tmp, current_task->pwd, ptmp);
 
 	if (len == (size_t)-1) {
 		kfree(tmp);
 		return ENAMETOOLONG;
 	}
 
+	if (tmp[len - 1] != '/') {
+		tmp[len++] = '/';
+		tmp[len] = 0;
+	}
 	memcpy(current_task->pwd, tmp, len + 1);
 
 	kfree(tmp);
@@ -159,7 +156,7 @@ int get_ents(const char *path, dirent_t *result) {
 	if (mountpoint < 0) {
 		return ENOENT;
 	}
-
+	
 	int status = 0;
 
 	const char *fs_path = path + strlen(mountpoints[mountpoint].path);
@@ -338,12 +335,6 @@ int stat(const char *path, struct stat *destination) {
 		return 0;
 	}
 
-	/*if (strcmp(tmp, "/dev") == 0) {
-		memcpy(destination, &_devfs_stat, sizeof(struct stat));
-		kfree(tmp);
-		return 0;
-	}*/
-
 	int mountpoint = determine_mountpoint(tmp);
 	if (mountpoint < 0) {
 		kfree(tmp);
@@ -379,11 +370,6 @@ int fstat(int handle, struct stat *destination) {
 		return 0;
 	}
 
-	/*if (strcmp(path, "/dev") == 0) {
-		memcpy(destination, &_devfs_stat, sizeof(struct stat));
-		return 0;
-	}*/
-
 	int mountpoint = determine_mountpoint(path);
 	if (mountpoint < 0) {
 		return ENOENT;
@@ -412,11 +398,6 @@ int kstat(const char *path, struct stat *destination) {
 		return 0;
 	}
 
-	/*if (strcmp(tmp, "/dev") == 0) {
-		memcpy(destination, &_devfs_stat, sizeof(struct stat));
-		return 0;
-	}*/
-
 	int mountpoint = determine_mountpoint(tmp);
 	if (mountpoint < 0) {
 		return ENOENT;
@@ -435,14 +416,18 @@ int kstat(const char *path, struct stat *destination) {
 }
 
 int mount(const char *device, const char *dir, const char *fstype, uint32_t flags) {
-
+	
 	struct stat stat_info;
-	int status = stat(device, &stat_info);
-	if (status != 0)
-		return status;
+	int status;
 
-	if (!(stat_info.st_mode & S_IFBLK))
-		return ENOTBLK;
+	if (!(flags & MS_NODEV)) {
+		status = stat(device, &stat_info);
+		if (status != 0)
+			return status;
+
+		if (!(stat_info.st_mode & S_IFBLK))
+			return ENOTBLK;
+	}
 
 	status = stat(dir, &stat_info);
 	if (status != 0)
@@ -471,7 +456,10 @@ int mount(const char *device, const char *dir, const char *fstype, uint32_t flag
 
 	mountpoints[mountpoint].flags = flags;
 
-	printf("mounted %s on %s, type '%s'\n", device, dir, fstype);
+	if (!(flags & MS_NODEV))
+		printf("mounted %s on %s, type '%s'\n", device, dir, fstype);
+	else
+		printf("mounted %s, type '%s'\n", dir, fstype);
 
 	kfree(tmp);
 

@@ -16,6 +16,14 @@ size_t oct_to_dec(char *string) {
 	return integer;
 }
 
+bool dir_comp(const char *entry, const char *path) {
+	if (entry[strlen(entry) - 1] == '/') {
+		return (strlen(entry) - 1 == strlen(path) && !memcmp(entry, path, strlen(entry - 1)));
+	} else {
+		return false;
+	}
+}
+
 uint64_t ustar_get_file(mountpoint_t *mountpoint, const char *path, ustar_entry_t *destination) {
 
 	uint64_t block = 0;
@@ -59,10 +67,9 @@ uint64_t ustar_get_file(mountpoint_t *mountpoint, const char *path, ustar_entry_
 			break;
 		}
 
-		if(strlen(entry->name) == strlen(path) && !memcmp(entry->name, path, strlen(path))) {
+		if((strlen(entry->name) == strlen(path) && !memcmp(entry->name, path, strlen(path))) || dir_comp(entry->name, path)) {
 			memcpy(destination, entry, sizeof(ustar_entry_t));
 			kfree(buffer);
-			// printf("found %s\n", entry->name);
 			return block * USTAR_BLOCK_SIZE;
 		}
 

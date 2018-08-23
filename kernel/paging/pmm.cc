@@ -38,7 +38,7 @@ void pmm_push(uint32_t val) {
 }
 
 uint32_t pmm_pop() {
-	if(pmm_stack_size == 0) {asm volatile ("cli"); kprintf("out of physical memory!"); while(1);}
+	if(pmm_stack_size == 0) {asm volatile ("cli"); kprintf("out of physical memory! %08p", __builtin_return_address(1)); while(1);}
 	pmm_stack_pointer--;
 	pmm_stack_size--;
 	return pmm_stack[pmm_stack_pointer];

@@ -81,7 +81,6 @@
 #define MS_MANDLOCK			0x0080
 #define MS_NOATIME			0x0100
 #define MS_NODIRATIME		0x0200
-#define MS_DEVFSMOUNT		0x8000
 
 typedef struct {
 

@@ -133,6 +133,7 @@ void crosspd_memset(uint32_t dst_pd, void *dst_addr, int num, size_t sz) {
 
 
 void *alloc_mem_at(uint32_t pd, uint32_t where, size_t pages, uint32_t flags) {
+	if (where + pages * 0x1000 > 0xC0000000) return NULL;
 	uint32_t opd = get_cr3();
 	void *dst_phys;
 	set_cr3(pd);
@@ -188,7 +189,7 @@ void map_page(void *physaddr, void *virtualaddr, unsigned int flags) {
 	uint32_t *pt = ((uint32_t *)0xFFC00000) + (0x400 * pdindex);
 
 	if(pt[ptindex] & 0x1) {
- 		kprintf("map_page on already mapped address! %08p %08p\n", physaddr, virtualaddr);
+ 		kprintf("map_page on already mapped address! %08p %08p %08p\n", physaddr, virtualaddr, __builtin_return_address(0));
 		return;
 	}
 	
@@ -265,9 +266,9 @@ uint32_t create_page_directory(multiboot_info_t* mboot) {
 	uint32_t kernel_addr = (0xC0000000 >> 22);
 
 	uint32_t tmp_addr = (uint32_t)pmm_alloc();
-	map_page((void *)tmp_addr, (void*)0xE0000000, 0x3);
+	map_page((void *)tmp_addr, (void*)0xEDA9B000, 0x3);
 
-	uint32_t addr = 0xE0000000;
+	uint32_t addr = 0xEDA9B000;
 	uint32_t *new_dir = (uint32_t *)addr;
 
 	memset(new_dir, 0, 0x1000);
@@ -278,7 +279,7 @@ uint32_t create_page_directory(multiboot_info_t* mboot) {
 	
 	new_dir[1023] = (tmp_addr | 0x3);
 
-	unmap_page((void*)0xE0000000);
+	unmap_page((void*)0xEDA9B000);
 
 	return tmp_addr;
 

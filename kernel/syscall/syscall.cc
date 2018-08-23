@@ -2,6 +2,7 @@
 #include <fs/vfs.h>
 #include <tasking/tasking.h>
 #include <multiboot.h>
+#include <mesg.h>
 
 /*
 
@@ -38,10 +39,13 @@
 	
 */
 
+
+
 uint32_t frame_buffer_owner_pid = 0;
 
 extern file_handle_t *files;
 extern task_t *current_task;
+extern mountpoint_t *mountpoints;
 
 bool do_syscall(interrupt_cpu_state*);
 
@@ -124,6 +128,7 @@ bool do_syscall(interrupt_cpu_state *state) {
 			uint32_t pid = current_task->pid;
 			tasking_schedule_next();
 			kill_task(pid);
+			tasking_schedule_next();
 			tasking_schedule_after_kill();
 			break;
 		}
@@ -513,7 +518,6 @@ bool do_syscall(interrupt_cpu_state *state) {
 
 	}
 
-	
 	return true;
 
 }

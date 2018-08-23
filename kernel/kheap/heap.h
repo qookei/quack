@@ -1,4 +1,5 @@
-#ifndef HEAP_H
+#include <kheap/liballoc.h>
+/*#ifndef HEAP_H
 #define HEAP_H
 
 #include <paging/paging.h>
@@ -23,5 +24,8 @@ typedef struct block {
 void *kmalloc(size_t) __attribute__((malloc));
 void kfree(void *);
 void *krealloc(void *, size_t);
+size_t get_size(void *);
+void heap_block_scan_region(uint32_t begin, uint32_t end);
 
 #endif
+*/

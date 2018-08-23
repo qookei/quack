@@ -506,7 +506,7 @@ void _start(void) {
 		// mouse
 		int i = read(mouse_handle, &mouse, 18);
 		if (i > 0) {
-			if (mouse.b & (1<<2)) { // left mouse button
+			if (mouse.b & 1) { // left mouse button
 				if (mouse.y <= statusbar && mouse.x > video.w - 35)
 					exit();
 				else if (menu && mouse.y <= 50 && mouse.y >= 30 && mouse.x <= menuw) {

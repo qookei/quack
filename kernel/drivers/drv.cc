@@ -185,7 +185,6 @@ void drv_mouse_update(device_info *dev, int32_t xoff, int32_t yoff, uint8_t btn)
 	d->mouse_btn = btn;
 	d->mouse_changed = true;
 	
-	early_mesg(LEVEL_DBG, "drv", "mouse_update %d %d %x", drv_global_mouse_x, drv_global_mouse_y, drv_global_mouse_btn);
 }
 
 bool drv_mouse_info_global(mouse_info_t *dest) {

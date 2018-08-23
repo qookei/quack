@@ -193,8 +193,6 @@ bool ps2_load_keyboard_map(const char *path) {
 
 	size_t load = b / 8;
 
-	printf("ps2: len read from file: %i\n", load);
-
 
 	ps2_low_def = data;
 	ps2_upp_sft = data + load;

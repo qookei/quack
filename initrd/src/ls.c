@@ -48,7 +48,7 @@ void _start(void) {
 	getwd(path);
 	int n = get_ents(path, NULL, 0);
 	
-	if (n > 0) {
+	if (n >= 0) {
 		dirent_t ents[n];
 		get_ents(path, ents, n);
 		for (int i = 0; i < n; i++) {
