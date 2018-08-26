@@ -289,7 +289,7 @@ uint32_t tasking_fork(interrupt_cpu_state *state) {
 
 extern void mem_dump(void*,size_t,size_t);
 
-bool tasking_ipcsend(uint32_t pid, uint32_t size, void *data) {
+bool tasking_ipcsend(uint32_t pid, uint32_t size, void *data, uint32_t sender) {
 
 	task_t *t = task_head;
 	while(t->next != NULL && t->pid != pid) {
@@ -312,16 +312,14 @@ bool tasking_ipcsend(uint32_t pid, uint32_t size, void *data) {
 	t->ipc_message_queue[i] = (ipc_message_t *)kmalloc(sizeof(ipc_message_t));
 	t->ipc_message_queue[i]->size = size;
 	t->ipc_message_queue[i]->data = data;
+	t->ipc_message_queue[i]->sender = sender;
 
 	if (t->waiting_status == WAIT_IPC) {
-		// wake up!!
 		t->waiting_status = WAIT_NONE;
 	}
 
 	return true;
 }
-
-
 
 uint32_t tasking_ipcrecv(void **data) {
 	if (!current_task->ipc_message_queue[0])
@@ -331,7 +329,6 @@ uint32_t tasking_ipcrecv(void **data) {
 		*data = current_task->ipc_message_queue[0]->data;
 	return current_task->ipc_message_queue[0]->size;
 }
-
 
 void tasking_ipcremov() {
 	
@@ -353,6 +350,14 @@ void tasking_ipcremov() {
 	
 	current_task->ipc_message_queue[i - 1] = NULL;
 	
+}
+
+uint32_t tasking_ipcgetsender() {
+	if (tasking_ipcqueuelen()) {
+		return current_task->ipc_message_queue[0]->sender;
+	}
+	
+	return 0xFFFFFFFF;
 }
 
 uint32_t tasking_ipcqueuelen() {

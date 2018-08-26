@@ -6,3 +6,4 @@ serial.txt
 /bochsout.txt
 initrd/bin/*
 initrd/initrd
+config.mk

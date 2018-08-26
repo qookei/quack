@@ -34,7 +34,7 @@ driver_info_t *ps2m_info() {
 	return &ps2m_info_struct;
 }
 
-struct info {
+struct ps2m_info_st {
 	uint8_t which, first, second, third;
 };
 
@@ -60,7 +60,7 @@ bool ps2m_init(device_info_t *dev) {
 	ps2_wait_ready();
 	outb(0x60, 0xF4);
 	
-	dev->device_data = kmalloc(sizeof(struct info));
+	dev->device_data = kmalloc(sizeof(struct ps2m_info_st));
 	
 	return true;
 }
@@ -75,7 +75,7 @@ bool ps2m_deinit(device_info_t *dev) {
 
 bool ps2m_interrupt(device_info_t *dev) {
 	//early_mesg(LEVEL_DBG, "ps2m", "interrupt");
-	struct info *a = (struct info *)dev->device_data;
+	struct ps2m_info_st *a = (struct ps2m_info_st *)dev->device_data;
 	
 	if (!(inb(0x64) & 0x20)) {
 		return true;

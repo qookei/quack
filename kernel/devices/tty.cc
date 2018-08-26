@@ -1,5 +1,5 @@
 #include "devices.h"
-#include <kbd/ps2kbd.h>
+#include <drivers/drv.h>
 
 int dev_tty_stat(struct stat *destination);
 size_t dev_tty_read(char *buffer, size_t count);
@@ -37,12 +37,12 @@ size_t dev_tty_read(char *buffer, size_t count) {
 	// wait the process until \n is read
 	// then fill that buffer
 
-	char c = readch();
+	char c = drv_kbd_char_global();
 	size_t s = 0;
 	
 	while (c != 0 && s < count) {
 		buffer[s++] = c;
-		c = readch();
+		c = drv_kbd_char_global();
 	}
 
 	return s;

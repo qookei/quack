@@ -35,6 +35,7 @@
 	20- ipc_remove()								->		none
 	21- ipc_queue_length()							->		length(status on error) eax
 	22- ipc_wait_recv()								->		none
+	23- ipc_get_sender()							->		message sender, 0xFFFFFFFF if queue is empty
 	
 	
 */
@@ -312,8 +313,6 @@ bool do_syscall(interrupt_cpu_state *state) {
 
 					enter_kernel_directory();
 
-
-
 					state->eax = 0;
 					frame_buffer_owner_pid = 0;
 					break;
@@ -466,7 +465,7 @@ bool do_syscall(interrupt_cpu_state *state) {
 			void *kdata = kmalloc(size);
 			copy_from_user(kdata, (void *)data, size);
 			
-			if (!tasking_ipcsend(pid, size, kdata))
+			if (!tasking_ipcsend(pid, size, kdata, current_task->pid))
 				state->eax = ENOBUFS;
 			
 			break;
@@ -513,6 +512,11 @@ bool do_syscall(interrupt_cpu_state *state) {
 			tasking_waitipc(state);
 			tasking_schedule_next();
 			tasking_schedule_after_kill();
+			break;
+		}
+		
+		case 23: {
+			state->eax = tasking_ipcgetsender();
 			break;
 		}
 

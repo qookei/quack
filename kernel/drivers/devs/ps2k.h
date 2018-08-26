@@ -1,5 +1,5 @@
-#ifndef PS2M
-#define PS2M
+#ifndef PS2K
+#define PS2K
 
 #include <stdint.h>
 #include <stddef.h>

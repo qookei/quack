@@ -16,11 +16,9 @@
 #include <tty/backends/vesa_text.h>
 #include <kheap/heap.h>
 #include <io/rtc.h>
-#include <kbd/ps2kbd.h>
 #include <tasking/tasking.h>
 #include <syscall/syscall.h>
 #include <fs/devfs.h>
-#include <fs/ustar.h>
 #include <devices/devices.h>
 #include <mesg.h>
 #include <drivers/drv.h>
@@ -250,13 +248,6 @@ void kernel_main(multiboot_info_t *d) {
 
 	printf("[kernel] cpu brand: %s\n", (const char*)brand);	
 
-	ps2_kbd_reset_buffer();
-
-	ps2_kbd_init();
-
-	ps2_kbd_reset_buffer();
-	
-	//ps2mouse_init();
 	boot_time = gettime();
 
 	printf("free memory: %u out of %u bytes free\n", free_pages() * 4096, max_pages() * 4096);
@@ -298,7 +289,7 @@ void kernel_main(multiboot_info_t *d) {
 
 	tasking_setup(get_init_path(cmdline));		// default path
 
-	ps2_load_keyboard_map("/kbmaps/kbmap_enUS.kbd");
+	//ps2_load_keyboard_map("/kbmaps/kbmap_enUS.kbd");
 
 	asm volatile ("mov %%esp, %0" : "=r"(stack));
 

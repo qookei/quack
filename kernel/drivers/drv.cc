@@ -9,6 +9,10 @@ driver_info_t *dummy1_info();
 driver_info_t *ps2m_info();
 #endif
 
+#ifdef DRIVER_PS2K
+driver_info_t *ps2k_info();
+#endif
+
 #define KBUFFER 256
 
 typedef struct input_device_data {
@@ -103,6 +107,10 @@ void drv_detect_manual() {
 	#ifdef DRIVER_PS2M
 	drv_detect_manual_one(ps2m_info());
 	#endif
+	
+	#ifdef DRIVER_PS2K
+	drv_detect_manual_one(ps2k_info());
+	#endif
 }
 
 
@@ -168,6 +176,9 @@ int32_t drv_global_mouse_x, drv_global_mouse_y;
 uint8_t drv_global_mouse_btn;
 bool drv_global_has_last_changed;
 
+char drv_global_keyboard_buffer[KBUFFER * 2];
+uint32_t drv_global_keyboard_index;
+
 void drv_mouse_update(device_info *dev, int32_t xoff, int32_t yoff, uint8_t btn) {
 	
 	if ((xoff < 0 && drv_global_mouse_x > 0) || xoff > 0)
@@ -198,6 +209,7 @@ bool drv_mouse_info_global(mouse_info_t *dest) {
 		return false;
 	}
 }
+
 bool drv_mouse_info(uint32_t id, mouse_info_t *dest) {
 	uint32_t i = 0;
 	while(i < MAX_DEVICES && drv_devices[i] && drv_devices[i]->id != id) i++;
@@ -216,3 +228,35 @@ bool drv_mouse_info(uint32_t id, mouse_info_t *dest) {
 		return false;
 	}
 }
+
+void drv_keyboard_update(device_info *dev, char c) {
+	early_mesg(LEVEL_DBG, "drv", "keyboard update, pressed '%c'", c);
+
+	input_device_data_t *d = (input_device_data_t *)dev->type_data;
+	if (d->index < KBUFFER) {
+		d->buffer[d->index] = c;
+		d->index++;
+	}
+	
+	if (drv_global_keyboard_index < KBUFFER * 2) {
+		drv_global_keyboard_buffer[drv_global_keyboard_index] = c;
+		drv_global_keyboard_index++;
+	}
+	
+}
+
+char drv_kbd_char_global() {
+	if (drv_global_keyboard_index > 0) {
+		return drv_global_keyboard_buffer[--drv_global_keyboard_index];
+	}
+	return 0;
+}
+
+char drv_kbd_char(device_info_t *dev) {
+	input_device_data_t *d = (input_device_data_t *)dev->type_data;
+	if (d->index > 0) {
+		return d->buffer[--d->index];
+	}
+	return 0;
+}
+
