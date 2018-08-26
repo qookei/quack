@@ -60,6 +60,11 @@ kernel.o: $(OBJS)
 	@$(ASM2) -g -felf32 -F dwarf $< -o $@
 	@printf "ASM\t\t%s\n" $@
 	
+
+config.mk:
+	cd utils; \
+	./menuconfig.sh
+
 config:
 	cd utils; \
 	./menuconfig.sh
