@@ -8,6 +8,7 @@ To build quack, you need to have the following:
 - `python` 2 or 3
 - `make`
 - `grub-mkrescue` and everything else needed to use it(`mkisofs`, `xorriso`, etc.)
+- `dialog` for menuconfig
 
 Once you acquired all the necessary tools, you are ready to build the OS.
 Building is simple and only requires a few steps.
