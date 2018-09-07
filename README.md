@@ -1,6 +1,11 @@
 # quack
 quack is a 32bit open source operating system written primarily in C++ and Assembly.
 
+## Notice
+Thank you to everyone who helped and/or shown general interest in quack.
+I've had a ton of fun over the past year working on it, but I don't feel any incentive to further continue development.
+I might revisit it in the future, but for now, consider the project dead.
+
 ### Building
 To build quack, you need to have the following:
 - `i686-elf` GCC toolchain in your path
