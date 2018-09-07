@@ -1,5 +1,9 @@
 #!/bin/sh
 
+if ! type dialog > /dev/null; then
+	exit
+fi
+
 echo -n "" > build_opts
 echo -n "3" > log_opts
 echo -n "1" > driv_opts
