@@ -4,22 +4,6 @@
  */
 
 #include "vsprintf.h"
-#include <tty/tty.h>
-
-extern void serial_writestring(const char*);
-
-int printf(const char *fmt, ...) {
-	// asm volatile ("cli");
-	char buf[1024];
-	va_list va;
-	va_start(va, fmt);
-	int ret = vsprintf(buf, fmt, va);
-	va_end(va);
-	tty_putstr(buf);
-	serial_writestring(buf);
-	// asm volatile ("sti");
-	return ret;
-}
 
 /* we use this so that we can do without the ctype library */
 #define is_digit(c)	((c) >= '0' && (c) <= '9')
@@ -219,7 +203,7 @@ int vsprintf(char *buf, const char *fmt, va_list args) {
 		case 'd':
 		case 'i':
 			flags |= SIGN;
-			str = number(str, va_arg(args, unsigned long), 16,
+			str = number(str, va_arg(args, unsigned long), 10,
 				field_width, precision, flags);
 			break;
 			

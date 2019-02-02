@@ -2,14 +2,12 @@
 #define TASKING_H
 
 #include <kheap/heap.h>
-#include <fs/vfs.h>
 #include <paging/paging.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <interrupt/isr.h>
 
 #define PROCESS_ALIVE 0
-#define PROCESS_ZOMBIE 1
 #define PROCESS_DEAD 2
 
 #define IPC_MAX_QUEUE 64
@@ -23,21 +21,21 @@
 
 typedef struct {
 
-    uint32_t seg;
+	uint32_t seg;
 
-    uint32_t eax;
-    uint32_t ebx;
-    uint32_t ecx;
-    uint32_t edx;
-    uint32_t esi;
-    uint32_t edi;
-    uint32_t ebp;
+	uint32_t eax;
+	uint32_t ebx;
+	uint32_t ecx;
+	uint32_t edx;
+	uint32_t esi;
+	uint32_t edi;
+	uint32_t ebp;
 
-    uint32_t eip;
-    uint32_t cs;
-    uint32_t eflags;
-    uint32_t esp;
-    uint32_t ss;
+	uint32_t eip;
+	uint32_t cs;
+	uint32_t eflags;
+	uint32_t esp;
+	uint32_t ss;
 
 } cpu_state_t;
 
@@ -50,33 +48,27 @@ typedef struct ipc_message {
 } ipc_message_t;
 
 typedef struct task{
-    
-    uint32_t cr3;
-    uint32_t pid;
+	
+	uint32_t cr3;
+	uint32_t pid;
 
-    cpu_state_t st;
+	cpu_state_t st;
 
-    task* next;
-    task* prev;
+	task* next;
+	task* prev;
 
-    uint32_t waiting_status;
-    uint32_t waiting_info;
+	uint32_t waiting_status;
+	uint32_t waiting_info;
 
-    // file handles
-    file_handle_t *files;
+	uint32_t heap_begin;
+	uint32_t heap_end;
+	uint32_t heap_pages;
 
-    char pwd[1024];
-    
-    uint32_t heap_begin;
-    uint32_t heap_end;
-    uint32_t heap_pages;
-    
-    ipc_message_t **ipc_message_queue;
+	ipc_message_t **ipc_message_queue;
 
 } task_t;
 
 
-void tasking_init();
 void tasking_setup(const char *);
 
 extern "C" {void tasking_switch();}
@@ -104,4 +96,4 @@ void kill_task_raw(task_t*);
 
 void *tasking_sbrk(int);
 
-#endif  // TASKING_H
+#endif	// TASKING_H

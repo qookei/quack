@@ -1,9 +1,10 @@
 #ifndef STACKTRACE_H
 #define STACKTRACE_H
 
-#include "trace.h"
+#include <stdint.h>
+#include <stddef.h>
+#include <mesg.h>
 
-void stack_trace(unsigned int, unsigned int);
-void function_addr(uint32_t);
+void stack_trace(uintptr_t);
 
 #endif

@@ -1,14 +1,9 @@
 # quack
-quack is a 32bit open source operating system written primarily in C++ and Assembly.
-
-## Notice
-Thank you to everyone who helped and/or shown general interest in quack.
-I've had a ton of fun over the past year working on it, but I don't feel any incentive to further continue development.
-I might revisit it in the future, but for now, consider the project dead.
+quack is a 32bit open source operating system written primarily in C and Assembly.
 
 ### Building
 To build quack, you need to have the following:
-- `i686-elf` GCC toolchain in your path
+- `clang` that supports the i386-pc-none-elf target
 - `nasm`
 - `python` 2 or 3
 - `make`
@@ -22,12 +17,7 @@ Usually building looks something like this:
 $ git clone https://gitlab.com/qookei/quack.git
 $ cd quack
 $ make
+$ ./make-iso.sh
 ```
 If that finished with no reported errors, you should have `quack.iso` in the project directory. You can also run the OS in qemu after building by running `make run` instead of `make`.
-#### Fixing build errors
-If you get errors like this:
-```
-kernel.o: In function `find_correct_trace(unsigned long)':
-/path/to/quack/kernel/trace/stacktrace.cc:x: undefined reference to `ntrace_elems'
-```
-run `make clean` and try building again.
+

@@ -1,49 +1,20 @@
 #include "stacktrace.h"
 
-uint32_t find_correct_trace(uint32_t addr) {
-	for (uint32_t i = 0; i < ntrace_elems; ++i) {
-		if (addr - trace_elems[i].addr < trace_elems[i].size)
-			return i;
-	}
+void stack_trace(uintptr_t max_frames) {
+	uintptr_t *ebp = NULL;
+	asm ("mov %%ebp, %0" : "=r"(ebp));
+	
+	for(unsigned int frame = 0; frame < max_frames; ++frame) {
+		uintptr_t eip = ebp[1];
+		
+		ebp = (uintptr_t *)ebp[0];
 
-	return -1;
-}
+		if ((uintptr_t)ebp < 0xC0000000 || (uintptr_t)ebp > 0xCFFFFFFF)
+			break;
 
-extern int printf(const char*, ...);
-extern int kprintf(const char*, ...);
+		early_mesg(LEVEL_DBG, "trace", "#%u: [%08x]", frame, eip);
 
-void stack_trace(unsigned int max_frames, unsigned int skip) {
-	unsigned int *ebp = &max_frames - 2;
-    unsigned int skipped = 0;
-    printf("Stack trace:\n");
-    for(unsigned int frame = 0; frame < max_frames; ++frame) {
-        unsigned int eip = ebp[1];
-
-        ebp = reinterpret_cast<unsigned int *>(ebp[0]);
-        //unsigned int *arguments = &ebp[2];
-
-        if ((uint32_t)ebp < 0xC0000000 || (uint32_t)ebp > 0xCFFFFFFF) {
-            return;
-        }
-       	
-        if (skipped++ >= skip) {
-            int trace_id = find_correct_trace(eip);
-            if (trace_id == -1) {
-                printf("<%08x> ?+?\n", eip);
-            } else 
-                printf("<%08x> %s+0x%x\n", eip, trace_elems[trace_id].func_name, eip - trace_elems[trace_id].addr);
-        }
-
-        if(ebp == 0)
-        	break;
-
+		if (!ebp)
+			break;
     }
-}
-
-void function_addr(uint32_t addr) {
-	int trace_id = find_correct_trace(addr);
-	if (trace_id == -1) {
-		kprintf("<%08x> ?+?\n", addr);
-	} else 
-		kprintf("<%08x> %s+0x%x\n", addr, trace_elems[trace_id].func_name, addr - trace_elems[trace_id].addr);
 }

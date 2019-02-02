@@ -1,5 +1,5 @@
 #include "tasking.h"
-#include "elf.h"
+//#include "elf.h"
 #include <io/ports.h>
 #include <multiboot.h>
 #include <trace/stacktrace.h>
@@ -21,18 +21,13 @@ extern multiboot_info_t *mbootinfo;
 task_t* task_head = NULL;
 task_t* current_task = NULL;
 
-void tasking_init() {
-	task_t *t = (task_t*)kmalloc(sizeof(task_t));
-	memset(t, 0, sizeof(task_t));
-	t->files = (file_handle_t *)kmalloc(sizeof(file_handle_t) * MAX_FILES);
-	memset(t->files, 0, sizeof(file_handle_t) * MAX_FILES);
-	t->waiting_status = WAIT_NONE;
-	current_task = t;
-}
-
 uint32_t __pid = 1;
 void tasking_setup(const char *init_path) {
-	elf_loaded r = prepare_elf_for_exec(init_path);
+	// TODO
+	return;
+
+		
+	/*elf_loaded r = prepare_elf_for_exec(init_path);
 	
 	if (!r.success_ld) {
 		char buf[1024];
@@ -42,13 +37,12 @@ void tasking_setup(const char *init_path) {
 
 	printf("Successfully loaded %s\n", init_path);
 
-	kfree(current_task->files);
 	kfree(current_task);
 	current_task = NULL;
 
 	new_task(r.entry_addr, 0x1b, 0x23, r.page_direc, true, __pid++);
 
-	current_task = task_head;
+	current_task = task_head;*/
 }
 
 int64_t ntasks = 0;
@@ -113,7 +107,6 @@ void kill_task_raw(task_t *t) {
 		t->prev->next = t->next;
 	if (t->next != NULL)
 		t->next->prev = t->prev;
-	kfree(t->files);
 	kfree(t);
 	ntasks--;
 
@@ -181,20 +174,6 @@ task_t *new_task(uint32_t addr, uint16_t cs, uint16_t ds, uint32_t pd, bool user
 	t->ipc_message_queue = (ipc_message_t **)kmalloc(IPC_MAX_QUEUE * sizeof(ipc_message_t *));
 	memset(t->ipc_message_queue, 0, IPC_MAX_QUEUE * sizeof(ipc_message_t *));
 	
-	t->files = (file_handle_t *)kmalloc(sizeof(file_handle_t) * MAX_FILES);
-	memset(t->files, 0, sizeof(file_handle_t) * MAX_FILES);
-
-	t->files[0].present = 1;
-	memcpy(t->files[0].path, tty_path, strlen(tty_path) + 1);
-
-	t->files[1].present = 1;
-	memcpy(t->files[1].path, tty_path, strlen(tty_path) + 1);
-
-	t->files[2].present = 1;
-	memcpy(t->files[2].path, tty_path, strlen(tty_path) + 1);
-
-	memcpy(t->pwd, "/bin/", 6);
-
 	insert(t);
 	ntasks++;
 	return t;
@@ -226,12 +205,7 @@ uint32_t tasking_fork(interrupt_cpu_state *state) {
 	t->ipc_message_queue = (ipc_message_t **)kmalloc(IPC_MAX_QUEUE * sizeof(ipc_message_t *));
 	memset(t->ipc_message_queue, 0, IPC_MAX_QUEUE * sizeof(ipc_message_t *));
 
-	t->files = (file_handle_t *)kmalloc(sizeof(file_handle_t) * MAX_FILES);
-	memcpy(t->files, current_task->files, sizeof(file_handle_t) * MAX_FILES);
-
-	memcpy(t->pwd, current_task->pwd, 1024);
-
-	uint32_t new_proc_pd = create_page_directory(mbootinfo);
+	uint32_t new_proc_pd = create_page_directory();
 	t->cr3 = new_proc_pd;
 
 	uint32_t pd_addr = current_task->cr3;
@@ -372,6 +346,9 @@ uint32_t tasking_ipcqueuelen() {
 
 int tasking_execve(const char *name, char **argv, char **envp) {
 
+	// not so TODO, move to a user-space server
+	return -1;
+/*
 	(void)argv;
 	(void)envp;
 
@@ -447,7 +424,7 @@ int tasking_execve(const char *name, char **argv, char **envp) {
 	t->ipc_message_queue = (ipc_message_t **)kmalloc(IPC_MAX_QUEUE * sizeof(ipc_message_t *));
 	memset(t->ipc_message_queue, 0, IPC_MAX_QUEUE * sizeof(ipc_message_t *));
 		
-	return 0;
+	return 0;*/
 }
 
 void tasking_waitpid(interrupt_cpu_state *state, uint32_t pid) {
@@ -479,7 +456,7 @@ void tasking_waitpid(interrupt_cpu_state *state, uint32_t pid) {
 	if (t_tmp->pid != pid) {
 		t->waiting_status = WAIT_NONE;
 		t->waiting_info = 0;
-		t->st.eax = EINVAL;
+		t->st.eax = -1;
 		return;
 	}
 }
@@ -551,7 +528,7 @@ void *tasking_sbrk(int increment) {
 		current_task->heap_end += increment;
 		if (increment < 0) {
 			// decrement heap size
-			if (current_task->heap_end < current_task->heap_begin) return (void *)EFAULT;
+			if (current_task->heap_end < current_task->heap_begin) return (void *)-1;
 			size_t new_sz = current_task->heap_end - current_task->heap_begin;
 			size_t new_pages = (new_sz + 0x1000 - 1) / 0x1000;
 			
@@ -591,6 +568,8 @@ void *tasking_sbrk(int increment) {
 void tasking_schedule_after_kill() {
 	asm volatile ("jmp tasking_enter" : : "a"(current_task->cr3), "b"(&(current_task->st)));
 }
+
+// TODO: make tasking handler use the generic interrupt code and not it's own "special snowflake" code
 
 extern "C" {
 

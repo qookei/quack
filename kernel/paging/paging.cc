@@ -3,12 +3,9 @@
 #include <interrupt/isr.h>
 #include <trace/stacktrace.h>
 #include <panic.h>
+#include <mesg.h>
 
 page_directory dir_;
-
-extern int kprintf(const char*, ...);
-extern int printf(const char*, ...);
-extern void *memcpy(void *, const void *, size_t);
 
 uint32_t current_pd;
 
@@ -21,7 +18,6 @@ uint32_t get_cr3() {
 	uint32_t a;
 	asm volatile("mov %%cr3, %0" : "=r"(a) : : );
 	return a;
-	// return current_pd;
 }
 
 uint32_t def_cr3() {
@@ -91,7 +87,6 @@ void crosspd_memcpy(uint32_t dst_pd, void *dst_addr, uint32_t src_pd, void *src_
 		if (dst_off + copy_size >= 0x1000 && dst_phys)
 			unmap_page((void *)0xEF003000);
 
-		//kprintf("copied %u bytes in one iteration\n", copy_size);
 
 		sz -= copy_size;
 		
@@ -169,13 +164,9 @@ uint32_t alloc_clean_page() {
 	return pt_f[0] & 0xFFFFF000;
 }
 
-extern bool pmm_reset_pages;
-
 void map_page(void *physaddr, void *virtualaddr, unsigned int flags) {
-	bool ostat = pmm_reset_pages;
-	pmm_reset_pages = false;
 	if ((((uint32_t)physaddr) & 0xFFF) != 0 || (((uint32_t)virtualaddr)&0xFFF) != 0) {
-		kprintf("map_page with unaligned address(es)!\n");
+		early_mesg(LEVEL_WARN, "vmm", "map_page with unaligned address(es)!");
 		return;
 	}
 
@@ -189,19 +180,18 @@ void map_page(void *physaddr, void *virtualaddr, unsigned int flags) {
 	uint32_t *pt = ((uint32_t *)0xFFC00000) + (0x400 * pdindex);
 
 	if(pt[ptindex] & 0x1) {
- 		kprintf("map_page on already mapped address! %08p %08p %08p\n", physaddr, virtualaddr, __builtin_return_address(0));
+ 		early_mesg(LEVEL_WARN, "vmm", "map_page on already mapped address! %08p %08p %08p", physaddr, virtualaddr, __builtin_return_address(0));
 		return;
 	}
 	
 	pt[ptindex] = ((uint32_t)physaddr) | (flags & 0xFFF) | 0x01; // Present
 
 	tlb_flush_entry((uint32_t)virtualaddr);
-	pmm_reset_pages = ostat;
 }
 
 void unmap_page(void *virtualaddr) {
 	if ((((uint32_t)virtualaddr)&0xFFF) != 0) {
-		kprintf("unmap_page with unaligned address!\n");
+		early_mesg(LEVEL_WARN, "vmm", "unmap_page with unaligned address!");
 		return;
 	}
  
@@ -210,7 +200,7 @@ void unmap_page(void *virtualaddr) {
 
 	uint32_t *pd = (uint32_t *)0xFFFFF000;
 	if (!(pd[pdindex] & 0x1)) {
-		kprintf("unmap_page on nonexistent page directory entry!\n");
+		early_mesg(LEVEL_WARN, "vmm", "unmap_page on nonexistent page directory entry!");
 	}
 
 	uint32_t *pt = ((uint32_t *)0xFFC00000) + (0x400 * pdindex);
@@ -249,7 +239,6 @@ uint32_t get_flag(uint32_t pd, void *virtualaddr) {
 	uint32_t pt = ((uint32_t *)0xE0000000)[pdindex];
 	unmap_page((void *)0xE0000000);
 	if (!(pt & 0xFFF)) {
-		//kprintf("pt not found in pd\n");
 		return 0;
 	}
 
@@ -261,8 +250,7 @@ uint32_t get_flag(uint32_t pd, void *virtualaddr) {
 }
 
 
-uint32_t create_page_directory(multiboot_info_t* mboot) {
-	(void)mboot;
+uint32_t create_page_directory() {
 	uint32_t kernel_addr = (0xC0000000 >> 22);
 
 	uint32_t tmp_addr = (uint32_t)pmm_alloc();
@@ -287,7 +275,7 @@ uint32_t create_page_directory(multiboot_info_t* mboot) {
 
 void destroy_page_directory(void *pd) {
 	if (get_cr3() == (uint32_t)pd) {
-		kprintf("destroy_page_directory on used page directory!\n");
+		early_mesg(LEVEL_WARN, "vmm", "destroy_page_directory on used page directory!");
 		return;
 	}
 
@@ -319,16 +307,15 @@ bool page_fault(interrupt_cpu_state *state) {
 
 	if (us) {
 
-		if (present) printf("present ");
-		if (rw)	printf("write ");
-		if (reserved) printf("rb overwritten ");
-		if (id) printf("instr fetch ");	
-		printf("\n");
-		printf("at %08x faulting process regs at crash:\n", fault_addr);
-		printf("eax: %08x ebx:    %08x ecx: %08x edx: %08x ebp: %08x\n", state->eax, state->ebx, state->ecx, state->edx, state->ebp);
-		printf("eip: %08x eflags: %08x esp: %08x edi: %08x esi: %08x\n", state->eip, state->eflags, state->esp, state->edi, state->esi);
-		printf("cs: %04x ds: %04x\n", state->cs, state->ds);
-		printf("code:\n");
+		if (present) early_mesg(LEVEL_WARN, "vmm", "present ");
+		if (rw)	early_mesg(LEVEL_WARN, "vmm", "write ");
+		if (reserved) early_mesg(LEVEL_WARN, "vmm", "rb overwritten ");
+		if (id) early_mesg(LEVEL_WARN, "vmm", "instr fetch ");	
+		early_mesg(LEVEL_WARN, "vmm", "at %08x faulting process regs at crash:", fault_addr);
+		early_mesg(LEVEL_WARN, "vmm", "eax: %08x ebx:    %08x ecx: %08x edx: %08x ebp: %08x", state->eax, state->ebx, state->ecx, state->edx, state->ebp);
+		early_mesg(LEVEL_WARN, "vmm", "eip: %08x eflags: %08x esp: %08x edi: %08x esi: %08x", state->eip, state->eflags, state->esp, state->edi, state->esi);
+		early_mesg(LEVEL_WARN, "vmm", "cs: %04x ds: %04x", state->cs, state->ds);
+		early_mesg(LEVEL_WARN, "vmm", "code:");
 
 		set_cr3(def_cr3());
 
@@ -336,7 +323,6 @@ bool page_fault(interrupt_cpu_state *state) {
 		tasking_schedule_next();
 		kill_task_raw(fault_proc);
 		tasking_schedule_next();
-		printf("Process %u crashed with SIGSEGV!\n", fault_proc->pid);
 
 		isr_old_cr3 = current_task->cr3;
 		isr_in_kdir = false;
@@ -377,11 +363,7 @@ void paging_init(void) {
 
 	set_cr3(addr);
 
-	// kprintf("init cr3: %08x\n", get_cr3());
 
-
-	kprintf("[kernel] paging ok\n");
-
-	//pmm_reset_pages = true;
+	early_mesg(LEVEL_INFO, "vmm", "paging ok");
 
 }
