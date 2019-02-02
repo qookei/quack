@@ -11,7 +11,7 @@ OBJS = boot/boot.o kernel/kernel.o kernel/io/serial.o kernel/io/ports.o kernel/c
 
 CC = clang -target i386-none-elf
 ASM = nasm
-CFLAGS = -ffreestanding -O2 -Wall -Wextra -std=gnu17 -Ikernel -Ikernel/lib -fno-omit-frame-pointer -mno-sse -mno-avx -nostdlib $(FLAGS_C)
+CFLAGS = -g -ffreestanding -O2 -Wall -Wextra -std=gnu17 -Ikernel -Ikernel/lib -fno-omit-frame-pointer -mno-sse -mno-avx -nostdlib $(FLAGS_C)
 
 kernel.elf: $(OBJS)
 	@printf "LINK\t\t%s\n" $@

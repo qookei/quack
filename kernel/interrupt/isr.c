@@ -1,28 +1,23 @@
 #include "isr.h"
 #include <trace/stacktrace.h>
-
 #include <mesg.h>
-
 #include <paging/paging.h>
 #include <tasking/tasking.h>
 #include <panic.h>
 
-#define isr_count 10
 
-static interrupt_handler_f *interrupt_handlers[IDT_size][isr_count] = {{0}};
+static interrupt_handler_f *interrupt_handlers[IDT_size] = {0};
 
 int isr_in_kdir = 0;
 uint32_t isr_old_cr3;
 
 void enter_kernel_directory() {
 	isr_old_cr3 = get_cr3();
-	set_cr3(def_cr3());	
+	set_cr3(def_cr3());
 }
 
-extern task_t *current_task;
-
 void leave_kernel_directory() {
-	set_cr3(isr_old_cr3);	
+	set_cr3(isr_old_cr3);
 }
 
 void pic_eoi(uint32_t r) {
@@ -39,10 +34,6 @@ void pic_eoi(uint32_t r) {
 	}
 }
 
-#define getreg(x,y) asm volatile ("mov %%" x ", %0" : "=r"(y) : :);
-
-uint32_t ___faulting_cr3;
-
 const char* int_names[] = {"Division by zero", "Debug", "NMI", "Breakpoint", "Overflow", "Bound range exceeded",
 	   		"Invalid opcode", "Device not available", "Double fault",
 			"Coprocessor segment overrun", "Invalid TSS", "Segment not present", "Stack segment fault", "General protection fault", "Page fault",
@@ -52,29 +43,23 @@ const char* int_names[] = {"Division by zero", "Debug", "NMI", "Breakpoint", "Ov
 	
 void dispatch_interrupt(interrupt_cpu_state r) {
 
-	getreg("cr3",___faulting_cr3);
-
 	enter_kernel_directory();
 
-	early_mesg(LEVEL_DBG, "interrupt", "servicing interrupt %u(exc: %s)", r.interrupt_number, (r.interrupt_number < 32) ? "no" : "yes");
+	early_mesg(LEVEL_DBG, "interrupt", "servicing interrupt %u(exc: %s)", r.interrupt_number, (r.interrupt_number >= 32) ? "no" : "yes");
 
 	int handled = 0;
-	
-	for (size_t i = 0; i < isr_count; ++i) {
-		if (interrupt_handlers[r.interrupt_number][i] != NULL) {
-			handled = interrupt_handlers[r.interrupt_number][i](&r);
-			if (handled) break;
-		}
+		
+	if (interrupt_handlers[r.interrupt_number] != NULL) {
+		handled = interrupt_handlers[r.interrupt_number](&r);
 	}
+
+	if (r.interrupt_number < 32 && !handled && r.cs != 0x08) {
 	
-	if (r.interrupt_number < 32 && !handled && current_task->st.cs != 0x08) {
-	    set_cr3(def_cr3());
+		early_mesg(LEVEL_ERR, "fixme", "add task killing code! isr.cc:62");
+		// TODO
 
-		uint32_t fault_pid = current_task->pid;
 		tasking_schedule_next();
-		kill_task(fault_pid);
-
-	    asm volatile ("mov %0, %%eax; mov %1, %%ebx; jmp tasking_enter" : : "r"(current_task->cr3), "r"(&current_task->st) : "%eax", "%ebx");
+	    tasking_schedule_after_kill();
 
 	}
 
@@ -103,25 +88,19 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 }
 
 int register_interrupt_handler(uint8_t int_no, interrupt_handler_f handler) {
-	int registered = 0;
-	for (size_t i = 0; i < isr_count; ++i) {
-		if (interrupt_handlers[int_no][i] == NULL) {
-			interrupt_handlers[int_no][i] = handler;
-			registered = 1;
-		}
+	if (interrupt_handlers[int_no] == NULL) {
+		interrupt_handlers[int_no] = handler;
+		return 1;
 	}
 	
-	return registered;
+	return 0;
 }
 
 int unregister_interrupt_handler(uint8_t int_no, interrupt_handler_f handler) {
-	int unregistered = 0;
-	for (size_t i = 0; i < isr_count; ++i) {
-		if (interrupt_handlers[int_no][i] == handler) {
-			interrupt_handlers[int_no][i] = NULL;
-			unregistered = 1;
-		}
+	if (interrupt_handlers[int_no] == handler) {
+		interrupt_handlers[int_no] = NULL;
+		return 1;
 	}
 	
-	return unregistered;
+	return 0;
 }

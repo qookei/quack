@@ -1,5 +1,4 @@
 build_flags = [
-	"-DPANIC_NICE",
 	"-g",
 ]
 
