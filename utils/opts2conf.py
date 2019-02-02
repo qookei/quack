@@ -1,8 +1,6 @@
 build_flags = [
 	"-DPANIC_NICE",
-	"-DPCI_DISABLE_LOG",
 	"-g",
-	"-DDISABLE_PS2_INIT"
 ]
 
 log_levels = [
@@ -13,7 +11,6 @@ log_levels = [
 ]
 
 out_build_flags = ""
-out_build_flags_c = ""
 
 with open("build_opts") as f:
 	opts = f.read().split(" ")
@@ -21,7 +18,7 @@ with open("build_opts") as f:
 		if i.isdigit():
 			out_build_flags += build_flags[int(i) - 1] + " "
 			if build_flags[int(i) - 1] == "-g":
-				out_build_flags_c += build_flags[int(i) - 1] + " "
+				out_build_flags += build_flags[int(i) - 1] + " "
 
 with open("log_opts") as f:
 	opts = f.read().split(" ")
@@ -30,5 +27,4 @@ with open("log_opts") as f:
 			out_build_flags += log_levels[int(i) - 1] + " "
 
 
-print ("FLAGS_CXX = " + out_build_flags)
-print ("FLAGS_C = " + out_build_flags_c)
+print ("FLAGS_C = " + out_build_flags)

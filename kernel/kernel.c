@@ -26,8 +26,6 @@ void gdt_new_setup(void);
 void gdt_set_tss_stack(uint32_t);
 void gdt_ltr(void);
 
-extern "C" { 
-
 void kernel_main(multiboot_info_t *mboot) {
 	serial_init();
 	
@@ -62,8 +60,5 @@ void kernel_main(multiboot_info_t *mboot) {
 
 	asm volatile ("sti");
 	
-	while(true) {
-	}
-}
-
+	while(1);
 }

@@ -9,23 +9,21 @@ OBJS = boot/boot.o kernel/kernel.o kernel/io/serial.o kernel/io/ports.o kernel/c
 	   kernel/lib/stdlib.o kernel/lib/ctype.o kernel/kheap/liballoc.o kernel/kheap/liballoc_funcs.o \
 	   kernel/panic.o kernel/mesg.o
 
-CXX = clang -target i386-none-elf
 CC = clang -target i386-none-elf
 ASM = nasm
-CXXFLAGS = -ffreestanding -O2 -Wall -Wextra -fno-exceptions -fno-rtti -std=c++14 -Ikernel -Ikernel/lib -fno-omit-frame-pointer $(FLAGS_CXX) -mno-sse -mno-avx
-CFLAGS = -ffreestanding -O2 -nostdlib -fno-omit-frame-pointer $(FLAGS_C)
+CFLAGS = -ffreestanding -O2 -Wall -Wextra -std=gnu17 -Ikernel -Ikernel/lib -fno-omit-frame-pointer -mno-sse -mno-avx -nostdlib $(FLAGS_C)
 
 kernel.elf: $(OBJS)
-	@$(CC) -T linker.ld -o kernel.elf -lgcc $(CFLAGS) $^
 	@printf "LINK\t\t%s\n" $@
+	@$(CC) -T linker.ld -o kernel.elf $(CFLAGS) $^
 
-%.o: %.cc
-	@$(CXX) -c $< -o $@ $(CXXFLAGS)
-	@printf "CXX\t\t%s\n" $@
+%.o: %.c
+	@printf "CC\t\t%s\n" $@
+	@$(CC) -c $< -o $@ $(CFLAGS)
 
 %.o: %.asm
-	@$(ASM) -g -felf32 -F dwarf $< -o $@
 	@printf "ASM\t\t%s\n" $@
+	@$(ASM) -g -felf32 -F dwarf $< -o $@
 
 config.mk:
 	cd utils; \
@@ -41,5 +39,4 @@ clean:
 	@printf "cleaning\n"
 	-@rm $(OBJS)
 	-@rm kernel.elf
-	-@rm quack.iso
 

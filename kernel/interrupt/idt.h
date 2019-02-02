@@ -4,14 +4,10 @@
 #include <stdint.h>
 #include <stddef.h>
 
-// #include <libc/stdio.h>
-
 #define IDT_size 256
 typedef void (*isr_f)(void);
 
 void idt_init(void);
-
-extern "C" {
 
 extern void isr0(void);
 extern void isr1(void);
@@ -62,7 +58,5 @@ extern void isr45(void);
 extern void isr46(void);
 extern void isr47(void);
 extern void isr48(void);
-
-}
 
 #endif

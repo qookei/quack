@@ -11,7 +11,7 @@
 
 static interrupt_handler_f *interrupt_handlers[IDT_size][isr_count] = {{0}};
 
-bool isr_in_kdir = false;
+int isr_in_kdir = 0;
 uint32_t isr_old_cr3;
 
 void enter_kernel_directory() {
@@ -50,10 +50,6 @@ const char* int_names[] = {"Division by zero", "Debug", "NMI", "Breakpoint", "Ov
 			"Reserved", "Reserved", "Reserved", "Reserved", "Reserved", "Reserved", "Reserved", "Reserved", "Reserved", "Security exception",
 			"Reserved", "Triple fault"};
 	
-
-
-extern "C" {
-
 void dispatch_interrupt(interrupt_cpu_state r) {
 
 	getreg("cr3",___faulting_cr3);
@@ -62,7 +58,7 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 
 	early_mesg(LEVEL_DBG, "interrupt", "servicing interrupt %u(exc: %s)", r.interrupt_number, (r.interrupt_number < 32) ? "no" : "yes");
 
-	bool handled = false;
+	int handled = 0;
 	
 	for (size_t i = 0; i < isr_count; ++i) {
 		if (interrupt_handlers[r.interrupt_number][i] != NULL) {
@@ -106,26 +102,24 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 
 }
 
-}
-
-bool register_interrupt_handler(uint8_t int_no, interrupt_handler_f handler) {
-	bool registered = false;
+int register_interrupt_handler(uint8_t int_no, interrupt_handler_f handler) {
+	int registered = 0;
 	for (size_t i = 0; i < isr_count; ++i) {
 		if (interrupt_handlers[int_no][i] == NULL) {
 			interrupt_handlers[int_no][i] = handler;
-			registered = true;
+			registered = 1;
 		}
 	}
 	
 	return registered;
 }
 
-bool unregister_interrupt_handler(uint8_t int_no, interrupt_handler_f handler) {
-	bool unregistered = false;
+int unregister_interrupt_handler(uint8_t int_no, interrupt_handler_f handler) {
+	int unregistered = 0;
 	for (size_t i = 0; i < isr_count; ++i) {
 		if (interrupt_handlers[int_no][i] == handler) {
 			interrupt_handlers[int_no][i] = NULL;
-			unregistered = true;
+			unregistered = 1;
 		}
 	}
 	

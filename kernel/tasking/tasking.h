@@ -7,9 +7,6 @@
 #include <stdint.h>
 #include <interrupt/isr.h>
 
-#define PROCESS_ALIVE 0
-#define PROCESS_DEAD 2
-
 #define IPC_MAX_QUEUE 64
 
 #define SIGTERM 15
@@ -54,8 +51,8 @@ typedef struct task{
 
 	cpu_state_t st;
 
-	task* next;
-	task* prev;
+	struct task* next;
+	struct task* prev;
 
 	uint32_t waiting_status;
 	uint32_t waiting_info;
@@ -71,19 +68,19 @@ typedef struct task{
 
 void tasking_setup(const char *);
 
-extern "C" {void tasking_switch();}
+void tasking_switch();
 
 void tasking_schedule_next();
 void tasking_schedule_after_kill();
 
-task_t *new_task(uint32_t, uint16_t, uint16_t, uint32_t, bool, uint32_t);
+task_t *new_task(uint32_t, uint16_t, uint16_t, uint32_t, int, uint32_t);
 
 uint32_t tasking_fork(interrupt_cpu_state *);
 
 void tasking_waitpid(interrupt_cpu_state *, uint32_t);
 void tasking_waitipc(interrupt_cpu_state *);
 
-bool tasking_ipcsend(uint32_t pid, uint32_t size, void *data, uint32_t sender);
+int tasking_ipcsend(uint32_t pid, uint32_t size, void *data, uint32_t sender);
 uint32_t tasking_ipcrecv(void **data);
 void tasking_ipcremov();
 uint32_t tasking_ipcqueuelen();

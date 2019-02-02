@@ -4,7 +4,7 @@
 #include <paging/paging.h>
 #include <mesg.h>
 
-void panic(const char *message, interrupt_cpu_state *state, bool regs, bool pf_error) {
+void panic(const char *message, interrupt_cpu_state *state, int regs, int pf_error) {
 	
 	uint32_t cr3 = get_cr3();
 

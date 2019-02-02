@@ -3,17 +3,11 @@
 
 extern int kprintf(const char *, ...);
 
-extern "C" {
-
 int liballoc_lock() {
-	// asm volatile ("cli");
-
 	return 0;
 }
 
 int liballoc_unlock() {
-	// asm volatile ("sti");
-
 	return 0;
 }
 
@@ -43,6 +37,4 @@ int liballoc_free(void* ptr, int pages) {
 	}
 	
 	return 0;
-}
-
 }

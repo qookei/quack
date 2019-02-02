@@ -21,9 +21,7 @@ static struct idt_ptr {
 	uint32_t base;
 } __attribute__((packed)) idtp;
 
-extern "C" {
-	extern void idt_load(struct idt_ptr *);
-}
+extern void idt_load(struct idt_ptr *);
 
 static void idt_set_gate(uint8_t num, uint32_t base, uint16_t segment_selector, uint8_t flags) {
 	IDT[num].base_low = base & 0xFFFF;

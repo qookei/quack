@@ -10,8 +10,7 @@ echo -n "3" > log_opts
 read -r -d '' main_cmd << EOM
 dialog --title "Kernel configuration" --menu "Select category(press Cancel when you're done):" 15 45 5 \
 1 "Build options" \
-2 "Log output levels" \
-3 "Drivers" 2> /tmp/dialog_out
+2 "Log output levels" 2> /tmp/dialog_out
 EOM
 
 while eval "$main_cmd"
@@ -22,9 +21,7 @@ do
 	then
 		dialog --title "Kernel configuration" --checklist "Select build options:" 15 45 5 \
 1 "Nice Panic" off \
-2 "Don't display PCI devices" off \
-3 "Debugging symbols" off \
-4 "Disable PS2 Controller reset" off 2> build_opts
+2 "Debugging symbols" off 2> build_opts
 	elif [ $out = "2" ]
 	then
 		dialog --title "Kernel configuration" --checklist "Select log levels to enable:" 15 45 5 \

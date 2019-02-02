@@ -32,7 +32,7 @@ void tasking_setup(const char *init_path) {
 	if (!r.success_ld) {
 		char buf[1024];
 		sprintf(buf, "Going nowhere without my init! Could not load: %s", init_path);
-		panic(buf, NULL, false, false);
+		panic(buf, NULL, 0, 0);
 	}
 
 	printf("Successfully loaded %s\n", init_path);
@@ -40,7 +40,7 @@ void tasking_setup(const char *init_path) {
 	kfree(current_task);
 	current_task = NULL;
 
-	new_task(r.entry_addr, 0x1b, 0x23, r.page_direc, true, __pid++);
+	new_task(r.entry_addr, 0x1b, 0x23, r.page_direc, 1, __pid++);
 
 	current_task = task_head;*/
 }
@@ -123,7 +123,7 @@ void kill_task_raw(task_t *t) {
 	}
 
 	if (dead_pid == 1) {
-		panic("Init died!", NULL, false, false);
+		panic("Init died!", NULL, 0, 0);
 	}
 }
 
@@ -132,7 +132,7 @@ extern uint32_t current_pd;
 
 extern const char *tty_path;
 
-task_t *new_task(uint32_t addr, uint16_t cs, uint16_t ds, uint32_t pd, bool user, uint32_t pid) {
+task_t *new_task(uint32_t addr, uint16_t cs, uint16_t ds, uint32_t pd, int user, uint32_t pid) {
 
 	task_t *t = (task_t*)kmalloc(sizeof(task_t));
 
@@ -263,7 +263,7 @@ uint32_t tasking_fork(interrupt_cpu_state *state) {
 
 extern void mem_dump(void*,size_t,size_t);
 
-bool tasking_ipcsend(uint32_t pid, uint32_t size, void *data, uint32_t sender) {
+int tasking_ipcsend(uint32_t pid, uint32_t size, void *data, uint32_t sender) {
 
 	task_t *t = task_head;
 	while(t->next != NULL && t->pid != pid) {
@@ -271,7 +271,7 @@ bool tasking_ipcsend(uint32_t pid, uint32_t size, void *data, uint32_t sender) {
 	}
 
 	if (t->pid != pid)
-		return false;
+		return 0;
 
 	uint32_t i = 0;
 	
@@ -281,7 +281,7 @@ bool tasking_ipcsend(uint32_t pid, uint32_t size, void *data, uint32_t sender) {
 	}
 	
 	if (i == IPC_MAX_QUEUE)
-		return false;
+		return 0;
 
 	t->ipc_message_queue[i] = (ipc_message_t *)kmalloc(sizeof(ipc_message_t));
 	t->ipc_message_queue[i]->size = size;
@@ -292,7 +292,7 @@ bool tasking_ipcsend(uint32_t pid, uint32_t size, void *data, uint32_t sender) {
 		t->waiting_status = WAIT_NONE;
 	}
 
-	return true;
+	return 1;
 }
 
 uint32_t tasking_ipcrecv(void **data) {
@@ -485,7 +485,7 @@ void tasking_waitipc(interrupt_cpu_state *state) {
 void tasking_schedule_next() {
 
 	if (ntasks < 1) {
-		panic("scheduler: no processes running!", NULL, false, false);
+		panic("scheduler: no processes running!", NULL, 0, 0);
 	}
 
 	while (1) {
@@ -494,7 +494,7 @@ void tasking_schedule_next() {
 			current_task = task_head;
 			
 		if (current_task == NULL)
-			panic("scheduler: no processes running!", NULL, false, false);
+			panic("scheduler: no processes running!", NULL, 0, 0);
 	
 		if (current_task->waiting_status == WAIT_NONE)
 			break;
@@ -571,9 +571,7 @@ void tasking_schedule_after_kill() {
 
 // TODO: make tasking handler use the generic interrupt code and not it's own "special snowflake" code
 
-extern "C" {
-
-bool init = false;
+int init = 0;
 
 uint32_t tasking_handler(uint32_t esp) {
 	
@@ -585,12 +583,10 @@ uint32_t tasking_handler(uint32_t esp) {
 		memcpy(&(current_task->st), (cpu_state_t*)esp, sizeof(cpu_state_t));
 		tasking_schedule_next();
 	} else {
-		init = true;
+		init = 1;
 	}
 
 	tasking_schedule_after_kill();
 	
 	return esp;
-}
-
 }

@@ -9,8 +9,7 @@ uint32_t pmm_stack_pointer = 0;
 uint32_t pmm_stack_size = 0;
 uint32_t pmm_stack_max_size = 0;
 
-
-inline bool is_available(uint32_t page_begin, multiboot_info_t *mbt) {
+inline int is_available(uint32_t page_begin, multiboot_info_t *mbt) {
 	multiboot_memory_map_t* mmap = (multiboot_memory_map_t*)(mbt->mmap_addr + 0xC0000000);
 	while((uint32_t)mmap < (mbt->mmap_addr + 0xC0000000 + mbt->mmap_length)) {
 		
@@ -18,13 +17,13 @@ inline bool is_available(uint32_t page_begin, multiboot_info_t *mbt) {
 		uint32_t end = begin + (uint32_t)mmap->len;
 
 		if (mmap->type != MULTIBOOT_MEMORY_AVAILABLE) {
-			if (page_begin >= begin && page_begin + 0x1000 <= end) return false;
+			if (page_begin >= begin && page_begin + 0x1000 <= end) return 0;
 		}
 
 		mmap = (multiboot_memory_map_t*) ((uint32_t)mmap + mmap->size + sizeof(mmap->size));
 	}
 
-	return true;
+	return 1;
 }
 
 void pmm_push(uint32_t val) {

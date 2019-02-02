@@ -5,7 +5,7 @@
 #include <panic.h>
 #include <mesg.h>
 
-page_directory dir_;
+struct page_directory dir_;
 
 uint32_t current_pd;
 
@@ -285,11 +285,11 @@ void destroy_page_directory(void *pd) {
 extern task_t* current_task;
 
 extern uint32_t isr_old_cr3;
-extern bool isr_in_kdir;
+extern int isr_in_kdir;
 
 extern void mem_dump(void*,size_t,size_t);
 
-bool page_fault(interrupt_cpu_state *state) {
+int page_fault(interrupt_cpu_state *state) {
 
 	uint32_t fault_addr;
    	asm volatile("mov %%cr2, %0" : "=r" (fault_addr));
@@ -325,14 +325,14 @@ bool page_fault(interrupt_cpu_state *state) {
 		tasking_schedule_next();
 
 		isr_old_cr3 = current_task->cr3;
-		isr_in_kdir = false;
+		isr_in_kdir = 0;
 
 
 		tasking_schedule_after_kill();
 	}
 
-	panic("Page fault", state, true, true);
-	return true;
+	panic("Page fault", state, 1, 1);
+	return 1;
 }
 
 void paging_init(void) {
