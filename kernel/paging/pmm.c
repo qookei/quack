@@ -9,7 +9,7 @@ uint32_t pmm_stack_pointer = 0;
 uint32_t pmm_stack_size = 0;
 uint32_t pmm_stack_max_size = 0;
 
-inline int is_available(uint32_t page_begin, multiboot_info_t *mbt) {
+int is_available(uint32_t page_begin, multiboot_info_t *mbt) {
 	multiboot_memory_map_t* mmap = (multiboot_memory_map_t*)(mbt->mmap_addr + 0xC0000000);
 	while((uint32_t)mmap < (mbt->mmap_addr + 0xC0000000 + mbt->mmap_length)) {
 		

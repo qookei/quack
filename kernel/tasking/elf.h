@@ -1,7 +1,6 @@
 #ifndef ELF
 #define ELF
 
-#include <fs/vfs.h>
 #include <paging/paging.h>
 #include <multiboot.h>
 
@@ -69,10 +68,10 @@ typedef struct {
 
 	uint32_t entry_addr;
 	uint32_t page_direc;
-	bool success_ld;
+	int success_ld;
 
 } elf_loaded;
 
-elf_loaded prepare_elf_for_exec(const char* name);
+elf_loaded prepare_elf_for_exec(void *, size_t);
 
 #endif

@@ -27,8 +27,6 @@ void* liballoc_alloc(int pages){
 }
 
 int liballoc_free(void* ptr, int pages) {
-	// TODO
-	
 	for (int i = 0; i < pages; i++) {
 		void *curr = (void *)((uint32_t)ptr + i * 0x1000);
 		void *p = get_phys(def_cr3(), curr);

@@ -1,5 +1,9 @@
 include config.mk
 
+ifndef OLEVEL
+OLEVEL = 2
+endif
+
 OBJS = boot/boot.o kernel/kernel.o kernel/io/serial.o kernel/io/ports.o kernel/cpu/gdt.o kernel/vsprintf.o \
 	   kernel/trace/stacktrace.o kernel/interrupt/idt_load.o kernel/interrupt/isr.o kernel/interrupt/idt.o \
 	   kernel/interrupt/interrupt.o kernel/pic/pic.o \
@@ -7,11 +11,11 @@ OBJS = boot/boot.o kernel/kernel.o kernel/io/serial.o kernel/io/ports.o kernel/c
 	   kernel/tasking/tasking.o kernel/cpu/gdt_new.o \
 	   kernel/tasking/tasking_enter.o kernel/lib/string.o \
 	   kernel/lib/stdlib.o kernel/lib/ctype.o kernel/kheap/liballoc.o kernel/kheap/liballoc_funcs.o \
-	   kernel/panic.o kernel/mesg.o
+	   kernel/panic.o kernel/mesg.o kernel/tasking/elf.o
 
 CC = clang -target i386-none-elf
 ASM = nasm
-CFLAGS = -g -ffreestanding -O2 -Wall -Wextra -std=gnu17 -Ikernel -Ikernel/lib -fno-omit-frame-pointer -mno-sse -mno-avx -nostdlib $(FLAGS_C)
+CFLAGS = -g -ffreestanding -O$(OLEVEL) -Wall -Wextra -std=gnu17 -Ikernel -Ikernel/lib -fno-omit-frame-pointer -mno-sse -mno-avx -nostdlib $(FLAGS_C)
 
 kernel.elf: $(OBJS)
 	@printf "LINK\t\t%s\n" $@

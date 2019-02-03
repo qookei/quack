@@ -34,10 +34,6 @@ uint32_t pt_f[1024] __attribute__((aligned(4096))) = {0};
 // 0xFFC00000
 #define PT 0xFFC00000
 
-void *get_phys_at_next(uint32_t pd, void *addr) {
-	return get_phys(pd, (void *)(((uint32_t)addr + 0x1000) & 0xFFFFF000));
-}
-
 void crosspd_memcpy(uint32_t dst_pd, void *dst_addr, uint32_t src_pd, void *src_addr, size_t sz) {
 	uint32_t src_phys;
 	uint32_t dst_phys;
@@ -249,6 +245,9 @@ uint32_t get_flag(uint32_t pd, void *virtualaddr) {
 	return page & 0xFFF;
 }
 
+extern void *page_tab1;
+extern void *page_tab2;
+extern void *page_tab3;
 
 uint32_t create_page_directory() {
 	uint32_t kernel_addr = (0xC0000000 >> 22);
@@ -261,9 +260,9 @@ uint32_t create_page_directory() {
 
 	memset(new_dir, 0, 0x1000);
 
-	new_dir[kernel_addr] = 0x00000083;
-	new_dir[kernel_addr + 1] = 0x00400083;
-	new_dir[kernel_addr + 2] = 0x00800083;
+	new_dir[kernel_addr] = ((uint32_t)&page_tab1 - 0xC0000000) | 3;
+	new_dir[kernel_addr + 1] = ((uint32_t)&page_tab2 - 0xC0000000) | 3;
+	new_dir[kernel_addr + 2] = ((uint32_t)&page_tab3 - 0xC0000000) | 3;
 	
 	new_dir[1023] = (tmp_addr | 0x3);
 
@@ -290,6 +289,8 @@ extern int isr_in_kdir;
 extern void mem_dump(void*,size_t,size_t);
 
 int page_fault(interrupt_cpu_state *state) {
+
+	while(1);
 
 	uint32_t fault_addr;
    	asm volatile("mov %%cr2, %0" : "=r" (fault_addr));
@@ -345,17 +346,13 @@ void paging_init(void) {
 
 	uint32_t addr = (uint32_t)&dir_.entries - 0xC0000000;
 
-	dir_.entries[i++] = (uint32_t *)0x0;
-	dir_.entries[i++] = (uint32_t *)0x0;
-	dir_.entries[i++] = (uint32_t *)0x0;
-	
-	for (uint32_t j = 0; j < kernel_addr - 3; j++)
+	for (uint32_t j = 0; j < kernel_addr; j++)
 		dir_.entries[i++] = (uint32_t *)0x0;
 	
-	dir_.entries[i++] = (uint32_t *)0x00000083;
-	dir_.entries[i++] = (uint32_t *)0x00400083;
-	dir_.entries[i++] = (uint32_t *)0x00800083;
-	
+	dir_.entries[i++] = (uint32_t *)(((uint32_t)&page_tab1 - 0xC0000000) | 3);
+	dir_.entries[i++] = (uint32_t *)(((uint32_t)&page_tab2 - 0xC0000000) | 3);
+	dir_.entries[i++] = (uint32_t *)(((uint32_t)&page_tab3 - 0xC0000000) | 3);
+
 	for (uint32_t j = 0; j < 1024 - kernel_addr - 4; j++)
 		dir_.entries[i++] = (uint32_t *)0x0;
 
@@ -363,7 +360,5 @@ void paging_init(void) {
 
 	set_cr3(addr);
 
-
 	early_mesg(LEVEL_INFO, "vmm", "paging ok");
-
 }
