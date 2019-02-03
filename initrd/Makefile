@@ -1,16 +1,17 @@
-SRC = uptime.c sh.c pond.c ls.c init.c date.c clear.c
-OUT = $(SRC:%.c=%)
-OUTDIR = bin
+SRC = src/init.c
+OUT = $(SRC:src/%.c=out/%)
+TAR_OBJ = $(OUT:out/%=%)
+OUTDIR = out
 
-all: $(OUT)
-	@rm -f initrd > /dev/null 2>&1
-	@tar cf initrd *
-	@printf "PACKAGE\t\t%s\n" $@
+initrd: $(OUT) $(OUTDIR)
+	@printf "ARCHIVE\t\t%s\n" $@
+	-@rm -f initrd > /dev/null 2>&1
+	@tar cf initrd -C $(OUTDIR)/ $(TAR_OBJ)
 
-%: src/%.c $(OUTDIR)
-	@i686-elf-gcc $< -o $(OUTDIR)/$@ -ffreestanding -nostdlib -O0
-	@printf "CXX\t\t%s\n" $@
+out/%: src/%.c $(OUTDIR)
+	@printf "CC\t\t%s\n" $@
+	@clang -target i386-none-elf $< -o $@ -mno-sse -mno-avx -ffreestanding -nostdlib -O0 -std=gnu17
 
 $(OUTDIR):
-	@mkdir bin
 	@printf "MKDIR\t\t%s\n" $@
+	@mkdir $(OUTDIR)

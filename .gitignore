@@ -3,7 +3,6 @@ quack.iso
 kernel.elf
 **.o
 serial.txt
-/bochsout.txt
-initrd/bin/*
+initrd/out/*
 initrd/initrd
 config.mk
