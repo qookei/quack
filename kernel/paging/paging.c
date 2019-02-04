@@ -1,5 +1,5 @@
 #include "paging.h"
-#include <tasking/tasking.h>
+#include <sched/task.h>
 #include <interrupt/isr.h>
 #include <trace/stacktrace.h>
 #include <panic.h>
@@ -320,16 +320,18 @@ int page_fault(interrupt_cpu_state *state) {
 
 		set_cr3(def_cr3());
 
-		task_t *fault_proc = current_task;
-		tasking_schedule_next();
+		//TODO: FIXME: fix this shit
+
+		task_t *fault_proc = NULL;
+		task_schedule_next();
 		kill_task_raw(fault_proc);
-		tasking_schedule_next();
+		task_schedule_next();
 
 		isr_old_cr3 = current_task->cr3;
 		isr_in_kdir = 0;
 
 
-		tasking_schedule_after_kill();
+		task_switch_to(NULL);
 	}
 
 	panic("Page fault", state, 1, 1);

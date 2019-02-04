@@ -8,18 +8,18 @@ OBJS = boot/boot.o kernel/kernel.o kernel/io/serial.o kernel/io/ports.o kernel/c
 	   kernel/trace/stacktrace.o kernel/interrupt/idt_load.o kernel/interrupt/isr.o kernel/interrupt/idt.o \
 	   kernel/interrupt/interrupt.o kernel/pic/pic.o \
 	   kernel/paging/pmm.o kernel/paging/paging.o \
-	   kernel/tasking/tasking.o kernel/cpu/gdt_new.o \
-	   kernel/tasking/tasking_enter.o kernel/lib/string.o \
+	   kernel/sched/task.o kernel/cpu/gdt_new.o \
+	   kernel/sched/task_enter.o kernel/lib/string.o \
 	   kernel/lib/stdlib.o kernel/lib/ctype.o kernel/kheap/liballoc.o kernel/kheap/liballoc_funcs.o \
-	   kernel/panic.o kernel/mesg.o kernel/tasking/elf.o
+	   kernel/panic.o kernel/mesg.o kernel/sched/elf.o kernel/fs/ustar.o
 
-CC = clang -target i386-none-elf
+CC=i686-elf-gcc
 ASM = nasm
-CFLAGS = -g -ffreestanding -O$(OLEVEL) -Wall -Wextra -std=gnu17 -Ikernel -Ikernel/lib -fno-omit-frame-pointer -mno-sse -mno-avx -nostdlib $(FLAGS_C)
+CFLAGS = -g -ffreestanding -O$(OLEVEL) -Wall -Wextra -std=gnu11 -Ikernel -Ikernel/lib -fno-omit-frame-pointer -mno-sse -mno-avx -nostdlib $(FLAGS_C)
 
 kernel.elf: $(OBJS)
 	@printf "LINK\t\t%s\n" $@
-	@$(CC) -T linker.ld -o kernel.elf $(CFLAGS) $^
+	@$(CC) -T linker.ld -o kernel.elf $^ $(CFLAGS)
 
 %.o: %.c
 	@printf "CC\t\t%s\n" $@

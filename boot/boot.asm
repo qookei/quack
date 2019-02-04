@@ -105,14 +105,14 @@ _loader:
 	mov [ecx], eax
 	add ecx, 4
 
-	mov eax, [ecx + 4]
+	mov eax, [ecx]
 	or eax, 3
-	mov [ecx + 4], eax
+	mov [ecx], eax
 	add ecx, 4
 
-	mov eax, [ecx + 8]
+	mov eax, [ecx]
 	or eax, 3
-	mov [ecx + 8], eax
+	mov [ecx], eax
 
 	; enable paging
 	mov ecx, cr0

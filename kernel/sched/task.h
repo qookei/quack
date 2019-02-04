@@ -65,32 +65,31 @@ typedef struct task{
 
 } task_t;
 
+int task_int_handler(interrupt_cpu_state *);
 
-void tasking_setup(const char *);
+void task_setup(void *);
 
-void tasking_switch();
+void task_switch();
 
-void tasking_schedule_next();
-void tasking_schedule_after_kill();
+void task_schedule_next();
+void task_switch_to(task_t *);
 
 task_t *new_task(uint32_t, uint16_t, uint16_t, uint32_t, int, uint32_t);
 
-uint32_t tasking_fork(interrupt_cpu_state *);
+uint32_t task_fork(interrupt_cpu_state *, task_t *);
 
-void tasking_waitpid(interrupt_cpu_state *, uint32_t);
-void tasking_waitipc(interrupt_cpu_state *);
+void task_waitpid(interrupt_cpu_state *, uint32_t, task_t *);
+void task_waitipc(interrupt_cpu_state *, task_t *);
 
-int tasking_ipcsend(uint32_t pid, uint32_t size, void *data, uint32_t sender);
-uint32_t tasking_ipcrecv(void **data);
-void tasking_ipcremov();
-uint32_t tasking_ipcqueuelen();
-uint32_t tasking_ipcgetsender();
-
-int tasking_execve(const char *name, char **argv, char **envp);
+int task_ipcsend(uint32_t pid, uint32_t size, void *data, uint32_t sender);
+uint32_t task_ipcrecv(void **data, task_t *);
+void task_ipcremov(task_t *);
+uint32_t task_ipcqueuelen(task_t *);
+uint32_t task_ipcgetsender(task_t *);
 
 void kill_task(uint32_t);
-void kill_task_raw(task_t*);
+void kill_task_raw(task_t *);
 
-void *tasking_sbrk(int);
+void *task_sbrk(int, task_t *);
 
 #endif	// TASKING_H

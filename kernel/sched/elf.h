@@ -2,7 +2,6 @@
 #define ELF
 
 #include <paging/paging.h>
-#include <multiboot.h>
 
 #define ELF_ARCH_32BIT (1)
 #define ELF_ARCH_64BIT (2)
@@ -72,6 +71,6 @@ typedef struct {
 
 } elf_loaded;
 
-elf_loaded prepare_elf_for_exec(void *, size_t);
+elf_loaded prepare_elf_for_exec(void *);
 
 #endif

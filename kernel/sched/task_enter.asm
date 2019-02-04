@@ -1,5 +1,5 @@
 [bits 32]
-global tasking_enter
+global task_enter
 
 task_cr3:
 	dd 0
@@ -7,7 +7,7 @@ task_cr3:
 ; eax - cr3
 ; ebx - cpu_state_t
 
-tasking_enter:
+task_enter:
     mov dword [task_cr3], eax
 
     mov eax, dword [ebx]

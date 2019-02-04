@@ -40,7 +40,7 @@ const char *elf_get_section_name(void *elf_file, int num) {
 }
 
 
-elf_loaded prepare_elf_for_exec(void *elf_file, size_t size) {
+elf_loaded prepare_elf_for_exec(void *elf_file) {
 	elf_loaded result;
 	result.success_ld = 0;
 	result.page_direc = 0;
