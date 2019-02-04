@@ -3,7 +3,7 @@ quack is a 32bit open source operating system written primarily in C and Assembl
 
 ### Building
 To build quack, you need to have the following:
-- `clang` that supports the i386-pc-none-elf target
+- `i686-elf` GCC and Binutils
 - `nasm`
 - `python` 2 or 3
 - `make`

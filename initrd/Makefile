@@ -10,7 +10,7 @@ initrd: $(OUT) $(OUTDIR)
 
 out/%: src/%.c $(OUTDIR)
 	@printf "CC\t\t%s\n" $@
-	@clang -target i386-none-elf $< -o $@ -mno-sse -mno-avx -ffreestanding -nostdlib -O0 -std=gnu17 -static
+	@i686-elf-gcc $< -o $@ -mno-sse -mno-avx -ffreestanding -nostdlib -O0 -std=gnu11
 
 $(OUTDIR):
 	@printf "MKDIR\t\t%s\n" $@
