@@ -74,7 +74,7 @@ void task_switch();
 void task_schedule_next();
 void task_switch_to(task_t *);
 
-task_t *new_task(uint32_t, uint16_t, uint16_t, uint32_t, int, uint32_t);
+task_t *new_task(uint32_t, uint32_t, uint32_t, int);
 
 uint32_t task_fork(interrupt_cpu_state *, task_t *);
 

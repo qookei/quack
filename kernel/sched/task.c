@@ -65,7 +65,7 @@ void task_setup(void *init) {
 		panic("Failed to load init", NULL, 0, 0);
 	}
 
-	new_task(r.entry_addr, 0x1b, 0x23, r.page_direc, 1, __pid++);
+	new_task(r.entry_addr, r.page_direc, __pid++, 1);
 
 	current_task = task_head;
 }
@@ -120,7 +120,7 @@ void kill_task_raw(task_t *t) {
 }
 
 
-task_t *new_task(uint32_t addr, uint16_t cs, uint16_t ds, uint32_t pd, int user, uint32_t pid) {
+task_t *new_task(uint32_t addr, uint32_t pd, uint32_t pid, int is_priv) {
 
 	task_t *t = (task_t*)kmalloc(sizeof(task_t));
 
@@ -130,7 +130,7 @@ task_t *new_task(uint32_t addr, uint16_t cs, uint16_t ds, uint32_t pd, int user,
 	set_cr3(pd);
 
 	void* map = pmm_alloc();
-	map_page(map, (void*)0xA0000000, user ? 0x7 : 0x3);
+	map_page(map, (void*)0xA0000000, 0x7);
 
 	set_cr3(oldcr3);
 
@@ -138,7 +138,7 @@ task_t *new_task(uint32_t addr, uint16_t cs, uint16_t ds, uint32_t pd, int user,
 	
 	t->pid = pid;
 
-	t->st.seg = ds;
+	t->st.seg = 0x23;
 	t->st.ebx = 0;
 	t->st.ebx = 0;
 	t->st.ecx = 0;
@@ -149,9 +149,9 @@ task_t *new_task(uint32_t addr, uint16_t cs, uint16_t ds, uint32_t pd, int user,
 
 	t->st.esp = 0xA0001000;
 	t->st.eip = addr;
-	t->st.cs = cs;
-	t->st.eflags = 0x202;
-	t->st.ss = ds;
+	t->st.cs = 0x1B;
+	t->st.eflags = 0x202 | (is_priv ? (0x3 << 12) : 0);
+	t->st.ss = 0x23;
 	
 	t->ipc_message_queue = (ipc_message_t **)kmalloc(IPC_MAX_QUEUE * sizeof(ipc_message_t *));
 	memset(t->ipc_message_queue, 0, IPC_MAX_QUEUE * sizeof(ipc_message_t *));
@@ -415,6 +415,8 @@ void task_switch_to(task_t *t) {
 	asm volatile ("jmp task_enter" : : "a"(t->cr3), "b"(&(t->st)) : "memory");
 }
 
+void pic_eoi(uint8_t id);
+
 static int task_first = 1;
 int task_int_handler(interrupt_cpu_state *state) {
 
@@ -425,6 +427,8 @@ int task_int_handler(interrupt_cpu_state *state) {
 	} else {
 		task_first = 0;
 	}
+
+	pic_eoi(0x20);
 
 	task_schedule_next();
 	task_switch_to(current_task);

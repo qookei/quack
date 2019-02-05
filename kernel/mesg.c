@@ -6,7 +6,6 @@
 #define ANSI_DBG	32
 
 void early_mesg(uint8_t level, const char *src, const char *fmt, ...) {
-
 	int color = ANSI_NORM;
 
 	if (level == LEVEL_ERR) {
@@ -50,11 +49,9 @@ void early_mesg(uint8_t level, const char *src, const char *fmt, ...) {
 	
 	for (size_t i = 0; i < strlen(buf2); i++)
 		serial_write_byte(buf2[i]);
-
 }
 
 void early_newl(uint8_t level) {
-	
 	if (level == LEVEL_ERR) {
 		#ifndef EARLY_LOG_ERR
 		return;
@@ -80,5 +77,4 @@ void early_newl(uint8_t level) {
 	}
 	
 	serial_write_byte('\n');
-
 }

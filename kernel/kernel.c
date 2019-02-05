@@ -55,7 +55,8 @@ void *kernel_copy_initrd(multiboot_info_t *mboot, size_t *isize) {
 }
 
 int sys_hand(interrupt_cpu_state *s) {
-	early_mesg(LEVEL_INFO, "kernel", "user-space sends 0x%08x", s->eax);
+	early_mesg(LEVEL_INFO, "kernel", "dummy user-space system call! eax == 0x%08x", s->eax);
+	
 	return 1;
 }
 
@@ -86,8 +87,6 @@ void kernel_main(multiboot_info_t *mboot) {
 		early_mesg(LEVEL_ERR, "kernel", "failed to load init");
 		while(1);
 	}
-
-	early_mesg(LEVEL_DBG, "kernel", "data @ init_file == %08x", *((uint32_t *)init_file));
 
 	task_setup(init_file);
 

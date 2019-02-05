@@ -54,6 +54,8 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 		early_mesg(LEVEL_ERR, "fixme", "add task killing code! isr.cc:%d", __LINE__);
 		// TODO
 
+		panic("fixme plox", NULL, 0, 0);
+
 		task_schedule_next();
 		task_switch_to(NULL); // TODO
 	}
