@@ -1,7 +1,7 @@
 #ifndef ELF
 #define ELF
 
-#include <paging/paging.h>
+#include <sched/sched.h>
 
 #define ELF_ARCH_32BIT (1)
 #define ELF_ARCH_64BIT (2)
@@ -63,14 +63,6 @@ typedef struct {
 	uint32_t align;
 } elf_program_header;
 
-typedef struct {
-
-	uint32_t entry_addr;
-	uint32_t page_direc;
-	int success_ld;
-
-} elf_loaded;
-
-elf_loaded prepare_elf_for_exec(void *);
+void elf_create_proc(void *elf_data, int is_privileged);
 
 #endif

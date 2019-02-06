@@ -6,6 +6,7 @@
 #include <trace/stacktrace.h>
 #include <panic.h>
 #include <mesg.h>
+#include <sched/sched.h>
 
 void task_destroy_address_space(task_t *t) {
 	set_cr3(t->cr3);
@@ -36,6 +37,9 @@ void task_destroy_address_space(task_t *t) {
 }
 
 void task_save_cpu_state(interrupt_cpu_state *state, task_t *t) {
+	if (!t)
+		return;
+
 	t->st.eax = state->eax;
 	t->st.ebx = state->ebx;
 	t->st.ecx = state->ecx;
@@ -51,112 +55,51 @@ void task_save_cpu_state(interrupt_cpu_state *state, task_t *t) {
 	t->st.cs = state->cs;
 }
 
-task_t* task_head = NULL;
-task_t* current_task = NULL;
-
-uint32_t __pid = 1;
-
-void task_setup(void *init) {
+void task_init() {
 	register_interrupt_handler(0x20, task_int_handler);
-		
-	elf_loaded r = prepare_elf_for_exec(init);
-	
-	if (!r.success_ld) {
-		panic("Failed to load init", NULL, 0, 0);
-	}
-
-	new_task(r.entry_addr, r.page_direc, __pid++, 1);
-
-	current_task = task_head;
 }
 
-void insert(task_t *t) {
-	task_t* temp = task_head;
-	if(task_head == NULL) {
-		task_head = t;
-		return;
-	}
-	while(temp->next != NULL) temp = temp->next;
-	temp->next = t;
-	t->prev = temp;
-}
-
-void kill_task(uint32_t pid) {
-	task_t *t = task_head;
-	while(t->next != NULL && t->pid != pid) {
-		t = t->next;
-	}
-
-	if (t->pid != pid)
-		return;
-
-	kill_task_raw(t);
-}
-
-
-void kill_task_raw(task_t *t) {
-	uint32_t dead_pid = t->pid;
-	uint32_t dead_ret = t->st.eax;
+void task_kill(task_t *t, int ret_val, int sig) {
+	pid_t dead_pid = t->pid;
+	task_t *p = t->parent;
 
 	task_destroy_address_space(t);
 
-	if (t->prev != NULL)
-		t->prev->next = t->next;
-	if (t->next != NULL)
-		t->next->prev = t->prev;
 	kfree(t);
 
-	// find all tasks that waited for this
-
-	task_t* temp = task_head;
-	while(temp != NULL) {
-		if (temp->waiting_status == WAIT_PROC && temp->waiting_info == dead_pid) {
-			temp->waiting_status = WAIT_NONE;
-			temp->waiting_info = 0;
-			temp->st.eax = dead_ret;
+	// notify parent that child is dead	
+	if (p) {
+		if (p->waiting_status == WAIT_PROC) {
+			if (p->waiting_info <= 0 || 
+				(p->waiting_info > 0 && (signed)p->waiting_info == dead_pid)) {
+				p->waiting_status = WAIT_NONE;
+				p->waiting_info = 0;
+				p->st.eax = ret_val;
+				p->st.ebx = sig;
+			}
 		}
-		temp = temp->next;
 	}
 }
 
-
-task_t *new_task(uint32_t addr, uint32_t pd, uint32_t pid, int is_priv) {
-
+task_t *task_create_new(int is_privileged) {
 	task_t *t = (task_t*)kmalloc(sizeof(task_t));
-
 	memset(t, 0, sizeof(task_t));
 
-	uint32_t oldcr3 = get_cr3();
-	set_cr3(pd);
+	uintptr_t pd = create_page_directory();
 
-	void* map = pmm_alloc();
-	map_page(map, (void*)0xA0000000, 0x7);
-
-	set_cr3(oldcr3);
-
-	t->cr3 = pd;
-	
-	t->pid = pid;
+	t->cr3 = pd;	
 
 	t->st.seg = 0x23;
-	t->st.ebx = 0;
-	t->st.ebx = 0;
-	t->st.ecx = 0;
-	t->st.edx = 0;
-	t->st.esi = 0;
-	t->st.edi = 0;
-	t->st.ebp = 0;
-
-	t->st.esp = 0xA0001000;
-	t->st.eip = addr;
 	t->st.cs = 0x1B;
-	t->st.eflags = 0x202 | (is_priv ? (0x3 << 12) : 0);
 	t->st.ss = 0x23;
+	
+	t->st.eflags = 0x202 | (is_privileged ? (0x3 << 12) : 0);
 	
 	t->ipc_message_queue = (ipc_message_t **)kmalloc(IPC_MAX_QUEUE * sizeof(ipc_message_t *));
 	memset(t->ipc_message_queue, 0, IPC_MAX_QUEUE * sizeof(ipc_message_t *));
-	
-	insert(t);
+
+	t->is_privileged = is_privileged;
+
 	return t;
 }
 
@@ -169,7 +112,7 @@ uint32_t task_fork(interrupt_cpu_state *state, task_t *parent) {
 	task_save_cpu_state(state, t);
 
 	t->st.eax = 0;
-	t->pid = __pid++;
+	t->parent = parent;
 
 	t->ipc_message_queue = (ipc_message_t **)kmalloc(IPC_MAX_QUEUE * sizeof(ipc_message_t *));
 	memset(t->ipc_message_queue, 0, IPC_MAX_QUEUE * sizeof(ipc_message_t *));
@@ -222,37 +165,30 @@ uint32_t task_fork(interrupt_cpu_state *state, task_t *parent) {
 
 	set_cr3(def_cr3());
 
-	insert(t);
-
 	return t->pid;
 }
 
-int task_ipcsend(uint32_t pid, uint32_t size, void *data, uint32_t sender) {
-	task_t *t = task_head;
-	while(t->next != NULL && t->pid != pid) {
-		t = t->next;
-	}
-
-	if (t->pid != pid)
+int task_ipcsend(task_t *recv, task_t *send, uint32_t size, void *data) {
+	if (!recv || !send)
 		return 0;
-
+		
 	uint32_t i = 0;
 	
 	for (; i < IPC_MAX_QUEUE; i++) {
-		if (!t->ipc_message_queue[i])
+		if (!recv->ipc_message_queue[i])
 			break;
 	}
 	
 	if (i == IPC_MAX_QUEUE)
 		return 0;
 
-	t->ipc_message_queue[i] = (ipc_message_t *)kmalloc(sizeof(ipc_message_t));
-	t->ipc_message_queue[i]->size = size;
-	t->ipc_message_queue[i]->data = data;
-	t->ipc_message_queue[i]->sender = sender;
+	recv->ipc_message_queue[i] = (ipc_message_t *)kmalloc(sizeof(ipc_message_t));
+	recv->ipc_message_queue[i]->size = size;
+	recv->ipc_message_queue[i]->data = data;
+	recv->ipc_message_queue[i]->sender = send->pid;
 
-	if (t->waiting_status == WAIT_IPC) {
-		t->waiting_status = WAIT_NONE;
+	if (recv->waiting_status == WAIT_IPC) {
+		recv->waiting_status = WAIT_NONE;
 	}
 
 	return 1;
@@ -304,18 +240,13 @@ uint32_t task_ipcqueuelen(task_t *t) {
 	return IPC_MAX_QUEUE;
 }
 
-void task_waitpid(interrupt_cpu_state *state, uint32_t pid, task_t *t) {
+void task_waitpid(interrupt_cpu_state *state, task_t *child, task_t *t) {
 	task_save_cpu_state(state, t);
 	
 	t->waiting_status = WAIT_PROC;
-	t->waiting_info = pid;
+	t->waiting_info = child->pid;
 
-	task_t *t_tmp = task_head;
-	while(t_tmp->next != NULL && t_tmp->pid != pid) {
-		t_tmp = t_tmp->next;
-	}
-
-	if (t_tmp->pid != pid) {
+	if (!child) {
 		t->waiting_status = WAIT_NONE;
 		t->waiting_info = 0;
 		t->st.eax = -1;
@@ -326,23 +257,6 @@ void task_waitpid(interrupt_cpu_state *state, uint32_t pid, task_t *t) {
 void task_waitipc(interrupt_cpu_state *state, task_t *t) {
 	task_save_cpu_state(state, t);
 	t->waiting_status = WAIT_IPC;
-}
-
-
-// TODO: move to sched.c
-// TODO: improve the scheduling algo
-void task_schedule_next() {
-	while (1) {
-		current_task = current_task->next;
-		if (current_task == NULL)
-			current_task = task_head;
-			
-		if (current_task == NULL)
-			panic("scheduler: no processes running!", NULL, 0, 0);
-	
-		if (current_task->waiting_status == WAIT_NONE)
-			break;
-	}
 }
 
 void task_init_heap(size_t size, task_t *t) {
@@ -400,7 +314,7 @@ void *task_sbrk(int increment, task_t *t) {
 		} else {
 			// increment heap size
 			
-			size_t new_sz = current_task->heap_end - current_task->heap_begin;
+			size_t new_sz = t->heap_end - t->heap_begin;
 			size_t new_pages = (new_sz + 0x1000 - 1) / 0x1000;
 			alloc_mem_at(t->cr3, t->heap_begin + t->heap_pages * 0x1000, new_pages, 0x7);
 			t->heap_pages = new_pages;
@@ -412,7 +326,11 @@ void *task_sbrk(int increment, task_t *t) {
 
 
 void task_switch_to(task_t *t) {
-	asm volatile ("jmp task_enter" : : "a"(t->cr3), "b"(&(t->st)) : "memory");
+	if (!t) {
+		// TODO: idle
+		early_mesg(LEVEL_INFO, "task", "idling");
+	} else
+		asm volatile ("jmp task_enter" : : "a"(t->cr3), "b"(&(t->st)) : "memory");
 }
 
 void pic_eoi(uint8_t id);
@@ -423,18 +341,14 @@ int task_int_handler(interrupt_cpu_state *state) {
 	early_mesg(LEVEL_DBG, "task", "switching tasks");
 	
 	if (!task_first) {
-		task_save_cpu_state(state, current_task);	// call sched_get_current() here
+		task_save_cpu_state(state, sched_get_current());
 	} else {
 		task_first = 0;
 	}
 
-	pic_eoi(0x20);
+	pic_eoi(0x20); // ugly
 
-	task_schedule_next();
-	task_switch_to(current_task);
-
-	// TODO: enable after implementing sched.c
-	//task_switch_to(sched_schedule_next());
+	task_switch_to(sched_schedule_next());
 
 	early_mesg(LEVEL_WARN, "task", "how did we get here");
 

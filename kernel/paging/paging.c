@@ -1,5 +1,5 @@
 #include "paging.h"
-#include <sched/task.h>
+#include <sched/sched.h>
 #include <interrupt/isr.h>
 #include <trace/stacktrace.h>
 #include <panic.h>
@@ -126,7 +126,7 @@ void crosspd_memset(uint32_t dst_pd, void *dst_addr, int num, size_t sz) {
 void *alloc_mem_at(uint32_t pd, uint32_t where, size_t pages, uint32_t flags) {
 	if (where + pages * 0x1000 > 0xC0000000) return NULL;
 	uint32_t opd = get_cr3();
-	void *dst_phys;
+	void *dst_phys = NULL;
 	set_cr3(pd);
 	for (size_t i = 0; i < pages; i++) {
 		void *p = pmm_alloc();
@@ -281,22 +281,10 @@ void destroy_page_directory(void *pd) {
 	pmm_free(pd);
 }
 
-extern task_t* current_task;
-
-extern uint32_t isr_old_cr3;
-extern int isr_in_kdir;
-
-extern void mem_dump(void*,size_t,size_t);
-
 int page_fault(interrupt_cpu_state *state) {
-
-	while(1);
 
 	uint32_t fault_addr;
    	asm volatile("mov %%cr2, %0" : "=r" (fault_addr));
-
-   	uint32_t fault_cr3;
-   	asm volatile("mov %%cr3, %0" : "=r" (fault_cr3));
 
 	// The error code gives us details of what happened.
 	int present   = !(state->err_code & 0x1); 	// Page not present
@@ -304,7 +292,6 @@ int page_fault(interrupt_cpu_state *state) {
 	int us = state->err_code & 0x4;				// Processor was in user-mode?
 	int reserved = state->err_code & 0x8;		// Overwritten CPU-reserved bits of page entry?
 	int id = state->err_code & 0x10;			// Caused by an instruction fetch?
-
 
 	if (us) {
 
@@ -320,18 +307,7 @@ int page_fault(interrupt_cpu_state *state) {
 
 		set_cr3(def_cr3());
 
-		//TODO: FIXME: fix this shit
-
-		task_t *fault_proc = NULL;
-		task_schedule_next();
-		kill_task_raw(fault_proc);
-		task_schedule_next();
-
-		isr_old_cr3 = current_task->cr3;
-		isr_in_kdir = 0;
-
-
-		task_switch_to(NULL);
+		sched_kill(sched_get_current()->pid, state->eax, SIGSEGV);
 	}
 
 	panic("Page fault", state, 1, 1);

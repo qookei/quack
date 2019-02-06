@@ -9,15 +9,20 @@
 
 #define IPC_MAX_QUEUE 64
 
+typedef int32_t pid_t;
+
 #define SIGTERM 15
 #define SIGILL 4
+#define SIGSEGV 11
 
 #define WAIT_NONE 0
 #define WAIT_PROC 1
-#define WAIT_IPC 1
+#define WAIT_IPC 2
+#define WAIT_READY 3
+
+#define INITIAL_STACK_SIZE 0x4000
 
 typedef struct {
-
 	uint32_t seg;
 
 	uint32_t eax;
@@ -33,26 +38,21 @@ typedef struct {
 	uint32_t eflags;
 	uint32_t esp;
 	uint32_t ss;
-
 } cpu_state_t;
 
-typedef struct ipc_message {
-	
+typedef struct ipc_message {	
 	uint32_t size;
 	void *data;
 	uint32_t sender;
-	
 } ipc_message_t;
 
-typedef struct task{
-	
+typedef struct task{	
 	uint32_t cr3;
-	uint32_t pid;
+	pid_t pid;
 
 	cpu_state_t st;
 
-	struct task* next;
-	struct task* prev;
+	struct task *parent;
 
 	uint32_t waiting_status;
 	uint32_t waiting_info;
@@ -62,33 +62,32 @@ typedef struct task{
 	uint32_t heap_pages;
 
 	ipc_message_t **ipc_message_queue;
-
+	int is_privileged;
 } task_t;
 
 int task_int_handler(interrupt_cpu_state *);
 
+void task_init();
 void task_setup(void *);
 
 void task_switch();
 
-void task_schedule_next();
 void task_switch_to(task_t *);
 
-task_t *new_task(uint32_t, uint32_t, uint32_t, int);
+task_t *task_create_new(int is_privileged);
 
 uint32_t task_fork(interrupt_cpu_state *, task_t *);
 
-void task_waitpid(interrupt_cpu_state *, uint32_t, task_t *);
+void task_waitpid(interrupt_cpu_state *, task_t *child, task_t *);
 void task_waitipc(interrupt_cpu_state *, task_t *);
 
-int task_ipcsend(uint32_t pid, uint32_t size, void *data, uint32_t sender);
+int task_ipcsend(task_t *recv, task_t *send, uint32_t size, void *data);
 uint32_t task_ipcrecv(void **data, task_t *);
 void task_ipcremov(task_t *);
 uint32_t task_ipcqueuelen(task_t *);
 uint32_t task_ipcgetsender(task_t *);
 
-void kill_task(uint32_t);
-void kill_task_raw(task_t *);
+void task_kill(task_t *, int ret_val, int sig);
 
 void *task_sbrk(int, task_t *);
 

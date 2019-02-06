@@ -1,5 +1,8 @@
 #include "elf.h"
 #include <mesg.h>
+#include <panic.h>
+
+#define ELF_FATAL() panic("failed to load init server", NULL, 0, 0);
 
 int elf_check_header(elf_hdr* hdr) {
 
@@ -40,20 +43,17 @@ const char *elf_get_section_name(void *elf_file, int num) {
 }
 
 
-elf_loaded prepare_elf_for_exec(void *elf_file) {
-	elf_loaded result;
-	result.success_ld = 0;
-	result.page_direc = 0;
-	result.entry_addr = 0;
-
+void elf_create_proc(void *elf_file, int is_privileged) {
 	if(!elf_check_header((elf_hdr *)elf_file)){
 		early_mesg(LEVEL_INFO, "elf", "failed to verify header");
-		return result;
+		ELF_FATAL();
 	}
 
 	elf_hdr *hdr = (elf_hdr *)elf_file;
 
-	uint32_t pagedir = create_page_directory();
+	pid_t proc = sched_task_spawn(NULL, is_privileged);
+
+	uintptr_t pagedir = sched_get_task(proc)->cr3;
 
 	for(int i=0; i < hdr->ph_ent_cnt; i++) {
 		elf_program_header *phdr = elf_get_program_header(elf_file, i);
@@ -65,17 +65,17 @@ elf_loaded prepare_elf_for_exec(void *elf_file) {
 		uint32_t sz = (phdr->size_in_mem + 0xFFF) / 0x1000;
 
 		if (!alloc_mem_at(pagedir, phdr->load_to & 0xFFFFF000, sz, 0x7)) {
-			return result;
+			ELF_FATAL();
 		}
 
 		crosspd_memcpy(pagedir, (void *)phdr->load_to, def_cr3(),
 						(void *)((uint32_t)elf_file + (phdr->data_offset)),
 						phdr->size_in_mem);
 	}
+	
+	if (!alloc_mem_at(pagedir, 0xA0000000, 0x4, 0x7)) {
+		ELF_FATAL();
+	}
 
-	result.page_direc = pagedir;
-	result.entry_addr = hdr->entry;
-	result.success_ld = 1;
-
-	return result;
+	sched_task_make_ready(sched_get_task(proc), hdr->entry, 0xA0004000);
 }

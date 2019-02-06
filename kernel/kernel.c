@@ -9,7 +9,8 @@
 #include <paging/pmm.h>
 #include <paging/paging.h>
 #include <kheap/heap.h>
-#include <sched/task.h>
+#include <sched/sched.h>
+#include <sched/elf.h>
 #include <mesg.h>
 #include <fs/ustar.h>
 
@@ -88,8 +89,10 @@ void kernel_main(multiboot_info_t *mboot) {
 		while(1);
 	}
 
-	task_setup(init_file);
+	sched_init();
 
+	elf_create_proc(init_file, 1);
+	
 	register_interrupt_handler(0x30, sys_hand);
 
 	uint32_t stack;
