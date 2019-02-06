@@ -303,7 +303,6 @@ int page_fault(interrupt_cpu_state *state) {
 		early_mesg(LEVEL_WARN, "vmm", "eax: %08x ebx:    %08x ecx: %08x edx: %08x ebp: %08x", state->eax, state->ebx, state->ecx, state->edx, state->ebp);
 		early_mesg(LEVEL_WARN, "vmm", "eip: %08x eflags: %08x esp: %08x edi: %08x esi: %08x", state->eip, state->eflags, state->esp, state->edi, state->esi);
 		early_mesg(LEVEL_WARN, "vmm", "cs: %04x ds: %04x", state->cs, state->ds);
-		early_mesg(LEVEL_WARN, "vmm", "code:");
 
 		set_cr3(def_cr3());
 

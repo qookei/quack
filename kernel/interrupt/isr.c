@@ -60,11 +60,11 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 			while(1) asm volatile ("hlt");
 		}
 
-			early_mesg(LEVEL_ERR, "interrupt", "Kernel Panic!\nUnhandled exception!\n");
-			early_mesg(LEVEL_ERR, "interrupt", "eax: %08x ebx:    %08x ecx: %08x edx: %08x ebp: %08x\n", r.eax, r.ebx, r.ecx, r.edx, r.ebp);
-			early_mesg(LEVEL_ERR, "interrupt", "eip: %08x eflags: %08x esp: %08x edi: %08x esi: %08x\n", r.eip, r.eflags, r.esp, r.edi, r.esi);
-			early_mesg(LEVEL_ERR, "interrupt", "cs: %04x ds: %04x\n", r.cs, r.ds);
-			early_mesg(LEVEL_ERR, "interrupt", "exception:  %s\nerror code: %08x\n", int_names[r.interrupt_number], r.err_code);
+			early_mesg(LEVEL_ERR, "interrupt", "Kernel Panic!");
+			early_mesg(LEVEL_ERR, "interrupt", "eax: %08x ebx:    %08x ecx: %08x edx: %08x ebp: %08x", r.eax, r.ebx, r.ecx, r.edx, r.ebp);
+			early_mesg(LEVEL_ERR, "interrupt", "eip: %08x eflags: %08x esp: %08x edi: %08x esi: %08x", r.eip, r.eflags, r.esp, r.edi, r.esi);
+			early_mesg(LEVEL_ERR, "interrupt", "cs: %04x ds: %04x", r.cs, r.ds);
+			early_mesg(LEVEL_ERR, "interrupt", "exception:  %s    error code: %08x", int_names[r.interrupt_number], r.err_code);
 			stack_trace(20);
 			while(1) asm volatile ("hlt");
 	}

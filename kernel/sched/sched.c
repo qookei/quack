@@ -86,6 +86,8 @@ void sched_kill(pid_t pid, int ret_val, int sig) {
 	task_t *t = sched_get_task(pid);
 	
 	task_kill(t, ret_val, sig);
+
+	sched_queue_remove(t);
 	task_switch_to(sched_schedule_next());
 }
 

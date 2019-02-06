@@ -61,6 +61,8 @@ int sys_hand(interrupt_cpu_state *s) {
 	return 1;
 }
 
+extern void *isr_stack;
+
 void kernel_main(multiboot_info_t *mboot) {
 	serial_init();
 
@@ -95,8 +97,8 @@ void kernel_main(multiboot_info_t *mboot) {
 	
 	register_interrupt_handler(0x30, sys_hand);
 
-	uint32_t stack;
-	asm volatile ("mov %%esp, %0" : "=r"(stack));	// FIXME: change this?
+	uintptr_t stack = (uintptr_t)(&isr_stack);
+	//asm volatile ("mov %%esp, %0" : "=r"(stack));	// FIXME: change this?
 	
 	gdt_set_tss_stack(stack);
 	gdt_ltr();

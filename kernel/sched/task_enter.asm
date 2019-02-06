@@ -1,5 +1,6 @@
 [bits 32]
 global task_enter
+global task_idle
 
 task_cr3:
 	dd 0
@@ -35,3 +36,17 @@ task_enter:
     pop ebx
 
     iret
+
+extern isr_stack
+
+task_idle:
+	mov esp, isr_stack
+	
+	push 0x202
+	push 0x08
+	push idle_loop
+	iret
+
+idle_loop:
+	hlt
+	jmp idle_loop

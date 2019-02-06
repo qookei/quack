@@ -144,3 +144,9 @@ section .bss
 align 32
 stack:
 	resb STACKSIZE		; reserve 16k stack on a uint64_t boundary
+
+global isr_stack
+
+align 32
+isr_stack:
+	resb STACKSIZE		; reserve 16k stack on a uint64_t boundary

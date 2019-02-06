@@ -324,13 +324,20 @@ void *task_sbrk(int increment, task_t *t) {
 	}
 }
 
-
+static int task_idling = 0;
+static int task_prev_idling = 0;
 void task_switch_to(task_t *t) {
 	if (!t) {
-		// TODO: idle
-		early_mesg(LEVEL_INFO, "task", "idling");
-	} else
+		task_idling = 1;
+		if (!task_prev_idling) {
+			early_mesg(LEVEL_INFO, "task", "idling");
+			task_prev_idling = 1;
+		}
+		asm volatile ("jmp task_idle");
+	} else {
+		task_prev_idling = 0;
 		asm volatile ("jmp task_enter" : : "a"(t->cr3), "b"(&(t->st)) : "memory");
+	}
 }
 
 void pic_eoi(uint8_t id);
@@ -340,11 +347,13 @@ int task_int_handler(interrupt_cpu_state *state) {
 
 	early_mesg(LEVEL_DBG, "task", "switching tasks");
 	
-	if (!task_first) {
+	if (!task_first && !task_idling) {
 		task_save_cpu_state(state, sched_get_current());
 	} else {
 		task_first = 0;
 	}
+
+	task_idling = 0;
 
 	pic_eoi(0x20); // ugly
 
