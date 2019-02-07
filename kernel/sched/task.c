@@ -69,13 +69,17 @@ void task_kill(task_t *t, int ret_val, int sig) {
 
 	// notify parent that child is dead	
 	if (p) {
-		if (p->waiting_status == WAIT_PROC) {
-			if (p->waiting_info <= 0 || 
-				(p->waiting_info > 0 && (signed)p->waiting_info == dead_pid)) {
-				p->waiting_status = WAIT_NONE;
-				p->waiting_info = 0;
-				p->st.eax = ret_val;
-				p->st.ebx = sig;
+		if (sched_exists(p)) {
+			if (p->waiting_status == WAIT_PROC) {
+				if (p->waiting_info <= 0 ||
+					(p->waiting_info > 0 &&
+					(signed)p->waiting_info == dead_pid)) {
+					p->waiting_status = WAIT_NONE;
+					p->waiting_info = 0;
+					p->st.eax = ret_val;
+					p->st.ebx = sig;
+					sched_wake_up(p);
+				}
 			}
 		}
 	}
@@ -124,6 +128,7 @@ int task_ipcsend(task_t *recv, task_t *send, uint32_t size, void *data) {
 
 	if (recv->waiting_status == WAIT_IPC) {
 		recv->waiting_status = WAIT_NONE;
+		sched_wake_up(recv);
 	}
 
 	return 1;
@@ -187,11 +192,15 @@ void task_waitpid(interrupt_cpu_state *state, task_t *child, task_t *t) {
 		t->st.eax = -1;
 		return;
 	}
+
+	sched_suspend(t);
 }
 
 void task_waitipc(interrupt_cpu_state *state, task_t *t) {
 	task_save_cpu_state(state, t);
 	t->waiting_status = WAIT_IPC;
+	
+	sched_suspend(t);
 }
 
 void task_init_heap(size_t size, task_t *t) {

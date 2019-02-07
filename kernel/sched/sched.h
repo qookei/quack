@@ -22,6 +22,10 @@ void sched_init();
 task_t *sched_get_task(pid_t pid);
 task_t *sched_get_current();
 
+void sched_wake_up(task_t *t);
+void sched_suspend(task_t *t);
+int sched_exists(task_t *t);
+
 pid_t sched_task_spawn(task_t *parent, int is_privileged);
 void sched_task_make_ready(task_t *, uintptr_t entry, uintptr_t stack);
 pid_t sched_find_free_pid();
