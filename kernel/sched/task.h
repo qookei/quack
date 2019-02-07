@@ -1,5 +1,5 @@
-#ifndef TASKING_H
-#define TASKING_H
+#ifndef TASK_H
+#define TASK_H
 
 #include <kheap/heap.h>
 #include <paging/paging.h>
@@ -76,8 +76,6 @@ void task_switch_to(task_t *);
 
 task_t *task_create_new(int is_privileged);
 
-uint32_t task_fork(interrupt_cpu_state *, task_t *);
-
 void task_waitpid(interrupt_cpu_state *, task_t *child, task_t *);
 void task_waitipc(interrupt_cpu_state *, task_t *);
 
@@ -91,4 +89,4 @@ void task_kill(task_t *, int ret_val, int sig);
 
 void *task_sbrk(int, task_t *);
 
-#endif	// TASKING_H
+#endif	// TASK_H

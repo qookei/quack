@@ -13,6 +13,7 @@
 #include <sched/elf.h>
 #include <mesg.h>
 #include <fs/ustar.h>
+#include <syscall/syscall.h>
 
 void pit_freq(uint32_t frequency) {
 	uint16_t x = 1193182 / frequency;
@@ -90,6 +91,8 @@ void kernel_main(multiboot_info_t *mboot) {
 		early_mesg(LEVEL_ERR, "kernel", "failed to load init");
 		while(1);
 	}
+
+	syscall_init();
 
 	sched_init();
 

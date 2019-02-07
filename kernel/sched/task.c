@@ -103,71 +103,6 @@ task_t *task_create_new(int is_privileged) {
 	return t;
 }
 
-uint32_t task_fork(interrupt_cpu_state *state, task_t *parent) {
-	set_cr3(def_cr3());
-	task_t *t = (task_t*)kmalloc(sizeof(task_t));
-	
-	memset(t, 0, sizeof(task_t));
-
-	task_save_cpu_state(state, t);
-
-	t->st.eax = 0;
-	t->parent = parent;
-
-	t->ipc_message_queue = (ipc_message_t **)kmalloc(IPC_MAX_QUEUE * sizeof(ipc_message_t *));
-	memset(t->ipc_message_queue, 0, IPC_MAX_QUEUE * sizeof(ipc_message_t *));
-
-	uint32_t new_proc_pd = create_page_directory();
-	t->cr3 = new_proc_pd;
-
-	uint32_t pd_addr = parent->cr3;
-
-	uint32_t kernel_addr = (0xC0000000 >> 22);
-
-	set_cr3(new_proc_pd);
-
-	map_page((void *)(pd_addr & 0xFFFFF000), (void *)0xE0000000, 0x3);
-	uint32_t *pd = (uint32_t*)0xE0000000;
-
-	uint32_t at = 0x00000000;
-
-	for (uint32_t i = 0; i < kernel_addr; i++) {
-		map_page((void *)(pd[i] & 0xFFFFF000), (void *)0xE0001000, 0x3);
-		uint32_t *pt = (uint32_t *)(0xE0001000);
-		
-		if (!(pd[i] & 0xFFF)) {
-			unmap_page((void *)0xE0001000);
-			at += 0x400000;
-			continue;
-		}
-
-		for (uint32_t j = 0; j < 1024; j++) {
-		
-			uint32_t entry = pt[j];
-
-			if (entry & 0xFFF) {
-				map_page((void *)(entry & 0xFFFFF000), (void *)0xE0002000, 0x3);
-				void *new_mem = pmm_alloc();
-				map_page((void *)new_mem, (void *)at, entry & 0xFFF);
-				memcpy((void*)at, (const void*)0xE0002000, 0x1000);
-				unmap_page((void *)0xE0002000);
-			}
-
-			at += 0x1000;
-
-		}
-
-		unmap_page((void *)0xE0001000);
-
-	}
-
-	unmap_page((void *)0xE0000000);
-
-	set_cr3(def_cr3());
-
-	return t->pid;
-}
-
 int task_ipcsend(task_t *recv, task_t *send, uint32_t size, void *data) {
 	if (!recv || !send)
 		return 0;
@@ -194,7 +129,7 @@ int task_ipcsend(task_t *recv, task_t *send, uint32_t size, void *data) {
 	return 1;
 }
 
-uint32_t tasking_ipcrecv(void **data, task_t *t) {
+uint32_t task_ipcrecv(void **data, task_t *t) {
 	if (!t->ipc_message_queue[0])
 		return -1;
 
@@ -203,7 +138,7 @@ uint32_t tasking_ipcrecv(void **data, task_t *t) {
 	return t->ipc_message_queue[0]->size;
 }
 
-void tasking_ipcremov(task_t *t) {
+void task_ipcremov(task_t *t) {
 	if (!t->ipc_message_queue[0])
 		return;
 	

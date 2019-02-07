@@ -30,11 +30,43 @@ void serial_puts(const char *s) {
 	serial_write('\n');
 }
 
+int ipc_send(int32_t pid, size_t size, void *data) {
+	int stat;
+	asm volatile ("int $0x30" : "=c"(stat) : "a"(11), "b"(pid), "c"(size), "d"(data));
+	return stat;
+}
+
+int ipc_recv(void *data) {
+	int stat;
+	asm volatile ("int $0x30" : "=c"(stat) : "a"(12), "d"(data));
+	return stat;
+}
+
+int ipc_queue_length() {
+	int len;
+	asm volatile ("int $0x30" : "=b"(len) : "a"(14));
+	return len;
+}
+
+void exit(int err_code) {
+	asm volatile ("int $0x30" : : "b"(err_code), "a"(0));
+}
+
 void _start(void) {
 	serial_puts("init: welcome to quack");
-	serial_puts("init: nothing to do yet, halting");
 
-	// halt, nothing to do here
-	while(1) {
-	}
+	ipc_send(0, 5, "aaaa");
+	serial_puts("init: queue length is equal to");
+	serial_write('0' + ipc_queue_length());
+	serial_write('\n');
+
+	char buf[5];
+	ipc_recv(buf);
+
+	serial_puts("init: queue top contents:");
+	serial_puts(buf);
+
+	serial_puts("init: exiting");
+
+	exit(0);
 }
