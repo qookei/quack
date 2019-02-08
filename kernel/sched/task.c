@@ -71,7 +71,7 @@ void task_kill(task_t *t, int ret_val, int sig) {
 	if (p) {
 		if (sched_exists(p)) {
 			if (p->waiting_status == WAIT_PROC) {
-				if (p->waiting_info <= 0 ||
+				if (((signed)p->waiting_info) <= 0 ||
 					(p->waiting_info > 0 &&
 					(signed)p->waiting_info == dead_pid)) {
 					p->waiting_status = WAIT_NONE;
@@ -180,18 +180,22 @@ uint32_t task_ipcqueuelen(task_t *t) {
 	return IPC_MAX_QUEUE;
 }
 
-void task_waitpid(interrupt_cpu_state *state, task_t *child, task_t *t) {
+void task_waitpid(interrupt_cpu_state *state, pid_t child, task_t *t) {
 	task_save_cpu_state(state, t);
 	
 	t->waiting_status = WAIT_PROC;
-	t->waiting_info = child->pid;
+	t->waiting_info = child;
 
-	if (!child) {
-		early_mesg(LEVEL_WARN, "task", "tried to wait on a nonexistent process");
-		t->waiting_status = WAIT_NONE;
-		t->waiting_info = 0;
-		t->st.eax = -1;
-		return;
+	if (child != -1) {
+		task_t *c = sched_get_task(child);
+
+		if (!c || c->parent != t) {
+			early_mesg(LEVEL_WARN, "task", "tried to wait on a nonexistent process or on someone else's child");
+			t->waiting_status = WAIT_NONE;
+			t->waiting_info = 0;
+			t->st.eax = -1;
+			return;
+		}
 	}
 
 	sched_suspend(t);

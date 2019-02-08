@@ -76,7 +76,7 @@ void task_switch_to(task_t *);
 
 task_t *task_create_new(int is_privileged);
 
-void task_waitpid(interrupt_cpu_state *, task_t *child, task_t *);
+void task_waitpid(interrupt_cpu_state *, pid_t child, task_t *);
 void task_waitipc(interrupt_cpu_state *, task_t *);
 
 int task_ipcsend(task_t *recv, task_t *send, uint32_t size, void *data);

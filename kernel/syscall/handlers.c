@@ -28,7 +28,7 @@ void waitpid_handler(uintptr_t *pid,
 	(void)unused1;
 	(void)unused2;
 
-	task_waitpid(state, sched_get_task(*pid), sched_get_current());
+	task_waitpid(state, *pid, sched_get_current());
 	task_switch_to(sched_schedule_next());
 }
 
