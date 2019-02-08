@@ -30,4 +30,7 @@ void sys_ipc_remove();
 int sys_ipc_queue_length();
 int32_t sys_ipc_get_sender();
 
+/* misc */
+void sys_debug_log(char *message);
+
 #endif

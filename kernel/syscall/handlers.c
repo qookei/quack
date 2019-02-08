@@ -1,6 +1,7 @@
 #include "syscall.h"
 
 #include <sched/sched.h>
+#include <io/serial.h>
 
 void exit_handler(uintptr_t *exit_code,
 			uintptr_t *unused1, uintptr_t *unused2,
@@ -27,7 +28,7 @@ void waitpid_handler(uintptr_t *pid,
 	(void)unused1;
 	(void)unused2;
 
-	task_waitpid(state, sched_get_current(), sched_get_task(*pid));
+	task_waitpid(state, sched_get_task(*pid), sched_get_current());
 	task_switch_to(sched_schedule_next());
 }
 
@@ -199,3 +200,18 @@ void ipc_get_sender_handler(uintptr_t *sender, uintptr_t *unused1, uintptr_t *un
 	*sender = task_ipcgetsender(sched_get_current());
 }
 
+void debug_log_handler(uintptr_t *message, uintptr_t *length, uintptr_t *unused1, void *unused2) {
+	(void)unused1;
+	(void)unused2;
+
+	if (!sched_get_current()->is_privileged)
+		return;
+
+	char *buf = kmalloc(*length);
+	if (copy_from_user(buf, (void *)(*message), *length)) {
+		for (size_t i = 0; i < *length; i++)
+			serial_write_byte(buf[i]);
+	}
+
+	kfree(buf);
+}

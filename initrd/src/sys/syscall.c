@@ -88,3 +88,12 @@ int32_t sys_ipc_get_sender() {
 	asm volatile ("int $0x30" : "=b"(sender) : "a"(15));
 	return sender;
 }
+
+/* misc */
+void sys_debug_log(char *message) {
+	char *c = message;
+	size_t i = 0;
+	while (c[i]) i++;
+
+	asm volatile ("int $0x30" : : "a"(16), "b"(message), "c"(i));
+}

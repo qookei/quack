@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 if ! type dialog > /dev/null; then
 	exit

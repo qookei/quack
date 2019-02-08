@@ -20,7 +20,7 @@ menuentry "quack - custom resolution" {
 EOL
 
 cp kernel.elf isodir/boot/kernel.elf
-make -C initrd all
+make -C initrd
 cp initrd/initrd isodir/boot/initrd
 grub-mkrescue -o quack.iso isodir > /dev/null 2>&1
 rm -r isodir

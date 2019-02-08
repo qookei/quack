@@ -42,8 +42,6 @@ const char* int_names[] = {
 void dispatch_interrupt(interrupt_cpu_state r) {
 	enter_kernel_directory();
 
-	early_mesg(LEVEL_DBG, "interrupt", "servicing interrupt %u(exc: %s)", r.interrupt_number, (r.interrupt_number >= 32) ? "no" : "yes");
-
 	int handled = 0;
 
 	if (interrupt_handlers[r.interrupt_number] != NULL) {

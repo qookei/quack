@@ -50,7 +50,7 @@ int ustar_read(void *buf, size_t size, const char *path, void **dst) {
 	uint64_t offset = ustar_get_file(buf, size, path, &entry);
 	
 	if(offset == 1)
-		return -1;
+		return 0;
 
 	char *data = buf + offset + 512;
 
@@ -59,6 +59,6 @@ int ustar_read(void *buf, size_t size, const char *path, void **dst) {
 	*dst = kmalloc(fsize);
 
 	memcpy(*dst, data, fsize);
-	return 0;
+	return fsize;
 }
 

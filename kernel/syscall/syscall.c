@@ -1,8 +1,6 @@
 #include "syscall.h"
 #include <mesg.h>
 
-#define NSYSCALLS 16
-
 /*
 	process:
 	exit(return value)
@@ -29,6 +27,9 @@
 	ipc_remove() -> none
 	ipc_queue_length() -> length(status on error)
 	ipc_get_sender() -> message sender, -1 if queue is empty
+
+	misc:
+	debug_log(msg, len) -> none
 */
 
 typedef void (*syscall_handler)(uintptr_t *, uintptr_t *, uintptr_t *, void *);
@@ -50,6 +51,7 @@ syscall_handler handlers[] = {
 	ipc_remove_handler,
 	ipc_queue_length_handler,
 	ipc_get_sender_handler,
+	debug_log_handler,
 };
 
 int do_syscall(interrupt_cpu_state *);
@@ -100,7 +102,8 @@ int copy_from_user(void *dst, void *src, size_t len) {
 }
 
 int do_syscall(interrupt_cpu_state *state) {
-	if (state->eax < NSYSCALLS && handlers[state->eax])
+	if (state->eax < (sizeof(handlers) / sizeof(*handlers)) 
+		&& handlers[state->eax])
 		handlers[state->eax](&state->ebx, &state->ecx, &state->edx, state);
 	
 	return 1;

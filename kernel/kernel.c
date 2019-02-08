@@ -87,21 +87,25 @@ void kernel_main(multiboot_info_t *mboot) {
 	void *initrd = kernel_copy_initrd(mboot, &initrd_sz);
 	void *init_file;
 
-	if (ustar_read(initrd, initrd_sz, "init", &init_file)) {
+	if (!ustar_read(initrd, initrd_sz, "init", &init_file)) {
 		early_mesg(LEVEL_ERR, "kernel", "failed to load init");
 		while(1);
 	}
+
+	void *exec_file;
+	size_t exec_size = ustar_read(initrd, initrd_sz, "exec", &exec_file);
 
 	syscall_init();
 
 	sched_init();
 
 	elf_create_proc(init_file, 1);
-	
+
+	task_ipcsend(sched_get_task(0), sched_get_task(0), exec_size, exec_file);
+
 	register_interrupt_handler(0x30, sys_hand);
 
 	uintptr_t stack = (uintptr_t)(&isr_stack);
-	//asm volatile ("mov %%esp, %0" : "=r"(stack));	// FIXME: change this?
 	
 	gdt_set_tss_stack(stack);
 	gdt_ltr();

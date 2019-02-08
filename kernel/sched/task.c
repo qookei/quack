@@ -187,6 +187,7 @@ void task_waitpid(interrupt_cpu_state *state, task_t *child, task_t *t) {
 	t->waiting_info = child->pid;
 
 	if (!child) {
+		early_mesg(LEVEL_WARN, "task", "tried to wait on a nonexistent process");
 		t->waiting_status = WAIT_NONE;
 		t->waiting_info = 0;
 		t->st.eax = -1;
@@ -198,9 +199,11 @@ void task_waitpid(interrupt_cpu_state *state, task_t *child, task_t *t) {
 
 void task_waitipc(interrupt_cpu_state *state, task_t *t) {
 	task_save_cpu_state(state, t);
-	t->waiting_status = WAIT_IPC;
-	
-	sched_suspend(t);
+
+	if (!task_ipcqueuelen(t)) {
+		t->waiting_status = WAIT_IPC;
+		sched_suspend(t);
+	}
 }
 
 void task_init_heap(size_t size, task_t *t) {
@@ -289,8 +292,6 @@ void pic_eoi(uint8_t id);
 static int task_first = 1;
 int task_int_handler(interrupt_cpu_state *state) {
 
-	early_mesg(LEVEL_DBG, "task", "switching tasks");
-	
 	if (!task_first && !task_idling) {
 		task_save_cpu_state(state, sched_get_current());
 	} else {
