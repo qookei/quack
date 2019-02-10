@@ -24,6 +24,7 @@ void ipc_remove_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);
 void ipc_queue_length_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);
 void ipc_get_sender_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);
 void debug_log_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);
+void is_privileged_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);
 
 int verify_addr(uint32_t pd, uint32_t addr, uint32_t len, uint32_t flags);
 int copy_from_user(void *dst, void *src, size_t len);

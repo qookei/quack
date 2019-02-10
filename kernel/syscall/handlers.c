@@ -215,3 +215,15 @@ void debug_log_handler(uintptr_t *message, uintptr_t *length, uintptr_t *unused1
 
 	kfree(buf);
 }
+
+void is_privileged_handler(uintptr_t *pid, uintptr_t *is_privileged, uintptr_t *unused1, void *unused2) {
+	(void)unused1;
+	(void)unused2;
+
+	if (!sched_get_current()->is_privileged || !sched_get_task(*pid)) {
+		*is_privileged = -1;
+		return;
+	}
+
+	*is_privileged = sched_get_task(*pid)->is_privileged;
+}

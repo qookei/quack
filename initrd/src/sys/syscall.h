@@ -7,6 +7,7 @@
 /* process */
 void sys_exit(int err_code);
 int32_t sys_getpid();
+int sys_is_privileged(int32_t pid);
 
 /* wait */
 int sys_waitpid(int32_t pid);

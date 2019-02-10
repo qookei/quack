@@ -1,8 +1,8 @@
-org 0x1000
-
 bits 32
 
-_entry:
+global _start
+
+_start:
 	mov dx, 0x3F8
 
 	mov al, 't'

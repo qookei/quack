@@ -5,6 +5,7 @@
 	process:
 	exit(return value)
 	getpid() -> pid
+	is_privileged(pid) -> -1 on error, is pid privileged
 
 	wait:
 	waitpid(pid) -> return status, signal, -1 if not a child
@@ -52,6 +53,7 @@ syscall_handler handlers[] = {
 	ipc_queue_length_handler,
 	ipc_get_sender_handler,
 	debug_log_handler,
+	is_privileged_handler,
 };
 
 int do_syscall(interrupt_cpu_state *);

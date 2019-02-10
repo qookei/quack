@@ -11,6 +11,12 @@ int32_t sys_getpid() {
 	return pid;
 }
 
+int sys_is_privileged(int32_t pid) {
+	int is_privileged;
+	asm volatile ("int $0x30" : "=c"(is_privileged) : "a"(17), "b"(pid));
+	return is_privileged;
+}
+
 /* wait */
 int sys_waitpid(int32_t pid) {
 	int stat;
