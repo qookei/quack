@@ -182,7 +182,7 @@ uint32_t task_ipcqueuelen(task_t *t) {
 	return IPC_MAX_QUEUE;
 }
 
-extern int is_servicing_driver;
+extern volatile int is_servicing_driver;
 
 void task_waitpid(interrupt_cpu_state *state, pid_t child, task_t *t) {
 	task_save_cpu_state(state, t);
@@ -205,6 +205,7 @@ void task_waitpid(interrupt_cpu_state *state, pid_t child, task_t *t) {
 	if (is_servicing_driver)
 		is_servicing_driver = 0;
 	
+	early_mesg(LEVEL_INFO, "task", "suspending, waitpid");
 	sched_suspend(t);
 }
 
@@ -213,8 +214,8 @@ void task_waitipc(interrupt_cpu_state *state, task_t *t) {
 
 	if (!task_ipcqueuelen(t)) {
 		t->waiting_status = WAIT_IPC;
-		if (is_servicing_driver)
-			is_servicing_driver = 0;
+		is_servicing_driver = 0;
+		early_mesg(LEVEL_INFO, "task", "suspending, waitipc");
 		sched_suspend(t);
 	}
 }
@@ -225,7 +226,7 @@ void task_waitirq(interrupt_cpu_state *state, task_t *t) {
 	t->waiting_status = WAIT_IRQ;
 	is_servicing_driver = 0;
 	
-	early_mesg(LEVEL_INFO, "task", "suspending a driver, waitirq");
+	early_mesg(LEVEL_INFO, "task", "suspending, waitirq");
 
 	sched_suspend(t);
 }
@@ -233,7 +234,9 @@ void task_waitirq(interrupt_cpu_state *state, task_t *t) {
 void task_wakeup_irq(task_t *t) {
 	if(t->waiting_status == WAIT_IRQ) {
 		t->waiting_status = WAIT_NONE;
+		//early_mesg(LEVEL_INFO, "task", "waking up a driver, wakeup_irq");
 		sched_wake_up(t);
+	
 	}
 }
 
@@ -316,11 +319,6 @@ void pic_eoi(uint8_t id);
 
 static int task_first = 1;
 int task_int_handler(interrupt_cpu_state *state) {
-
-	if (is_servicing_driver) {
-		early_mesg(LEVEL_INFO, "task", "ignoring switch request, we're running a driver");
-		return 1;
-	}
 	if (!task_first && !task_idling) {
 		task_save_cpu_state(state, sched_get_current());
 	} else {

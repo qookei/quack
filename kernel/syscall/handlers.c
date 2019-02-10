@@ -207,6 +207,11 @@ void debug_log_handler(uintptr_t *message, uintptr_t *length, uintptr_t *unused1
 	if (!sched_get_current()->is_privileged)
 		return;
 
+	serial_write_byte('[');
+	serial_write_byte('u');
+	serial_write_byte(']');
+	serial_write_byte(' ');
+	
 	char *buf = kmalloc(*length);
 	if (copy_from_user(buf, (void *)(*message), *length)) {
 		for (size_t i = 0; i < *length; i++)
@@ -247,8 +252,6 @@ void register_handler_handler(uintptr_t *int_no, uintptr_t *unused1, uintptr_t *
 	(void)unused2;
 	(void)unused3;
 
-	early_mesg(LEVEL_INFO, "syscall", "sys_register_handler called!");
-
 	if (!sched_get_current()->is_privileged) {
 		return;
 	}
@@ -278,4 +281,5 @@ void waitirq_handler(uintptr_t *unused1, uintptr_t *unused2, uintptr_t *unused3,
 	}
 
 	task_waitirq((interrupt_cpu_state *)state, sched_get_current());
+	task_switch_to(sched_schedule_next());
 }

@@ -113,8 +113,6 @@ void create_proc_from_elf(int32_t pid, void *elf_file) {
 }
 
 void _start(void) {
-	char num_buf[2] = {0, 0};
-
 	size_t exec_size = sys_ipc_recv(NULL);
 	char exec[exec_size];
 	sys_ipc_recv(exec);
@@ -146,24 +144,10 @@ void _start(void) {
 	sys_ipc_recv(&resp);
 	sys_ipc_remove();
 
-	sys_debug_log("init: status ");
-	if (resp.status < 0) {
-		sys_debug_log("-");
-		num_buf[0] = '0' + (-resp.status);
-	} else {
-		num_buf[0] = '0' + resp.status;
-	}
-	sys_debug_log(num_buf);
-
-	sys_debug_log(", new pid ");
-	if (resp.pid < 0) {
-		sys_debug_log("-");
-		num_buf[0] = '0' + (-resp.pid);
-	} else {
-		num_buf[0] = '0' + resp.pid;
-	}
-	sys_debug_log(num_buf);
-	sys_debug_log("\n");
+	if (resp.status < 0)
+		sys_debug_log("init: failed to spawn new process\n");
+	else
+		sys_debug_log("init: successfully spawned new process\n");
 
 	sys_debug_log("init: exiting\n");
 	sys_exit(0);

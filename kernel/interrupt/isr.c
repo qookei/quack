@@ -12,7 +12,7 @@ static pid_t userspace_interrupt_handlers[IDT_size] = {0};
 int isr_in_kdir = 0;
 uint32_t isr_old_cr3;
 
-int is_servicing_driver = 0;
+volatile int is_servicing_driver = 0;
 
 void enter_kernel_directory() {
 	isr_old_cr3 = get_cr3();

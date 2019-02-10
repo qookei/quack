@@ -39,8 +39,8 @@ int sched_queue_remove(task_t *task) {
 	}
 
 	if (!temp || temp->task != task) {
-//		early_mesg(LEVEL_WARN, "sched",
-//					"trying to suspend a process that's not running");
+		early_mesg(LEVEL_WARN, "sched",
+					"trying to suspend a process that's not running");
 
 		return 0;
 	}
@@ -162,7 +162,12 @@ task_t *sched_get_current() {
 	return NULL;
 }
 
+extern volatile int is_servicing_driver;
+
 task_t *sched_schedule_next() {
+	if (is_servicing_driver)
+		return current_process->task;
+		
 	if (!sched_queue)
 		return NULL;		// nothing ready to run
 

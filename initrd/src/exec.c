@@ -146,6 +146,7 @@ void handle_ipc_message() {
 
 	switch (msg->operation) {
 	case OPERATION_SPAWN_NEW: {
+		sys_debug_log("exec: spawning a new process\n");
 		int32_t p = exec_spawn_new(sender, msg);
 		if (p < 0) respond(sender, p, -1);
 		else respond(sender, 0, p);
