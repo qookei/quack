@@ -67,6 +67,8 @@ void task_kill(task_t *t, int ret_val, int sig) {
 
 	kfree(t);
 
+	unregister_all_handlers_for_pid(dead_pid);
+
 	// notify parent that child is dead	
 	if (p) {
 		if (sched_exists(p)) {
@@ -180,6 +182,8 @@ uint32_t task_ipcqueuelen(task_t *t) {
 	return IPC_MAX_QUEUE;
 }
 
+extern int is_servicing_driver;
+
 void task_waitpid(interrupt_cpu_state *state, pid_t child, task_t *t) {
 	task_save_cpu_state(state, t);
 	
@@ -198,6 +202,9 @@ void task_waitpid(interrupt_cpu_state *state, pid_t child, task_t *t) {
 		}
 	}
 
+	if (is_servicing_driver)
+		is_servicing_driver = 0;
+	
 	sched_suspend(t);
 }
 
@@ -206,7 +213,27 @@ void task_waitipc(interrupt_cpu_state *state, task_t *t) {
 
 	if (!task_ipcqueuelen(t)) {
 		t->waiting_status = WAIT_IPC;
+		if (is_servicing_driver)
+			is_servicing_driver = 0;
 		sched_suspend(t);
+	}
+}
+
+void task_waitirq(interrupt_cpu_state *state, task_t *t) {
+	task_save_cpu_state(state, t);
+
+	t->waiting_status = WAIT_IRQ;
+	is_servicing_driver = 0;
+	
+	early_mesg(LEVEL_INFO, "task", "suspending a driver, waitirq");
+
+	sched_suspend(t);
+}
+
+void task_wakeup_irq(task_t *t) {
+	if(t->waiting_status == WAIT_IRQ) {
+		t->waiting_status = WAIT_NONE;
+		sched_wake_up(t);
 	}
 }
 
@@ -276,17 +303,11 @@ void *task_sbrk(int increment, task_t *t) {
 }
 
 static int task_idling = 0;
-static int task_prev_idling = 0;
 void task_switch_to(task_t *t) {
 	if (!t) {
 		task_idling = 1;
-		if (!task_prev_idling) {
-			early_mesg(LEVEL_INFO, "task", "idling");
-			task_prev_idling = 1;
-		}
 		asm volatile ("jmp task_idle");
 	} else {
-		task_prev_idling = 0;
 		asm volatile ("jmp task_enter" : : "a"(t->cr3), "b"(&(t->st)) : "memory");
 	}
 }
@@ -296,6 +317,10 @@ void pic_eoi(uint8_t id);
 static int task_first = 1;
 int task_int_handler(interrupt_cpu_state *state) {
 
+	if (is_servicing_driver) {
+		early_mesg(LEVEL_INFO, "task", "ignoring switch request, we're running a driver");
+		return 1;
+	}
 	if (!task_first && !task_idling) {
 		task_save_cpu_state(state, sched_get_current());
 	} else {
@@ -311,5 +336,4 @@ int task_int_handler(interrupt_cpu_state *state) {
 	early_mesg(LEVEL_WARN, "task", "how did we get here");
 
 	return 1;
-
 }

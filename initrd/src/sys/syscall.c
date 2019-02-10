@@ -24,8 +24,12 @@ int sys_waitpid(int32_t pid) {
 	return stat;
 }
 
-int sys_waitipc() {
+void sys_waitipc() {
 	asm volatile ("int $0x30" : : "a"(3));
+}
+
+void sys_waitirq() {
+	asm volatile ("int $0x30" : : "a"(21));
 }
 
 /* sched */
@@ -37,6 +41,10 @@ int32_t sys_spawn_new(int32_t parent, int is_privileged) {
 
 void sys_make_ready(int32_t pid, uintptr_t entry, uintptr_t stack) {
 	asm volatile ("int $0x30" : : "a"(5), "b"(pid), "c"(entry), "d"(stack));
+}
+
+void sys_prioritize(int32_t pid) {
+	asm volatile ("int $0x30" : : "a"(18), "b"(pid));
 }
 
 /* memory */
@@ -102,4 +110,13 @@ void sys_debug_log(char *message) {
 	while (c[i]) i++;
 
 	asm volatile ("int $0x30" : : "a"(16), "b"(message), "c"(i));
+}
+
+/* irq */
+void sys_register_handler(int int_no) {
+	asm volatile ("int $0x30" : : "a"(19), "b"(int_no));
+}
+
+void sys_unregister_handler(int int_no) {
+	asm volatile ("int $0x30" : : "a"(20), "b"(int_no));
 }

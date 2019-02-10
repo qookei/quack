@@ -19,6 +19,7 @@ typedef int32_t pid_t;
 #define WAIT_PROC 1
 #define WAIT_IPC 2
 #define WAIT_READY 3
+#define WAIT_IRQ 4
 
 #define INITIAL_STACK_SIZE 0x4000
 
@@ -78,6 +79,8 @@ task_t *task_create_new(int is_privileged);
 
 void task_waitpid(interrupt_cpu_state *, pid_t child, task_t *);
 void task_waitipc(interrupt_cpu_state *, task_t *);
+void task_waitirq(interrupt_cpu_state *, task_t *);
+void task_wakeup_irq(task_t *);
 
 int task_ipcsend(task_t *recv, task_t *send, uint32_t size, void *data);
 uint32_t task_ipcrecv(void **data, task_t *);

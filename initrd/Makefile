@@ -1,4 +1,4 @@
-SRC = src/init.c src/exec.c
+SRC = src/init.c src/exec.c src/test-irq.c
 OUT = $(SRC:src/%.c=out/%)
 TAR_OBJ = $(OUT:out/%=%)
 OUTDIR = out

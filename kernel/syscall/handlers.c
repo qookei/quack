@@ -227,3 +227,55 @@ void is_privileged_handler(uintptr_t *pid, uintptr_t *is_privileged, uintptr_t *
 
 	*is_privileged = sched_get_task(*pid)->is_privileged;
 }
+
+void sched_prioritize_handler(uintptr_t *pid, uintptr_t *unused1, uintptr_t *unused2, void *unused3) {
+	(void)unused1;
+	(void)unused2;
+	(void)unused3;
+
+	if (!sched_get_task(*pid) || !sched_get_task(*pid)->is_privileged) {
+		return;
+	}
+
+	sched_move_after(sched_get_current(), sched_get_task(*pid));
+}
+
+#include <mesg.h>
+
+void register_handler_handler(uintptr_t *int_no, uintptr_t *unused1, uintptr_t *unused2, void *unused3) {
+	(void)unused1;
+	(void)unused2;
+	(void)unused3;
+
+	early_mesg(LEVEL_INFO, "syscall", "sys_register_handler called!");
+
+	if (!sched_get_current()->is_privileged) {
+		return;
+	}
+
+	register_userspace_handler(*int_no, sched_get_current()->pid);
+}
+
+void unregister_handler_handler(uintptr_t *int_no, uintptr_t *unused1, uintptr_t *unused2, void *unused3) {
+	(void)unused1;
+	(void)unused2;
+	(void)unused3;
+
+	if (!sched_get_current()->is_privileged) {
+		return;
+	}
+
+	unregister_userspace_handler(*int_no, sched_get_current()->pid);
+}
+
+void waitirq_handler(uintptr_t *unused1, uintptr_t *unused2, uintptr_t *unused3, void *state) {
+	(void)unused1;
+	(void)unused2;
+	(void)unused3;
+
+	if (!sched_get_current()->is_privileged) {
+		return;
+	}
+
+	task_waitirq((interrupt_cpu_state *)state, sched_get_current());
+}

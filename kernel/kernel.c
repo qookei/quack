@@ -77,7 +77,7 @@ void kernel_main(multiboot_info_t *mboot) {
 
 	pic_remap(0x20, 0x28);
 	idt_init();
-	pit_freq(1);
+	pit_freq(50);
 	early_mesg(LEVEL_INFO, "cpu", "interrupts ok");
 
 	pmm_init(mboot);
@@ -92,16 +92,19 @@ void kernel_main(multiboot_info_t *mboot) {
 		while(1);
 	}
 
-	void *exec_file;
-	size_t exec_size = ustar_read(initrd, initrd_sz, "exec", &exec_file);
-
 	syscall_init();
 
 	sched_init();
 
 	elf_create_proc(init_file, 1);
 
+	void *exec_file;
+	size_t exec_size = ustar_read(initrd, initrd_sz, "exec", &exec_file);
 	task_ipcsend(sched_get_task(0), sched_get_task(0), exec_size, exec_file);
+
+	void *test_irq_file;
+	size_t test_irq_size = ustar_read(initrd, initrd_sz, "test-irq", &test_irq_file);
+	task_ipcsend(sched_get_task(0), sched_get_task(0), test_irq_size, test_irq_file);
 
 	register_interrupt_handler(0x30, sys_hand);
 

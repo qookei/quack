@@ -30,7 +30,7 @@ void sched_queue_insert(task_t *task) {
 	temp->next = ent;
 }
 
-void sched_queue_remove(task_t *task) {
+int sched_queue_remove(task_t *task) {
 	sched_entry_t *temp = sched_queue;
 	sched_entry_t *prev = NULL;
 	while(temp && temp->task != task) {
@@ -39,10 +39,10 @@ void sched_queue_remove(task_t *task) {
 	}
 
 	if (!temp || temp->task != task) {
-		early_mesg(LEVEL_WARN, "sched",
-					"trying to suspend a process that's not running");
+//		early_mesg(LEVEL_WARN, "sched",
+//					"trying to suspend a process that's not running");
 
-		return;
+		return 0;
 	}
 
 	if (temp == sched_queue) {
@@ -52,6 +52,23 @@ void sched_queue_remove(task_t *task) {
 	}
 
 	kfree(temp);
+
+	return 1;
+}
+
+void sched_queue_place_after(task_t *t, task_t *after) {
+	sched_entry_t *temp = sched_queue;
+	while (temp && temp->task != after)
+		temp = temp->next;
+
+	if (!temp)
+		return;
+
+	sched_entry_t *new = kmalloc(sizeof(sched_entry_t));
+
+	new->task = t;
+	new->next = temp->next;
+	temp->next = new;
 }
 
 void sched_init() {
@@ -126,6 +143,16 @@ pid_t sched_find_free_pid() {
 		pid = -1;
 
 	return pid;
+}
+
+void sched_move_after(task_t *after, task_t *t) {
+	if (after == t)
+		return;
+		
+	if (!sched_queue_remove(t))
+		return;
+
+	sched_queue_place_after(t, after);
 }
 
 task_t *sched_get_current() {
