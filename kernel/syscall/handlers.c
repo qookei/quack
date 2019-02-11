@@ -280,6 +280,6 @@ void waitirq_handler(uintptr_t *unused1, uintptr_t *unused2, uintptr_t *unused3,
 		return;
 	}
 
-	task_waitirq((interrupt_cpu_state *)state, sched_get_current());
-	task_switch_to(sched_schedule_next());
+	if (task_waitirq((interrupt_cpu_state *)state, sched_get_current()))
+		task_switch_to(sched_schedule_next());
 }

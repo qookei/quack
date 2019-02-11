@@ -3,10 +3,10 @@
 mkdir -p isodir/boot/grub
 
 cat >isodir/boot/grub/grub.cfg << EOL
-menuentry "quack - auto" {
+menuentry "quack - default" {
 	multiboot /boot/kernel.elf
 	module /boot/initrd
-	set gfxpayload=auto
+	set gfxpayload=80x25
 	boot
 }
 

@@ -48,8 +48,6 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 
 	int handled = 0;
 
-	//early_mesg(LEVEL_INFO, "interrupt", "servicing interrupt %u", r.interrupt_number);
-	
 	if (interrupt_handlers[r.interrupt_number] != NULL) {
 		handled = interrupt_handlers[r.interrupt_number](&r);
 	}
@@ -60,12 +58,12 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 	}
 
 	if (r.interrupt_number >= 32 && userspace_interrupt_handlers[r.interrupt_number]) {
-
 		pid_t p = userspace_interrupt_handlers[r.interrupt_number];
 
-		task_wakeup_irq(sched_get_task(p));
-		//sched_move_after(sched_get_current(), sched_get_task(p));
-	
+		if (task_wakeup_irq(sched_get_task(p))) {
+			sched_move_after(sched_get_current(), sched_get_task(p));
+		}
+
 		is_servicing_driver = 1;
 	}
 

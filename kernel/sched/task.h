@@ -64,6 +64,8 @@ typedef struct task{
 
 	ipc_message_t **ipc_message_queue;
 	int is_privileged;
+
+	int pending_irqs;
 } task_t;
 
 int task_int_handler(interrupt_cpu_state *);
@@ -79,8 +81,8 @@ task_t *task_create_new(int is_privileged);
 
 void task_waitpid(interrupt_cpu_state *, pid_t child, task_t *);
 void task_waitipc(interrupt_cpu_state *, task_t *);
-void task_waitirq(interrupt_cpu_state *, task_t *);
-void task_wakeup_irq(task_t *);
+int task_waitirq(interrupt_cpu_state *, task_t *);
+int task_wakeup_irq(task_t *);
 
 int task_ipcsend(task_t *recv, task_t *send, uint32_t size, void *data);
 uint32_t task_ipcrecv(void **data, task_t *);
