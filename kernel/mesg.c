@@ -48,7 +48,7 @@ void early_mesg(uint8_t level, const char *src, const char *fmt, ...) {
 	sprintf(buf2, "\e[%um%s: %s\n", color, src, buf);
 	
 	for (size_t i = 0; i < strlen(buf2); i++)
-		serial_write_byte(buf2[i]);
+		debug_write(buf2[i]);
 }
 
 void early_newl(uint8_t level) {
@@ -76,5 +76,5 @@ void early_newl(uint8_t level) {
 		#endif
 	}
 	
-	serial_write_byte('\n');
+	debug_write('\n');
 }

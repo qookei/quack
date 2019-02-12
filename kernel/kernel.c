@@ -1,6 +1,5 @@
 #include <stddef.h>
 #include <stdint.h>
-#include <io/serial.h>
 #include <io/ports.h>
 #include <interrupt/idt.h>
 #include <interrupt/isr.h>
@@ -65,8 +64,6 @@ int sys_hand(interrupt_cpu_state *s) {
 extern void *isr_stack;
 
 void kernel_main(multiboot_info_t *mboot) {
-	serial_init();
-
 	if (((uintptr_t)mboot) - 0xC0000000 > 0x800000) {
 		early_mesg(LEVEL_ERR, "mboot", "hdr out of page");
 		return;

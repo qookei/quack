@@ -1,7 +1,7 @@
 #include "syscall.h"
 
 #include <sched/sched.h>
-#include <io/serial.h>
+#include <io/debug_port.h>
 
 void exit_handler(uintptr_t *exit_code,
 			uintptr_t *unused1, uintptr_t *unused2,
@@ -207,15 +207,15 @@ void debug_log_handler(uintptr_t *message, uintptr_t *length, uintptr_t *unused1
 	if (!sched_get_current()->is_privileged)
 		return;
 
-	serial_write_byte('[');
-	serial_write_byte('u');
-	serial_write_byte(']');
-	serial_write_byte(' ');
+	debug_write('[');
+	debug_write('u');
+	debug_write(']');
+	debug_write(' ');
 	
 	char *buf = kmalloc(*length);
 	if (copy_from_user(buf, (void *)(*message), *length)) {
 		for (size_t i = 0; i < *length; i++)
-			serial_write_byte(buf[i]);
+			debug_write(buf[i]);
 	}
 
 	kfree(buf);

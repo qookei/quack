@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <io/serial.h>
+#include <io/debug_port.h>
 #include <vsprintf.h>
 
 #define LEVEL_ERR  1

@@ -4,7 +4,7 @@ ifndef OLEVEL
 OLEVEL = 2
 endif
 
-OBJS = boot/boot.o kernel/kernel.o kernel/io/serial.o kernel/io/ports.o kernel/cpu/gdt.o kernel/vsprintf.o \
+OBJS = boot/boot.o kernel/kernel.o kernel/io/debug_port.o kernel/io/ports.o kernel/cpu/gdt.o kernel/vsprintf.o \
 	   kernel/trace/stacktrace.o kernel/interrupt/idt_load.o kernel/interrupt/isr.o kernel/interrupt/idt.o \
 	   kernel/interrupt/interrupt.o kernel/pic/pic.o \
 	   kernel/paging/pmm.o kernel/paging/paging.o \

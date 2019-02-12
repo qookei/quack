@@ -1,3 +1,3 @@
 #!/bin/sh
 
-qemu-system-i386 -kernel kernel.elf -initrd initrd/initrd -serial stdio $@
+qemu-system-i386 -kernel kernel.elf -initrd initrd/initrd -debugcon stdio $@
