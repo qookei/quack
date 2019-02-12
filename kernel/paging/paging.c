@@ -295,6 +295,7 @@ int page_fault(interrupt_cpu_state *state) {
 
 	if (us) {
 
+		early_mesg(LEVEL_WARN, "vmm", "process %d crashed with a page fault", sched_get_current()->pid);
 		if (present) early_mesg(LEVEL_WARN, "vmm", "present ");
 		if (rw)	early_mesg(LEVEL_WARN, "vmm", "write ");
 		if (reserved) early_mesg(LEVEL_WARN, "vmm", "rb overwritten ");

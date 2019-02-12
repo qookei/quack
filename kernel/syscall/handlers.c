@@ -245,8 +245,6 @@ void sched_prioritize_handler(uintptr_t *pid, uintptr_t *unused1, uintptr_t *unu
 	sched_move_after(sched_get_current(), sched_get_task(*pid));
 }
 
-#include <mesg.h>
-
 void register_handler_handler(uintptr_t *int_no, uintptr_t *unused1, uintptr_t *unused2, void *unused3) {
 	(void)unused1;
 	(void)unused2;
@@ -282,4 +280,23 @@ void waitirq_handler(uintptr_t *unused1, uintptr_t *unused2, uintptr_t *unused3,
 
 	if (task_waitirq((interrupt_cpu_state *)state, sched_get_current()))
 		task_switch_to(sched_schedule_next());
+}
+
+extern void *timer_ticks_ptr;
+
+void map_timer_handler(uintptr_t *addr, uintptr_t *unused1, uintptr_t *unused2, void *unused3) {
+	(void)unused1;
+	(void)unused2;
+	(void)unused3;
+
+	if (!sched_get_current()->is_privileged) {
+		return;
+	}
+
+	if(!get_phys(sched_get_current()->cr3, (void *)(*addr))) {
+		set_cr3(sched_get_current()->cr3);
+		map_page(timer_ticks_ptr, (void *)(*addr), 0x5);
+		set_cr3(def_cr3());
+	}
+
 }

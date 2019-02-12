@@ -23,8 +23,10 @@ void leave_kernel_directory() {
 	set_cr3(isr_old_cr3);
 }
 
+void *timer_ticks_ptr = NULL;
+
 void pic_eoi(uint32_t r) {
-	if (r > 0x1F) {
+	if (r >= 0x20 && r < 0x30) {
 		uint8_t irq = r - 0x20;
 
 		if (irq >= 8) {
@@ -46,6 +48,15 @@ const char* int_names[] = {
 void dispatch_interrupt(interrupt_cpu_state r) {
 	enter_kernel_directory();
 
+	if (r.interrupt_number == 32) {
+		if (!timer_ticks_ptr) {
+			timer_ticks_ptr = pmm_alloc();
+			map_page(timer_ticks_ptr, (void *)0xD0000000, 0x3);
+		}
+
+		(*((uint64_t *)0xD0000000))++;
+	}
+
 	int handled = 0;
 
 	if (interrupt_handlers[r.interrupt_number] != NULL) {
@@ -54,18 +65,28 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 
 	if (r.interrupt_number < 32 && !handled && r.cs != 0x08) {
 		sched_kill(sched_get_current()->pid, r.eax, SIGILL);
-	
 	}
 
 	if (r.interrupt_number >= 32 && userspace_interrupt_handlers[r.interrupt_number]) {
 		pid_t p = userspace_interrupt_handlers[r.interrupt_number];
 
 		if (task_wakeup_irq(sched_get_task(p))) {
-			sched_move_after(sched_get_current(), sched_get_task(p));
+			task_t *prev = sched_get_current();
+
+			if (prev->pid != p) {
+				task_save_cpu_state(&r, prev);
+				sched_move_after(prev, sched_get_task(p));
+
+				task_t *to_run = sched_schedule_next();
+				is_servicing_driver = 1;
+				pic_eoi(r.interrupt_number); // hackish at best
+				task_switch_to(to_run);
+			}
 		}
 
 		is_servicing_driver = 1;
 	}
+
 
 	if (r.interrupt_number < 32 && !handled) {
 		if (r.interrupt_number == 0x08) {
@@ -73,15 +94,14 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 			while(1) asm volatile ("hlt");
 		}
 
-			early_mesg(LEVEL_ERR, "interrupt", "Kernel Panic!");
-			early_mesg(LEVEL_ERR, "interrupt", "eax: %08x ebx:    %08x ecx: %08x edx: %08x ebp: %08x", r.eax, r.ebx, r.ecx, r.edx, r.ebp);
-			early_mesg(LEVEL_ERR, "interrupt", "eip: %08x eflags: %08x esp: %08x edi: %08x esi: %08x", r.eip, r.eflags, r.esp, r.edi, r.esi);
-			early_mesg(LEVEL_ERR, "interrupt", "cs: %04x ds: %04x", r.cs, r.ds);
-			early_mesg(LEVEL_ERR, "interrupt", "exception:  %s    error code: %08x", int_names[r.interrupt_number], r.err_code);
+			early_mesg(LEVEL_ERR, "isr", "Kernel Panic!");
+			early_mesg(LEVEL_ERR, "isr", "eax: %08x ebx:    %08x ecx: %08x edx: %08x ebp: %08x", r.eax, r.ebx, r.ecx, r.edx, r.ebp);
+			early_mesg(LEVEL_ERR, "isr", "eip: %08x eflags: %08x esp: %08x edi: %08x esi: %08x", r.eip, r.eflags, r.esp, r.edi, r.esi);
+			early_mesg(LEVEL_ERR, "isr", "cs: %04x ds: %04x", r.cs, r.ds);
+			early_mesg(LEVEL_ERR, "isr", "exception:  %s    error code: %08x", int_names[r.interrupt_number], r.err_code);
 			stack_trace(20);
 			while(1) asm volatile ("hlt");
 	}
-
 
 	pic_eoi(r.interrupt_number);
 	leave_kernel_directory();
@@ -108,7 +128,6 @@ int unregister_interrupt_handler(uint8_t int_no, interrupt_handler_f handler) {
 void register_userspace_handler(uint8_t int_no, pid_t pid) {
 	if (!userspace_interrupt_handlers[int_no]) {
 		userspace_interrupt_handlers[int_no] = pid;
-		early_mesg(LEVEL_INFO, "interrupt", "process %d registered a handler for interrupt %u", pid, int_no);
 	}
 }
 

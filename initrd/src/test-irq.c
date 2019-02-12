@@ -8,7 +8,7 @@
 #define ps2_wait_response() {while(bittest(inb(0x64), 0));}
 
 void outb(uint16_t port, uint8_t val) {
-    asm volatile ( "outb %0, %1" : : "a"(val), "Nd"(port) );
+	asm volatile ( "outb %0, %1" : : "a"(val), "Nd"(port) );
 }
 
 uint8_t inb(uint16_t port) {
@@ -49,7 +49,7 @@ void _start(void) {
 			((char *)0xB8000)[i++] = 0x07;
 		}
 	}
-	
+
 	sys_debug_log("test-irq: exiting\n");
 	sys_exit(0);
 }

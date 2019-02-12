@@ -100,11 +100,11 @@ void kernel_main(multiboot_info_t *mboot) {
 
 	void *exec_file;
 	size_t exec_size = ustar_read(initrd, initrd_sz, "exec", &exec_file);
-	task_ipcsend(sched_get_task(0), sched_get_task(0), exec_size, exec_file);
+	task_ipcsend(sched_get_task(1), sched_get_task(1), exec_size, exec_file);
 
 	void *test_irq_file;
 	size_t test_irq_size = ustar_read(initrd, initrd_sz, "test-irq", &test_irq_file);
-	task_ipcsend(sched_get_task(0), sched_get_task(0), test_irq_size, test_irq_file);
+	task_ipcsend(sched_get_task(1), sched_get_task(1), test_irq_size, test_irq_file);
 
 	register_interrupt_handler(0x30, sys_hand);
 

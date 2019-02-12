@@ -70,6 +70,8 @@ typedef struct task{
 
 int task_int_handler(interrupt_cpu_state *);
 
+void task_save_cpu_state(interrupt_cpu_state *state, task_t *t);
+
 void task_init();
 void task_setup(void *);
 

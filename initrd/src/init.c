@@ -123,6 +123,8 @@ void _start(void) {
 	sys_ipc_recv(test_irq);
 	sys_ipc_remove();
 
+	sys_map_to(sys_getpid(), 0xB8000, 0xB8000);
+
 	sys_debug_log("init: welcome to quack\n");
 
 	sys_debug_log("init: spawning exec server\n");
@@ -148,6 +150,19 @@ void _start(void) {
 		sys_debug_log("init: failed to spawn new process\n");
 	else
 		sys_debug_log("init: successfully spawned new process\n");
+
+	/*	code below tests the system tick counter
+	 *	it's going to be used for timeouts in drivers
+	 *	for now, it justs writes the lowest byte of the timer to screen
+	 * */
+	sys_map_timer(0x1000);
+
+	uint64_t *timer = (uint64_t *)0x1000;
+	
+	while(1) {
+		((char *)0xB8000)[160 * 20] = *timer & 0xFF;
+		((char *)0xB8000)[160 * 20 + 1] = 0x07;
+	}
 
 	sys_debug_log("init: exiting\n");
 	sys_exit(0);

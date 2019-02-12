@@ -51,7 +51,14 @@ int sched_queue_remove(task_t *task) {
 		prev->next = temp->next;
 	}
 
+	if (temp == current_process) {
+		current_process = current_process->next;
+		if (!current_process)
+			current_process = sched_queue;
+	}
+
 	kfree(temp);
+
 
 	return 1;
 }
@@ -135,7 +142,7 @@ task_t *sched_get_task(pid_t pid) {
 }
 
 pid_t sched_find_free_pid() {
-	pid_t pid = 0;
+	pid_t pid = 1;
 	while (sched_get_task(pid))
 		pid++;
 
@@ -148,7 +155,12 @@ pid_t sched_find_free_pid() {
 void sched_move_after(task_t *after, task_t *t) {
 	if (after == t)
 		return;
-		
+
+	if (!t) {
+		sched_queue_insert(t);
+		return;
+	}
+
 	if (!sched_queue_remove(t))
 		return;
 
@@ -168,13 +180,15 @@ task_t *sched_schedule_next() {
 	if (is_servicing_driver)
 		return current_process->task;
 		
-	if (!sched_queue)
+	if (!sched_queue) {
+		current_process = NULL;
 		return NULL;		// nothing ready to run
+	}
 
 	if (!current_process)
 		current_process = sched_queue;
-
-	current_process = current_process->next;
+	else
+		current_process = current_process->next;
 
 	if (!current_process)
 		current_process = sched_queue;

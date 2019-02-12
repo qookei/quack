@@ -112,6 +112,10 @@ void sys_debug_log(char *message) {
 	asm volatile ("int $0x30" : : "a"(16), "b"(message), "c"(i));
 }
 
+void sys_map_timer(uintptr_t addr) {
+	asm volatile ("int $0x30" : : "a"(22), "b"(addr));
+}
+
 /* irq */
 void sys_register_handler(int int_no) {
 	asm volatile ("int $0x30" : : "a"(19), "b"(int_no));

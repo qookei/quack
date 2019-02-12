@@ -228,7 +228,8 @@ int task_waitirq(interrupt_cpu_state *state, task_t *t) {
 	
 	task_save_cpu_state(state, t);
 
-	t->waiting_status = WAIT_IRQ;	
+	t->waiting_status = WAIT_IRQ;
+	t->pending_irqs = 0;
 	is_servicing_driver = 0;
 	
 	sched_suspend(t);
