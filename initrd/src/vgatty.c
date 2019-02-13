@@ -10,6 +10,16 @@
 #define WIDTH 80
 #define HEIGHT 25
 
+void outb(uint16_t port, uint8_t val) {
+    asm volatile ( "outb %0, %1" : : "a"(val), "Nd"(port) );
+}
+
+uint8_t inb(uint16_t port) {
+	uint8_t ret;
+	asm volatile ("inb %1, %0" : "=a"(ret) : "Nd"(port));
+	return ret;
+}
+
 void *memset(void *arr, int val, size_t len) {
 	for (size_t i = 0; i < len; i++)
 		((unsigned char*)arr)[i] = (unsigned char)val;
@@ -41,6 +51,14 @@ void _start(void) {
 
 	sys_map_to(sys_getpid(), 0xB8000, 0xB8000);
 	vram = (uint8_t *)0xB8000;
+
+	outb(0x3D4, 0x0A);
+	outb(0x3D5, (inb(0x3D5) & 0xC0) | 0);
+
+	outb(0x3D4, 0x0B);
+	outb(0x3D5, (inb(0x3D5) & 0xE0) | 15);
+
+	memset(vram, 0, WIDTH * 2 * HEIGHT);
 
 	while(1) {
 		sys_waitipc();
@@ -79,6 +97,12 @@ void _start(void) {
 				}
 			}
 		}
+
+		uint16_t pos = y * WIDTH + x;
+		outb(0x3D4, 0x0F);
+		outb(0x3D5, (uint8_t) (pos & 0xFF));
+		outb(0x3D4, 0x0E);
+		outb(0x3D5, (uint8_t) ((pos >> 8) & 0xFF));
 	}
 
 	sys_debug_log("vgatty: exitting\n");
