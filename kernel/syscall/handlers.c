@@ -142,7 +142,7 @@ void ipc_send_handler(uintptr_t *pid, uintptr_t *size, uintptr_t *data, void *un
 	}
 
 	if (!verify_addr(sched_get_current()->cr3, *data, *size, 0x5)) {
-		*size = -1;
+		*size = -2;
 		return;
 	}
 
@@ -150,7 +150,7 @@ void ipc_send_handler(uintptr_t *pid, uintptr_t *size, uintptr_t *data, void *un
 	copy_from_user(kdata, (void *)(*data), *size);
 
 	if (!task_ipcsend(sched_get_task(*pid), sched_get_current(), *size, kdata))
-		*size = -1;
+		*size = -3;
 }
 
 void ipc_recv_handler(uintptr_t *unused1, uintptr_t *size, uintptr_t *data, void *unused2) {
@@ -165,7 +165,7 @@ void ipc_recv_handler(uintptr_t *unused1, uintptr_t *size, uintptr_t *data, void
 		return;
 	}
 
-	if (!verify_addr(sched_get_current()->cr3, *data, *size, 0x7)) {
+	if (!verify_addr(sched_get_current()->cr3, *data, rec_size, 0x7)) {
 		*size = -1;
 		return;
 	}
@@ -207,11 +207,6 @@ void debug_log_handler(uintptr_t *message, uintptr_t *length, uintptr_t *unused1
 	if (!sched_get_current()->is_privileged)
 		return;
 
-	debug_write('[');
-	debug_write('u');
-	debug_write(']');
-	debug_write(' ');
-	
 	char *buf = kmalloc(*length);
 	if (copy_from_user(buf, (void *)(*message), *length)) {
 		for (size_t i = 0; i < *length; i++)

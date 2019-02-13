@@ -60,7 +60,7 @@ void elf_create_proc(void *elf_file, int is_privileged) {
 			continue;
 		}
 
-		uint32_t sz = (phdr->size_in_mem + 0xFFF) / 0x1000;
+		uint32_t sz = ((phdr->load_to & 0xFFF) + phdr->size_in_mem + 0xFFF) / 0x1000;
 
 		if (!alloc_mem_at(pagedir, phdr->load_to & 0xFFFFF000, sz, 0x7)) {
 			ELF_FATAL();
@@ -68,7 +68,7 @@ void elf_create_proc(void *elf_file, int is_privileged) {
 
 		crosspd_memcpy(pagedir, (void *)phdr->load_to, def_cr3(),
 						(void *)((uint32_t)elf_file + (phdr->data_offset)),
-						phdr->size_in_mem);
+						phdr->size_in_file);
 	}
 	
 	if (!alloc_mem_at(pagedir, 0xA0000000, 0x4, 0x7)) {

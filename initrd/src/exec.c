@@ -103,14 +103,14 @@ int32_t exec_spawn_new(int32_t parent, struct spawn_message *msg) {
 			continue;
 		}
 
-		uint32_t sz = (phdr->size_in_mem + 0xFFF) / 0x1000;
+		uint32_t sz = ((phdr->load_to & 0xFFF) + phdr->size_in_mem + 0xFFF) / 0x1000;
 
 		if (!alloc_mem_at(pid, phdr->load_to & 0xFFFFF000, sz)) {
 			sys_debug_log("exec: failed to alloc memory\n");
 			return -3;
 		}
 
-		proc_memcpy(pid, (uintptr_t)elf_file + phdr->data_offset, phdr->load_to, phdr->size_in_mem);
+		proc_memcpy(pid, (uintptr_t)elf_file + phdr->data_offset, phdr->load_to, phdr->size_in_file);
 	}
 	
 	if (!alloc_mem_at(pid, 0xA0000000, 0x4)) {

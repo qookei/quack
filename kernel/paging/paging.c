@@ -52,6 +52,7 @@ void crosspd_memcpy(uint32_t dst_pd, void *dst_addr, uint32_t src_pd, void *src_
 
 	while (sz > 0) {
 		size_t copy_size = sz > 0x1000 ? 0x1000 : sz;
+
 		// map source
 		map_page((void *)src_phys, (void *)0xEF000000, 0x3);
 
@@ -67,7 +68,7 @@ void crosspd_memcpy(uint32_t dst_pd, void *dst_addr, uint32_t src_pd, void *src_
 		dst_addr = (void *)((uint32_t)dst_addr + 0x1000);		
 		dst_phys = (uint32_t)get_phys(dst_pd, dst_addr) & 0xFFFFF000;
 
-		if (dst_off + copy_size >= + 0x1000 && dst_phys)
+		if (dst_off + copy_size >= 0x1000 && dst_phys)
 			map_page((void *)dst_phys, (void *)0xEF003000, 0x3);
 
 		// copy

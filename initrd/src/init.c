@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdarg.h>
 
 #include "sys/syscall.h"
 #include "sys/elf.h"
@@ -13,6 +14,88 @@
 #define OPERATION_FORK 0x3
 #define OPERATION_EXIT 0x4
 
+char *itoa(uint32_t i, int base, int padding) {
+	static char buf[50];
+	char *ptr = buf + 49;
+	*ptr = '\0';
+
+	do {
+		*--ptr = "0123456789ABCDEF"[i % base];
+		if (padding)
+			padding--;
+	} while ((i /= base) != 0);
+
+	while (padding) {
+		*--ptr = '0';
+		padding--;
+	}
+
+	return ptr;
+
+}
+
+void usprintf(char *buf, const char *fmt, ...) {
+	va_list arg;
+	va_start(arg, fmt);
+
+	uint32_t i;
+	char *s;
+
+	while(*fmt) {
+		if (*fmt != '%') {
+			*buf++ = *fmt;
+			fmt++;
+			continue;
+		}
+
+		fmt++;
+		int padding = 0;
+		if (*fmt >= '0' && *fmt <= '9')
+			padding = *fmt++ - '0';
+
+		switch (*fmt) {
+			case 'c': {
+				i = va_arg(arg, int);
+				*buf++ = i;
+				break;
+			}
+
+			case 'u': {
+				i = va_arg(arg, int);
+				char *c = itoa(i, 10, padding);
+				while (*c)
+					*buf++ = *c++;
+				break;
+			}
+
+			case 'x': {
+				i = va_arg(arg, int);
+				char *c = itoa(i, 16, padding);
+				while (*c)
+					*buf++ = *c++;
+				break;
+			}
+
+			case 's': {
+				s = va_arg(arg, char *);
+				while (*s)
+					*buf++ = *s++;
+				break;
+			}
+
+			case '%': {
+				*buf++ = '%';
+				break;
+			}
+		}
+
+		fmt++;
+	}
+
+	*buf++ = '\0';
+
+	va_end(arg);
+}
 struct spawn_message {
 	int operation;
 	int is_privileged;
@@ -94,14 +177,14 @@ void create_proc_from_elf(int32_t pid, void *elf_file) {
 			continue;
 		}
 
-		uint32_t sz = (phdr->size_in_mem + 0xFFF) / 0x1000;
+		uint32_t sz = ((phdr->load_to & 0xFFF) + phdr->size_in_mem + 0xFFF) / 0x1000;
 
 		if (!alloc_mem_at(pid, phdr->load_to & 0xFFFFF000, sz)) {
 			sys_debug_log("init: failed to alloc code/data for exec server\n");
 			sys_exit(1);
 		}
 
-		proc_memcpy(pid, (uintptr_t)elf_file + phdr->data_offset, phdr->load_to, phdr->size_in_mem);
+		proc_memcpy(pid, (uintptr_t)elf_file + phdr->data_offset, phdr->load_to, phdr->size_in_file);
 	}
 	
 	if (!alloc_mem_at(pid, 0xA0000000, 0x4)) {
@@ -112,15 +195,44 @@ void create_proc_from_elf(int32_t pid, void *elf_file) {
 	sys_make_ready(pid, hdr->entry, 0xA0004000);
 }
 
-void _start(void) {
-	size_t exec_size = sys_ipc_recv(NULL);
-	char exec[exec_size];
-	sys_ipc_recv(exec);
+struct spawn_response resp;
+
+int32_t spawn(int32_t exec_pid, void *data, size_t size) {
+	size_t ssize = size + sizeof (struct spawn_message);
+	void *tmp_msg = sys_sbrk(ssize);
+	
+	struct spawn_message *s_msg = (struct spawn_message *)tmp_msg;
+	s_msg->operation = OPERATION_SPAWN_NEW;
+	s_msg->is_privileged = 1;
+	s_msg->binary_size = size;
+	memcpy(s_msg->binary, data, size);
+	sys_ipc_send(exec_pid, ssize, tmp_msg);
+
+	sys_waitipc();
+	int32_t r = sys_ipc_recv(&resp);
 	sys_ipc_remove();
 
+	sys_sbrk(-ssize);
+
+	return resp.pid;
+}
+
+char buf[32];
+char exec[10240];
+char test_irq[10240];
+char vgatty[10240];
+
+void _start(void) {
+	size_t exec_size = sys_ipc_recv(NULL);
+	sys_ipc_recv(exec);
+	sys_ipc_remove();
+	
 	size_t test_irq_size = sys_ipc_recv(NULL);
-	char test_irq[test_irq_size];
 	sys_ipc_recv(test_irq);
+	sys_ipc_remove();
+	
+	size_t vgatty_size = sys_ipc_recv(NULL);
+	sys_ipc_recv(vgatty);
 	sys_ipc_remove();
 
 	sys_map_to(sys_getpid(), 0xB8000, 0xB8000);
@@ -132,36 +244,23 @@ void _start(void) {
 	create_proc_from_elf(pid, exec);
 
 	sys_debug_log("init: spawning a process with the exec server\n");
-	char msg[sizeof(struct spawn_message) + test_irq_size];
-	struct spawn_message *s_msg = (struct spawn_message *)msg;
-	s_msg->operation = OPERATION_SPAWN_NEW;
-	s_msg->is_privileged = 1;
-	s_msg->binary_size = test_irq_size;
-	memcpy(s_msg->binary, test_irq, test_irq_size);
-	sys_ipc_send(pid, sizeof(msg)/sizeof(*msg), msg);
+	
+	int32_t test_irq_pid = spawn(pid, test_irq, test_irq_size);
+	int32_t vgatty_pid = spawn(pid, vgatty, vgatty_size);
 
-	sys_debug_log("init: waiting for response\n");
-	sys_waitipc();
-	struct spawn_response resp;
-	sys_ipc_recv(&resp);
-	sys_ipc_remove();
-
-	if (resp.status < 0)
-		sys_debug_log("init: failed to spawn new process\n");
-	else
-		sys_debug_log("init: successfully spawned new process\n");
-
-	/*	code below tests the system tick counter
-	 *	it's going to be used for timeouts in drivers
-	 *	for now, it justs writes the lowest byte of the timer to screen
-	 * */
 	sys_map_timer(0x1000);
 
 	uint64_t *timer = (uint64_t *)0x1000;
 	
+	int counter = 0;
+
 	while(1) {
-		((char *)0xB8000)[160 * 20] = *timer & 0xFF;
-		((char *)0xB8000)[160 * 20 + 1] = 0x07;
+		uint64_t start = *timer;
+		while(start + 0x4 > *timer);
+
+		usprintf(buf, "hello world! %u\n", counter++);
+
+		sys_ipc_send(vgatty_pid, 32, buf);
 	}
 
 	sys_debug_log("init: exiting\n");

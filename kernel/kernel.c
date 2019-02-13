@@ -103,6 +103,10 @@ void kernel_main(multiboot_info_t *mboot) {
 	size_t test_irq_size = ustar_read(initrd, initrd_sz, "test-irq", &test_irq_file);
 	task_ipcsend(sched_get_task(1), sched_get_task(1), test_irq_size, test_irq_file);
 
+	void *vgatty_file;
+	size_t vgatty_size = ustar_read(initrd, initrd_sz, "vgatty", &vgatty_file);
+	task_ipcsend(sched_get_task(1), sched_get_task(1), vgatty_size, vgatty_file);
+
 	register_interrupt_handler(0x30, sys_hand);
 
 	uintptr_t stack = (uintptr_t)(&isr_stack);
