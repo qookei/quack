@@ -55,12 +55,6 @@ void *kernel_copy_initrd(multiboot_info_t *mboot, size_t *isize) {
 	return initrd;
 }
 
-int sys_hand(interrupt_cpu_state *s) {
-	early_mesg(LEVEL_INFO, "kernel", "dummy user-space system call! eax == 0x%08x", s->eax);
-	
-	return 1;
-}
-
 extern void *isr_stack;
 
 void kernel_main(multiboot_info_t *mboot) {
@@ -74,7 +68,7 @@ void kernel_main(multiboot_info_t *mboot) {
 
 	pic_remap(0x20, 0x28);
 	idt_init();
-	pit_freq(50);
+	pit_freq(1000);
 	early_mesg(LEVEL_INFO, "cpu", "interrupts ok");
 
 	pmm_init(mboot);
@@ -107,11 +101,7 @@ void kernel_main(multiboot_info_t *mboot) {
 	size_t vgatty_size = ustar_read(initrd, initrd_sz, "vgatty", &vgatty_file);
 	task_ipcsend(sched_get_task(1), sched_get_task(1), vgatty_size, vgatty_file);
 
-	register_interrupt_handler(0x30, sys_hand);
-
-	uintptr_t stack = (uintptr_t)(&isr_stack);
-	
-	gdt_set_tss_stack(stack);
+	gdt_set_tss_stack((uintptr_t)(&isr_stack));
 	gdt_ltr();
 
 	asm volatile ("sti");
