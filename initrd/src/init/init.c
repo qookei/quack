@@ -6,8 +6,8 @@
 #include <stddef.h>
 #include <stdarg.h>
 
-#include "sys/syscall.h"
-#include "sys/elf.h"
+#include "../sys/syscall.h"
+#include "../sys/elf.h"
 
 #define OPERATION_SPAWN_NEW 0x1
 #define OPERATION_EXEC 0x2
@@ -251,14 +251,10 @@ void _start(void) {
 	sys_map_timer(0x1000);
 
 	uint64_t *timer = (uint64_t *)0x1000;
+	uint32_t *htimer = (uint32_t *)0x1000;
 	
-	int counter = 0;
-
 	while(1) {
-		uint64_t start = *timer;
-		while(start + 0x4 > *timer);
-
-		usprintf(buf, "hello world! %u\n", counter++);
+		usprintf(buf, "hello world! %8x%8x\n", htimer[1], htimer[0]);
 
 		sys_ipc_send(vgatty_pid, 32, buf);
 	}

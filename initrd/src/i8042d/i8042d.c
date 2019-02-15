@@ -1,7 +1,11 @@
+/*
+ * quack i8042 driver/daemon
+ * */
+
 #include <stdint.h>
 #include <stddef.h>
 
-#include "sys/syscall.h"
+#include "../sys/syscall.h"
 
 #define bittest(var,pos) ((var) & (1 << (pos)))
 #define ps2_wait_ready() {while(bittest(inb(0x64), 1));}
@@ -26,7 +30,7 @@ const char lower_normal[] = { '\0', '?', '1', '2', '3', '4', '5', '6',
 void _start(void) {
 	char num_buf[2] = {0, 0};
 
-	sys_debug_log("test-irq: starting\n");
+	sys_debug_log("i8042d: starting\n");
 
 	sys_register_handler(0x21);
 
@@ -35,7 +39,7 @@ void _start(void) {
 	while (inb(0x64) & 0x01)
 		(void)inb(0x60);
 
-	sys_debug_log("test-irq: entering irq wait loop\n");
+	sys_debug_log("i8042d: entering irq wait loop\n");
 
 	sys_map_to(sys_getpid(), 0xB8000, 0xB8000); // map VGA text mode for testing
 
@@ -50,6 +54,6 @@ void _start(void) {
 		}
 	}
 
-	sys_debug_log("test-irq: exiting\n");
+	sys_debug_log("i8042d: exiting\n");
 	sys_exit(0);
 }

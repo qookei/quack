@@ -1,17 +1,40 @@
-SRC = src/init.c src/exec.c src/test-irq.c src/vgatty.c
-OUT = $(SRC:src/%.c=out/%)
-TAR_OBJ = $(OUT:out/%=%)
+OBJ = init exec vgatty i8042d
+LIB = src/sys/sys.o
+OUT = $(OBJ:%=out/%)
+CLEAN = $(OBJ:%=clean-%)
 OUTDIR = out
 
 initrd: $(OUT) $(OUTDIR)
 	@printf "ARCHIVE\t\t%s\n" $@
 	-@rm -f initrd > /dev/null 2>&1
-	@tar cf initrd -C $(OUTDIR)/ $(TAR_OBJ)
+	@tar cf initrd -C $(OUTDIR)/ $(OBJ)
 
-out/%: src/%.c $(OUTDIR)
-	@printf "CC\t\t%s\n" $@
-	@i686-elf-gcc $< src/sys/syscall.c src/sys/elf.c -o $@ -mno-sse -mno-avx -ffreestanding -nostdlib -O0 -std=gnu11
+$(OUTDIR)/%: src/%/ $(LIB) 
+	@printf "SUBDIR\t\t%s\n" $(dir $<)
+	@make -sC $(dir $<)
+	@printf "COPY\t\t%s\n" $@
+	@cp $<$(shell basename $@) $@
+
+#src/%/: $(LIB)
+#	@printf "SUBDIR\t\t%s\n" $(dir $@)
+#	@make -sC $(dir $@)
+
+$(LIB):
+	@printf "SUBDIR\t\t%s\n" $(dir $(LIB))
+	@make -sC src/sys
 
 $(OUTDIR):
 	@printf "MKDIR\t\t%s\n" $@
 	@mkdir $(OUTDIR)
+
+clean-%:
+	@printf "SUBDIR\t\t%s\n" src/$(@:clean-%=%)/
+	@make -sC src/$(@:clean-%=%)/ clean
+
+clean-lib:
+	@printf "SUBDIR\t\t%s\n" src/sys/
+	@make -sC src/sys/ clean
+
+clean: clean-lib $(CLEAN)
+	-rm $(OUT)
+

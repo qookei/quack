@@ -5,8 +5,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#include "sys/syscall.h"
-#include "sys/elf.h"
+#include "../sys/syscall.h"
+#include "../sys/elf.h"
 
 #define OPERATION_SPAWN_NEW 0x1
 #define OPERATION_EXEC 0x2

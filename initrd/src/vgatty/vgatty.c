@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#include "sys/syscall.h"
+#include "../sys/syscall.h"
 
 #define WIDTH 80
 #define HEIGHT 25
