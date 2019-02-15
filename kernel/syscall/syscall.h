@@ -9,8 +9,6 @@ void syscall_init();
 
 void exit_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);
 void getpid_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);
-void waitpid_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);
-void ipc_wait_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);
 void sched_spawn_new_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);
 void sched_make_ready_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);
 void get_phys_from_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);
@@ -28,8 +26,9 @@ void is_privileged_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);
 void sched_prioritize_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);
 void register_handler_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);
 void unregister_handler_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);
-void waitirq_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);
 void map_timer_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);
+void wait_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);
+void dummy_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);
 
 int verify_addr(uint32_t pd, uint32_t addr, uint32_t len, uint32_t flags);
 int copy_from_user(void *dst, void *src, size_t len);

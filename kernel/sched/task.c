@@ -72,7 +72,7 @@ void task_kill(task_t *t, int ret_val, int sig) {
 	// notify parent that child is dead	
 	if (p) {
 		if (sched_exists(p)) {
-			if (p->waiting_status == WAIT_PROC) {
+			if (p->waiting_status & WAIT_PROC) {
 				if (((signed)p->waiting_info) <= 0 ||
 					(p->waiting_info > 0 &&
 					(signed)p->waiting_info == dead_pid)) {
@@ -80,6 +80,7 @@ void task_kill(task_t *t, int ret_val, int sig) {
 					p->waiting_info = 0;
 					p->st.eax = ret_val;
 					p->st.ebx = sig;
+					p->st.edx = WAIT_PROC;
 					sched_wake_up(p);
 				}
 			}
@@ -93,7 +94,7 @@ task_t *task_create_new(int is_privileged) {
 
 	uintptr_t pd = create_page_directory();
 
-	t->cr3 = pd;	
+	t->cr3 = pd;
 
 	t->st.seg = 0x23;
 	t->st.cs = 0x1B;
@@ -128,9 +129,10 @@ int task_ipcsend(task_t *recv, task_t *send, uint32_t size, void *data) {
 	recv->ipc_message_queue[i]->data = data;
 	recv->ipc_message_queue[i]->sender = send->pid;
 
-	if (recv->waiting_status == WAIT_IPC) {
+	if (recv->waiting_status & WAIT_IPC) {
 		recv->waiting_status = WAIT_NONE;
 		sched_wake_up(recv);
+		recv->st.edx = WAIT_IPC;
 	}
 
 	return 1;
@@ -184,60 +186,10 @@ uint32_t task_ipcqueuelen(task_t *t) {
 
 extern volatile int is_servicing_driver;
 
-void task_waitpid(interrupt_cpu_state *state, pid_t child, task_t *t) {
-	task_save_cpu_state(state, t);
-	
-	t->waiting_status = WAIT_PROC;
-	t->waiting_info = child;
-
-	if (child != -1) {
-		task_t *c = sched_get_task(child);
-
-		if (!c || c->parent != t) {
-			early_mesg(LEVEL_WARN, "task", "tried to wait on a nonexistent process or on someone else's child");
-			t->waiting_status = WAIT_NONE;
-			t->waiting_info = 0;
-			t->st.eax = -1;
-			return;
-		}
-	}
-
-	if (is_servicing_driver)
-		is_servicing_driver = 0;
-	
-	sched_suspend(t);
-}
-
-void task_waitipc(interrupt_cpu_state *state, task_t *t) {
-	task_save_cpu_state(state, t);
-
-	if (!task_ipcqueuelen(t)) {
-		t->waiting_status = WAIT_IPC;
-		is_servicing_driver = 0;
-		sched_suspend(t);
-	}
-}
-
-int task_waitirq(interrupt_cpu_state *state, task_t *t) {
-	if (t->pending_irqs > 0)
-		t->pending_irqs--;
-	
-	if (t->pending_irqs) {
-		return 0;
-	}
-	
-	task_save_cpu_state(state, t);
-
-	t->waiting_status = WAIT_IRQ;
-	t->pending_irqs = 0;
-	is_servicing_driver = 0;
-	
-	sched_suspend(t);
-	return 1;
-}
-
 int task_wakeup_irq(task_t *t) {
-	if(t->waiting_status == WAIT_IRQ || t->pending_irqs) {
+	if((t->waiting_status & WAIT_IRQ) || t->pending_irqs) {
+		if (t->waiting_status & WAIT_IRQ)
+			t->st.edx = WAIT_IRQ;
 		t->waiting_status = WAIT_NONE;
 		t->pending_irqs++;
 		if (t->pending_irqs == 1) {
@@ -247,6 +199,53 @@ int task_wakeup_irq(task_t *t) {
 	}
 
 	return 0;
+}
+
+int task_wait(interrupt_cpu_state *state, task_t *t, int wait_for, int data) {
+	task_save_cpu_state(state, t);
+
+	int ret = 0;
+
+	if (wait_for & WAIT_PROC) {
+		if (data != -1) {
+			task_t *c = sched_get_task(data);
+
+			if (!c || c->parent != t) {
+				early_mesg(LEVEL_WARN, "task", "tried to wait on a nonexistent process or on someone else's child");
+				ret = -WAIT_PROC;
+			} else {
+				t->waiting_status |= WAIT_PROC;
+				t->waiting_info = data;
+			}
+		}
+	}
+
+	if (!ret && (wait_for & WAIT_IPC)) {
+		if (!task_ipcqueuelen(t)) {
+			t->waiting_status |= WAIT_IPC;
+		} else {
+			ret = WAIT_IPC;
+		}
+	}
+
+	if (!ret && (wait_for & WAIT_IRQ)) {
+		if (t->pending_irqs > 0)
+			t->pending_irqs--;
+	
+		if (t->pending_irqs) {
+			ret = WAIT_IRQ;
+		} else {
+			t->waiting_status |= WAIT_IRQ;
+			t->pending_irqs = 0;
+		}	
+	}
+
+	if (!ret) {
+		is_servicing_driver = 0;
+		sched_suspend(t);
+	}
+
+	return ret;
 }
 
 void task_init_heap(size_t size, task_t *t) {

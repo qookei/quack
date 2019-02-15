@@ -8,9 +8,7 @@
 	is_privileged(pid) -> -1 on error, is pid privileged
 
 	wait:
-	waitpid(pid) -> return status, signal, -1 if not a child
-	ipc_wait() -> none
-	waitirq() -> none
+	wait(bitmask, data) -> event type(negative if error), status(WAIT_PID only), signal(WAIT_PID only)
 
 	sched:
 	sched_spawn_new(parent pid, is privileged)	->	new pid
@@ -45,8 +43,8 @@ typedef void (*syscall_handler)(uintptr_t *, uintptr_t *, uintptr_t *, void *);
 syscall_handler handlers[] = {
 	exit_handler,
 	getpid_handler,
-	waitpid_handler,
-	ipc_wait_handler,
+	dummy_handler,
+	dummy_handler,
 	sched_spawn_new_handler,
 	sched_make_ready_handler,
 	get_phys_from_handler,
@@ -64,8 +62,9 @@ syscall_handler handlers[] = {
 	sched_prioritize_handler,
 	register_handler_handler,
 	unregister_handler_handler,
-	waitirq_handler,
+	dummy_handler,
 	map_timer_handler,
+	wait_handler,
 };
 
 int do_syscall(interrupt_cpu_state *);

@@ -15,10 +15,6 @@ $(OUTDIR)/%: src/%/ $(LIB)
 	@printf "COPY\t\t%s\n" $@
 	@cp $<$(shell basename $@) $@
 
-#src/%/: $(LIB)
-#	@printf "SUBDIR\t\t%s\n" $(dir $@)
-#	@make -sC $(dir $@)
-
 $(LIB):
 	@printf "SUBDIR\t\t%s\n" $(dir $(LIB))
 	@make -sC src/sys

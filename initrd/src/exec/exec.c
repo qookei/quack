@@ -171,7 +171,7 @@ void _start(void) {
 	sys_debug_log("exec: waiting for messages...\n");
 
 	while (1) {
-		sys_waitipc();
+		sys_wait(WAIT_IPC, 0, NULL, NULL);
 		handle_ipc_message();
 	}
 

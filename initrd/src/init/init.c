@@ -208,7 +208,7 @@ int32_t spawn(int32_t exec_pid, void *data, size_t size) {
 	memcpy(s_msg->binary, data, size);
 	sys_ipc_send(exec_pid, ssize, tmp_msg);
 
-	sys_waitipc();
+	sys_wait(WAIT_IPC, 0, NULL, NULL);
 	int32_t r = sys_ipc_recv(&resp);
 	sys_ipc_remove();
 
@@ -219,7 +219,7 @@ int32_t spawn(int32_t exec_pid, void *data, size_t size) {
 
 char buf[32];
 char exec[10240];
-char test_irq[10240];
+char i8042d[10240];
 char vgatty[10240];
 
 void _start(void) {
@@ -227,8 +227,8 @@ void _start(void) {
 	sys_ipc_recv(exec);
 	sys_ipc_remove();
 	
-	size_t test_irq_size = sys_ipc_recv(NULL);
-	sys_ipc_recv(test_irq);
+	size_t i8042d_size = sys_ipc_recv(NULL);
+	sys_ipc_recv(i8042d);
 	sys_ipc_remove();
 	
 	size_t vgatty_size = sys_ipc_recv(NULL);
@@ -245,7 +245,7 @@ void _start(void) {
 
 	sys_debug_log("init: spawning a process with the exec server\n");
 	
-	int32_t test_irq_pid = spawn(pid, test_irq, test_irq_size);
+	int32_t i8042d_pid = spawn(pid, i8042d, i8042d_size);
 	int32_t vgatty_pid = spawn(pid, vgatty, vgatty_size);
 
 	sys_map_timer(0x1000);
@@ -254,9 +254,13 @@ void _start(void) {
 	uint32_t *htimer = (uint32_t *)0x1000;
 	
 	while(1) {
+		uint64_t s = *timer;
+		while (*timer < s + 0x100);
+
 		usprintf(buf, "hello world! %8x%8x\n", htimer[1], htimer[0]);
 
 		sys_ipc_send(vgatty_pid, 32, buf);
+		sys_ipc_send(i8042d_pid, 32, buf);
 	}
 
 	sys_debug_log("init: exiting\n");

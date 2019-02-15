@@ -4,15 +4,19 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#define WAIT_NONE 0
+#define WAIT_PROC 1
+#define WAIT_IPC 2
+#define WAIT_READY 4
+#define WAIT_IRQ 8
+
 /* process */
 void sys_exit(int err_code);
 int32_t sys_getpid();
 int sys_is_privileged(int32_t pid);
 
 /* wait */
-int sys_waitpid(int32_t pid);
-void sys_waitipc();
-void sys_waitirq();
+int sys_wait(int bitmask, int32_t data, int *ret1, int *ret2);
 
 /* sched */
 int32_t sys_spawn_new(int32_t parent, int is_privileged);

@@ -18,18 +18,17 @@ int sys_is_privileged(int32_t pid) {
 }
 
 /* wait */
-int sys_waitpid(int32_t pid) {
-	int stat;
-	asm volatile ("int $0x30" : "=b"(stat) : "b"(pid), "a"(2));
-	return stat;
-}
+int sys_wait(int bitmask, int32_t data, int *ret1, int *ret2) {	
+	int ret_a, ret_b, state;
+	asm volatile ("int $0x30" : "=a"(ret_a), "=b"(ret_b), "=d"(state) : "a"(23), "b"(bitmask), "c"(data));
+	
+	if (ret1)
+		*ret1 = ret_a;
 
-void sys_waitipc() {
-	asm volatile ("int $0x30" : : "a"(3));
-}
+	if (ret2)
+		*ret2 = ret_b;
 
-void sys_waitirq() {
-	asm volatile ("int $0x30" : : "a"(21));
+	return state;
 }
 
 /* sched */

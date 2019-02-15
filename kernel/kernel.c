@@ -93,9 +93,9 @@ void kernel_main(multiboot_info_t *mboot) {
 	size_t exec_size = ustar_read(initrd, initrd_sz, "exec", &exec_file);
 	task_ipcsend(sched_get_task(1), sched_get_task(1), exec_size, exec_file);
 
-	void *test_irq_file;
-	size_t test_irq_size = ustar_read(initrd, initrd_sz, "test-irq", &test_irq_file);
-	task_ipcsend(sched_get_task(1), sched_get_task(1), test_irq_size, test_irq_file);
+	void *i8042d_file;
+	size_t i8042d_size = ustar_read(initrd, initrd_sz, "i8042d", &i8042d_file);
+	task_ipcsend(sched_get_task(1), sched_get_task(1), i8042d_size, i8042d_file);
 
 	void *vgatty_file;
 	size_t vgatty_size = ustar_read(initrd, initrd_sz, "vgatty", &vgatty_file);

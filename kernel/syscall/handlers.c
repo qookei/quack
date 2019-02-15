@@ -2,6 +2,7 @@
 
 #include <sched/sched.h>
 #include <io/debug_port.h>
+#include <mesg.h>
 
 void exit_handler(uintptr_t *exit_code,
 			uintptr_t *unused1, uintptr_t *unused2,
@@ -21,26 +22,6 @@ void getpid_handler(uintptr_t *pid,
 	(void)unused3;
 
 	*pid = sched_get_current()->pid;
-}
-
-void waitpid_handler(uintptr_t *pid,
-			uintptr_t *unused1, uintptr_t *unused2, void *state) {
-	(void)unused1;
-	(void)unused2;
-
-	task_waitpid(state, *pid, sched_get_current());
-	task_switch_to(sched_schedule_next());
-}
-
-void ipc_wait_handler(uintptr_t *unused1,
-			uintptr_t *unused2, uintptr_t *unused3,
-			void *state) {
-	(void)unused1;
-	(void)unused2;
-	(void)unused3;
-
-	task_waitipc(state, sched_get_current());
-	task_switch_to(sched_schedule_next());
 }
 
 void sched_spawn_new_handler(uintptr_t *pid,
@@ -266,19 +247,6 @@ void unregister_handler_handler(uintptr_t *int_no, uintptr_t *unused1, uintptr_t
 	unregister_userspace_handler(*int_no, sched_get_current()->pid);
 }
 
-void waitirq_handler(uintptr_t *unused1, uintptr_t *unused2, uintptr_t *unused3, void *state) {
-	(void)unused1;
-	(void)unused2;
-	(void)unused3;
-
-	if (!sched_get_current()->is_privileged) {
-		return;
-	}
-
-	if (task_waitirq((interrupt_cpu_state *)state, sched_get_current()))
-		task_switch_to(sched_schedule_next());
-}
-
 extern void *timer_ticks_ptr;
 
 void map_timer_handler(uintptr_t *addr, uintptr_t *unused1, uintptr_t *unused2, void *unused3) {
@@ -296,4 +264,19 @@ void map_timer_handler(uintptr_t *addr, uintptr_t *unused1, uintptr_t *unused2, 
 		set_cr3(def_cr3());
 	}
 
+}
+
+void wait_handler(uintptr_t *bitmask, uintptr_t *data, uintptr_t *ret, void *state) {
+	*ret = task_wait((interrupt_cpu_state *)state, sched_get_current(), *bitmask, *data);
+	if (!(*ret))
+		task_switch_to(sched_schedule_next());
+}
+
+void dummy_handler(uintptr_t *unused1, uintptr_t *unused2, uintptr_t *unused3, void *unused4) {
+	(void)unused1;
+	(void)unused2;
+	(void)unused3;
+	(void)unused4;
+
+	early_mesg(LEVEL_WARN, "syscall", "process %d used an unsupported system call!", sched_get_current()->pid);
 }

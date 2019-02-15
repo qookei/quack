@@ -61,7 +61,7 @@ void _start(void) {
 	memset(vram, 0, WIDTH * 2 * HEIGHT);
 
 	while(1) {
-		sys_waitipc();
+		sys_wait(WAIT_IPC, 0, NULL, NULL);
 
 		size_t recv_size = sys_ipc_recv(NULL);
 		char buf[recv_size];

@@ -46,11 +46,13 @@ void _start(void) {
 	int i = 0;
 
 	while(1) {
-		sys_waitirq();
-		uint8_t b = inb(0x60);
-		if (b < 0x57) {
-			((char *)0xB8000)[i++] = lower_normal[b];
-			((char *)0xB8000)[i++] = 0x07;
+		int i = sys_wait(WAIT_IRQ | WAIT_IPC, 0, NULL, NULL);
+		if (i == WAIT_IRQ) {
+			uint8_t b = inb(0x60);
+			sys_debug_log("i8042d: putc here!\n");
+		} else {
+			sys_debug_log("i8042d: parse ipc message here!\n");
+			sys_ipc_remove();
 		}
 	}
 
