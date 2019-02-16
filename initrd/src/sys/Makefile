@@ -1,7 +1,7 @@
 include ../rules.mk
 
 OUT = sys.o
-OBJS = syscall.o elf.o
+OBJS = syscall.o elf.o uuid.o
 
 $(OUT): $(OBJS)
 	@printf "LINK\t\t%s\n" $@

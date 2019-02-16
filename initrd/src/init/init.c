@@ -8,6 +8,7 @@
 
 #include "../sys/syscall.h"
 #include "../sys/elf.h"
+#include "../sys/uuid.h"
 
 #define OPERATION_SPAWN_NEW 0x1
 #define OPERATION_EXEC 0x2
@@ -217,7 +218,7 @@ int32_t spawn(int32_t exec_pid, void *data, size_t size) {
 	return resp.pid;
 }
 
-char buf[32];
+char buf[128];
 char exec[10240];
 char i8042d[10240];
 char vgatty[10240];
@@ -251,16 +252,15 @@ void _start(void) {
 	sys_map_timer(0x1000);
 
 	uint64_t *timer = (uint64_t *)0x1000;
-	uint32_t *htimer = (uint32_t *)0x1000;
 	
 	while(1) {
-		uint64_t s = *timer;
-		while (*timer < s + 0x100);
+		uint8_t uuid[16];
+		char uuid_buf[41] = {0};
+		uuid_generate(*timer, uuid);
+		uuid_to_string(uuid_buf, uuid);
+		usprintf(buf, "hello world! %s\n", uuid_buf);
 
-		usprintf(buf, "hello world! %8x%8x\n", htimer[1], htimer[0]);
-
-		sys_ipc_send(vgatty_pid, 32, buf);
-		sys_ipc_send(i8042d_pid, 32, buf);
+		sys_ipc_send(vgatty_pid, 128, buf);
 	}
 
 	sys_debug_log("init: exiting\n");
