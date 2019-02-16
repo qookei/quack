@@ -91,6 +91,7 @@ void task_kill(task_t *t, int ret_val, int sig) {
 task_t *task_create_new(int is_privileged) {
 	task_t *t = (task_t*)kmalloc(sizeof(task_t));
 	memset(t, 0, sizeof(task_t));
+	memset(t->st.io_bitmap, 0xFF, 8192);
 
 	uintptr_t pd = create_page_directory();
 
@@ -100,7 +101,7 @@ task_t *task_create_new(int is_privileged) {
 	t->st.cs = 0x1B;
 	t->st.ss = 0x23;
 	
-	t->st.eflags = 0x202 | (is_privileged ? (0x3 << 12) : 0);
+	t->st.eflags = 0x202; // | (is_privileged ? (0x3 << 12) : 0);
 	
 	t->ipc_message_queue = (ipc_message_t **)kmalloc(IPC_MAX_QUEUE * sizeof(ipc_message_t *));
 	memset(t->ipc_message_queue, 0, IPC_MAX_QUEUE * sizeof(ipc_message_t *));
@@ -182,6 +183,17 @@ uint32_t task_ipcqueuelen(task_t *t) {
 	}
 	
 	return IPC_MAX_QUEUE;
+}
+
+void task_enable_ports(uint16_t port, size_t count, task_t *t) {
+	for (size_t i = 0; i < count; i++) {
+		uint16_t idx = port + i;
+		early_mesg(LEVEL_INFO, "task", "enabling port 0x%x", idx);
+		uint8_t bitmask = ~(1 << (idx % 8));
+		uint16_t off = idx / 8;
+		early_mesg(LEVEL_INFO, "task", "using index %u and bitmask 0x%02x", off, bitmask);
+		t->st.io_bitmap[off] &= bitmask;
+	}
 }
 
 extern volatile int is_servicing_driver;
@@ -313,17 +325,21 @@ void *task_sbrk(int increment, task_t *t) {
 	}
 }
 
+void gdt_load_io_bitmap(uint8_t *);
+
 static int task_idling = 0;
 void task_switch_to(task_t *t) {
 	if (!t) {
 		task_idling = 1;
 		asm volatile ("jmp task_idle");
 	} else {
+		gdt_load_io_bitmap(t->st.io_bitmap);
 		asm volatile ("jmp task_enter" : : "a"(t->cr3), "b"(&(t->st)) : "memory");
 	}
 }
 
 void pic_eoi(uint8_t id);
+void gdt_restore_tss_iomap();
 
 static int task_first = 1;
 int task_int_handler(interrupt_cpu_state *state) {
@@ -336,6 +352,7 @@ int task_int_handler(interrupt_cpu_state *state) {
 	task_idling = 0;
 
 	pic_eoi(0x20); // ugly
+	gdt_restore_tss_iomap();
 
 	task_switch_to(sched_schedule_next());
 

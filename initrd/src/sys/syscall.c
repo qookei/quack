@@ -115,6 +115,10 @@ void sys_map_timer(uintptr_t addr) {
 	asm volatile ("int $0x30" : : "a"(22), "b"(addr));
 }
 
+void sys_enable_ports(uint16_t port, size_t count) {
+	asm volatile ("int $0x30" : : "a"(24), "b"(port), "c"(count));
+}
+
 /* irq */
 void sys_register_handler(int int_no) {
 	asm volatile ("int $0x30" : : "a"(19), "b"(int_no));

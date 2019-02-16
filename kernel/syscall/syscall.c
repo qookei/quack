@@ -32,6 +32,7 @@
 	misc:
 	debug_log(msg, len) -> none
 	map_timer(addr) -> none
+	enable_ports(port, count) -> none
 
 	irq:
 	register_handler(int_no) -> none
@@ -65,6 +66,7 @@ syscall_handler handlers[] = {
 	dummy_handler,
 	map_timer_handler,
 	wait_handler,
+	enable_ports_handler,
 };
 
 int do_syscall(interrupt_cpu_state *);

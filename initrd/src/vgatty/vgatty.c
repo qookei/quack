@@ -52,6 +52,9 @@ void _start(void) {
 	sys_map_to(sys_getpid(), 0xB8000, 0xB8000);
 	vram = (uint8_t *)0xB8000;
 
+	sys_enable_ports(0x3D4, 1);
+	sys_enable_ports(0x3D5, 1);
+
 	outb(0x3D4, 0x0A);
 	outb(0x3D5, (inb(0x3D5) & 0xC0) | 0);
 

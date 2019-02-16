@@ -36,6 +36,9 @@ void _start(void) {
 
 	int s = 0;
 
+	sys_enable_ports(0x60, 1);
+	sys_enable_ports(0x64, 1);
+
 	while (inb(0x64) & 0x01)
 		(void)inb(0x60);
 

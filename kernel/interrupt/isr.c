@@ -23,6 +23,9 @@ void leave_kernel_directory() {
 	set_cr3(isr_old_cr3);
 }
 
+void gdt_save_tss_iomap();
+void gdt_restore_tss_iomap();
+
 void *timer_ticks_ptr = NULL;
 
 void pic_eoi(uint32_t r) {
@@ -47,6 +50,7 @@ const char* int_names[] = {
 
 void dispatch_interrupt(interrupt_cpu_state r) {
 	enter_kernel_directory();
+	gdt_save_tss_iomap();
 
 	if (r.interrupt_number == 32) {
 		if (!timer_ticks_ptr) {
@@ -80,6 +84,7 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 				task_t *to_run = sched_schedule_next();
 				is_servicing_driver = 1;
 				pic_eoi(r.interrupt_number); // hackish at best
+				gdt_restore_tss_iomap();
 				task_switch_to(to_run);
 			}
 		}
@@ -104,6 +109,7 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 	}
 
 	pic_eoi(r.interrupt_number);
+	gdt_restore_tss_iomap();
 	leave_kernel_directory();
 }
 

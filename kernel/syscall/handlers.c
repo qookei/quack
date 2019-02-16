@@ -280,3 +280,14 @@ void dummy_handler(uintptr_t *unused1, uintptr_t *unused2, uintptr_t *unused3, v
 
 	early_mesg(LEVEL_WARN, "syscall", "process %d used an unsupported system call!", sched_get_current()->pid);
 }
+
+void enable_ports_handler(uintptr_t *port, uintptr_t *count, uintptr_t *unused1, void *unused2) {
+	(void)unused1;
+	(void)unused2;
+
+	if (!sched_get_current()->is_privileged)
+		return;
+
+	task_enable_ports(*port, *count, sched_get_current());
+
+}

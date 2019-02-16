@@ -39,6 +39,8 @@ typedef struct {
 	uint32_t eflags;
 	uint32_t esp;
 	uint32_t ss;
+
+	uint8_t io_bitmap[8192];
 } cpu_state_t;
 
 typedef struct ipc_message {	
@@ -80,6 +82,8 @@ void task_switch();
 void task_switch_to(task_t *);
 
 task_t *task_create_new(int is_privileged);
+
+void task_enable_ports(uint16_t port, size_t count, task_t *t);
 
 int task_wakeup_irq(task_t *);
 int task_wait(interrupt_cpu_state *, task_t *, int, int);

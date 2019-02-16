@@ -29,6 +29,7 @@ void unregister_handler_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);
 void map_timer_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);
 void wait_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);
 void dummy_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);
+void enable_ports_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);
 
 int verify_addr(uint32_t pd, uint32_t addr, uint32_t len, uint32_t flags);
 int copy_from_user(void *dst, void *src, size_t len);
