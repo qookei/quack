@@ -185,6 +185,8 @@ uint32_t task_ipcqueuelen(task_t *t) {
 	return IPC_MAX_QUEUE;
 }
 
+void gdt_load_io_bitmap(uint8_t *);
+
 void task_enable_ports(uint16_t port, size_t count, task_t *t) {
 	for (size_t i = 0; i < count; i++) {
 		uint16_t idx = port + i;
@@ -193,6 +195,10 @@ void task_enable_ports(uint16_t port, size_t count, task_t *t) {
 		uint16_t off = idx / 8;
 		early_mesg(LEVEL_INFO, "task", "using index %u and bitmask 0x%02x", off, bitmask);
 		t->st.io_bitmap[off] &= bitmask;
+	}
+
+	if (sched_get_current() == t) {
+		gdt_load_io_bitmap(t->st.io_bitmap);
 	}
 }
 
@@ -324,8 +330,6 @@ void *task_sbrk(int increment, task_t *t) {
 		}
 	}
 }
-
-void gdt_load_io_bitmap(uint8_t *);
 
 static int task_idling = 0;
 void task_switch_to(task_t *t) {
