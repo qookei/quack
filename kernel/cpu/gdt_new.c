@@ -118,17 +118,6 @@ void gdt_ltr() {
 	asm volatile ("mov $0x28, %%ax; ltr %%ax" : : : "%ax");
 }
 
-static uint16_t gdt_io_bmap_save;
-
-void gdt_save_tss_iomap() {
-	gdt_io_bmap_save = tss_io.tss.iomap_base;
-	tss_io.tss.iomap_base = 0;
-}
-
-void gdt_restore_tss_iomap() {
-	tss_io.tss.iomap_base = gdt_io_bmap_save;
-}
-
 void gdt_new_setup() {
 	gdt_arr[0] = create_descriptor(0, 0, 0);
 	gdt_arr[1] = create_descriptor(0, 0x000FFFFF, (GDT_CODE_PL0));

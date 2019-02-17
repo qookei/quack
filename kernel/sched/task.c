@@ -339,7 +339,6 @@ void task_switch_to(task_t *t) {
 }
 
 void pic_eoi(uint8_t id);
-void gdt_restore_tss_iomap();
 
 static int task_first = 1;
 int task_int_handler(interrupt_cpu_state *state) {
@@ -352,7 +351,6 @@ int task_int_handler(interrupt_cpu_state *state) {
 	task_idling = 0;
 
 	pic_eoi(0x20); // ugly
-	gdt_restore_tss_iomap();
 
 	task_switch_to(sched_schedule_next());
 

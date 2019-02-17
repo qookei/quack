@@ -33,7 +33,7 @@ void _start(void) {
 	sys_debug_log("i8042d: starting\n");
 
 	sys_register_handler(0x21);
-
+	
 	int s = 0;
 
 	sys_enable_ports(0x60, 1);
@@ -43,8 +43,6 @@ void _start(void) {
 		(void)inb(0x60);
 
 	sys_debug_log("i8042d: entering irq wait loop\n");
-
-	sys_map_to(sys_getpid(), 0xB8000, 0xB8000); // map VGA text mode for testing
 
 	int i = 0;
 
