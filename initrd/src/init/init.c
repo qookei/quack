@@ -112,12 +112,12 @@ struct spawn_response {
 int alloc_mem_at(int32_t pid, uintptr_t virt, size_t pages) {
 	while(pages) {
 		uintptr_t phys = sys_alloc_phys();
-		
+
 		if (!phys)
 			return 0;
-		
+
 		sys_map_to(pid, virt, phys);
-		
+
 		virt += 0x1000;
 		pages--;
 	}
@@ -128,12 +128,19 @@ int alloc_mem_at(int32_t pid, uintptr_t virt, size_t pages) {
 void *memcpy(void *dst, const void *src, size_t len) {
 	for (size_t i = 0; i < len; i++)
 		((unsigned char *)dst)[i] = ((const unsigned char *)src)[i];
-	
+
+	return dst;
+}
+
+void *memset(void *dst, int val, size_t len) {
+	for (size_t i = 0; i < len; i++)
+		((unsigned char *)dst)[i] = val;
+
 	return dst;
 }
 
 void proc_memcpy(int32_t pid, uintptr_t src, uintptr_t dst, size_t size) {
-	uintptr_t dst_phys;	
+	uintptr_t dst_phys;
 	uintptr_t dst_off;
 	uintptr_t src_off = 0;
 
@@ -147,7 +154,7 @@ void proc_memcpy(int32_t pid, uintptr_t src, uintptr_t dst, size_t size) {
 
 		sys_map_to(sys_getpid(), 0x80002000, dst_phys);
 
-		dst += 0x1000;		
+		dst += 0x1000;
 		dst_phys = sys_get_phys_from(pid, dst) & 0xFFFFF000;
 
 		if (dst_off + copy_size >= + 0x1000 && dst_phys)
@@ -187,7 +194,7 @@ void create_proc_from_elf(int32_t pid, void *elf_file) {
 
 		proc_memcpy(pid, (uintptr_t)elf_file + phdr->data_offset, phdr->load_to, phdr->size_in_file);
 	}
-	
+
 	if (!alloc_mem_at(pid, 0xA0000000, 0x4)) {
 		sys_debug_log("init: failed to alloc stack for exec server\n");
 		sys_exit(1);
@@ -201,7 +208,7 @@ struct spawn_response resp;
 int32_t spawn(int32_t exec_pid, void *data, size_t size) {
 	size_t ssize = size + sizeof (struct spawn_message);
 	void *tmp_msg = sys_sbrk(ssize);
-	
+
 	struct spawn_message *s_msg = (struct spawn_message *)tmp_msg;
 	s_msg->operation = OPERATION_SPAWN_NEW;
 	s_msg->is_privileged = 1;
@@ -223,15 +230,38 @@ char exec[10240];
 char i8042d[10240];
 char vgatty[10240];
 
+#define DRIVER_EVENT_SUBSCRIBE 0xDEAD0001
+#define DRIVER_EVENT_KEY_TYPED 0xDEAD0002
+#define MESSAGE_RESPONSE 0xCAFE0001
+
+struct message {
+	uint32_t type;
+	uint8_t uuid[16];
+	uint8_t data[];
+};
+
+struct event_subscribe_msg {
+	int32_t subscriber;
+};
+
+struct msg_response {
+	int status;
+};
+
+struct event_key_typed {
+	uint32_t scancode;
+	uint32_t character;
+};
+
 void _start(void) {
 	size_t exec_size = sys_ipc_recv(NULL);
 	sys_ipc_recv(exec);
 	sys_ipc_remove();
-	
+
 	size_t i8042d_size = sys_ipc_recv(NULL);
 	sys_ipc_recv(i8042d);
 	sys_ipc_remove();
-	
+
 	size_t vgatty_size = sys_ipc_recv(NULL);
 	sys_ipc_recv(vgatty);
 	sys_ipc_remove();
@@ -245,22 +275,42 @@ void _start(void) {
 	create_proc_from_elf(pid, exec);
 
 	sys_debug_log("init: spawning a process with the exec server\n");
-	
+
 	int32_t i8042d_pid = spawn(pid, i8042d, i8042d_size);
 	int32_t vgatty_pid = spawn(pid, vgatty, vgatty_size);
 
 	sys_map_timer(0x1000);
-
 	uint64_t *timer = (uint64_t *)0x1000;
-	
-	while(1) {
-		uint8_t uuid[16];
-		char uuid_buf[41] = {0};
-		uuid_generate(*timer, uuid);
-		uuid_to_string(uuid_buf, uuid);
-		usprintf(buf, "hello world! %s\n", uuid_buf);
 
-		sys_ipc_send(vgatty_pid, 128, buf);
+	char resp_buf[sizeof(struct message) + sizeof(struct event_subscribe_msg)];
+	struct message *msg = (struct message *)resp_buf;
+	struct event_subscribe_msg *resp = (struct event_subscribe_msg *)msg->data;
+	uuid_generate(*timer, msg->uuid);
+	msg->type = DRIVER_EVENT_SUBSCRIBE;
+	resp->subscriber = sys_getpid();
+
+	sys_ipc_send(i8042d_pid, sizeof(resp_buf), resp_buf);
+	sys_wait(WAIT_IPC, 0, NULL, NULL);
+
+	sys_ipc_remove();
+
+	while(1) {
+		sys_wait(WAIT_IPC, 0, NULL, NULL);
+
+		int32_t sender = sys_ipc_get_sender();
+		size_t size = sys_ipc_recv(NULL);
+		char buf[size];
+		sys_ipc_recv(buf);
+		sys_ipc_remove();
+
+		struct message *m = (struct message *)buf;
+		struct event_key_typed *ev = (struct event_key_typed *)m->data;
+
+		char c[2];
+		memset(c, 0, 2);
+		c[0] = ev->character;
+
+		sys_ipc_send(vgatty_pid, 2, c);
 	}
 
 	sys_debug_log("init: exiting\n");
