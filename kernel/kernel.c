@@ -30,6 +30,9 @@ void gdt_ltr(void);
 // TODO: move this to a different file
 // together with ustar code prehaps 
 void *kernel_copy_initrd(multiboot_info_t *mboot, size_t *isize) {
+	if (!mboot->mods_count)
+		return NULL;
+	
 	multiboot_module_t* p = (multiboot_module_t*) (0xC0000000 + mboot->mods_addr);
 
 	uintptr_t start_addr = p->mod_start;
@@ -78,8 +81,13 @@ void kernel_main(multiboot_info_t *mboot) {
 	void *initrd = kernel_copy_initrd(mboot, &initrd_sz);
 	void *init_file;
 
+	if (!initrd) {
+		early_mesg(LEVEL_ERR, "kernel", "no initrd present... halting");
+		while(1);
+	}
+
 	if (!ustar_read(initrd, initrd_sz, "init", &init_file)) {
-		early_mesg(LEVEL_ERR, "kernel", "failed to load init");
+		early_mesg(LEVEL_ERR, "kernel", "failed to load init... halting");
 		while(1);
 	}
 

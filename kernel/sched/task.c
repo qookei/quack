@@ -190,10 +190,8 @@ void gdt_load_io_bitmap(uint8_t *);
 void task_enable_ports(uint16_t port, size_t count, task_t *t) {
 	for (size_t i = 0; i < count; i++) {
 		uint16_t idx = port + i;
-		early_mesg(LEVEL_INFO, "task", "enabling port 0x%x", idx);
 		uint8_t bitmask = ~(1 << (idx % 8));
 		uint16_t off = idx / 8;
-		early_mesg(LEVEL_INFO, "task", "using index %u and bitmask 0x%02x", off, bitmask);
 		t->st.io_bitmap[off] &= bitmask;
 	}
 
