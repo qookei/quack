@@ -130,10 +130,10 @@ void ipc_send_handler(uintptr_t *pid, uintptr_t *size, uintptr_t *data, void *un
 	void *kdata = kmalloc(*size);
 	copy_from_user(kdata, (void *)(*data), *size);
 
-	if (!task_ipcsend(sched_get_task(*pid), sched_get_current(), *size, kdata))
+	if (!task_ipcsend(sched_get_task(*pid), sched_get_current(), *size, kdata)) {
 		*size = -3;
-
-	kfree(kdata);
+		kfree(kdata);
+	}
 }
 
 void ipc_recv_handler(uintptr_t *unused1, uintptr_t *size, uintptr_t *data, void *unused2) {
