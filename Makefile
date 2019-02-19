@@ -4,6 +4,14 @@ ifndef OLEVEL
 OLEVEL = 2
 endif
 
+CFLAGS = -ffreestanding -O$(OLEVEL) -Wall -Wextra -std=gnu11 -Ikernel -Ikernel/lib -fno-omit-frame-pointer -mno-sse -mno-avx -nostdlib $(FLAGS_C)
+
+ifdef DEBUG
+CFLAGS += -g
+else
+CFLAGS += -DNO_DEBUG_OUT
+endif
+
 OBJS = boot/boot.o kernel/kernel.o kernel/io/debug_port.o kernel/io/ports.o kernel/cpu/gdt.o kernel/vsprintf.o \
 	   kernel/trace/stacktrace.o kernel/interrupt/idt_load.o kernel/interrupt/isr.o kernel/interrupt/idt.o \
 	   kernel/interrupt/interrupt.o kernel/pic/pic.o \
@@ -13,9 +21,8 @@ OBJS = boot/boot.o kernel/kernel.o kernel/io/debug_port.o kernel/io/ports.o kern
 	   kernel/lib/stdlib.o kernel/lib/ctype.o kernel/kheap/liballoc.o kernel/kheap/liballoc_funcs.o \
 	   kernel/panic.o kernel/mesg.o kernel/sched/elf.o kernel/fs/ustar.o kernel/sched/sched.o kernel/syscall/handlers.o kernel/syscall/syscall.o
 
-CC=i686-elf-gcc
+CC = i686-elf-gcc
 ASM = nasm
-CFLAGS = -g -ffreestanding -O$(OLEVEL) -Wall -Wextra -std=gnu11 -Ikernel -Ikernel/lib -fno-omit-frame-pointer -mno-sse -mno-avx -nostdlib $(FLAGS_C)
 
 kernel.elf: $(OBJS)
 	@printf "LINK\t\t%s\n" $@
