@@ -109,7 +109,7 @@ void kernel_main(multiboot_info_t *mboot) {
 	size_t vgatty_size = ustar_read(initrd, initrd_sz, "vgatty", &vgatty_file);
 	task_ipcsend(sched_get_task(1), sched_get_task(1), vgatty_size, vgatty_file);
 
-	gdt_set_tss_stack((uintptr_t)(&isr_stack));
+	gdt_set_tss_stack((uintptr_t)&isr_stack + 0x4000);
 	gdt_ltr();
 
 	asm volatile ("sti");

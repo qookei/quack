@@ -283,6 +283,10 @@ void destroy_page_directory(void *pd) {
 	pmm_free(pd);
 }
 
+
+extern void *stack;
+extern void *isr_stack;
+
 int page_fault(interrupt_cpu_state *state) {
 
 	uint32_t fault_addr;
@@ -312,6 +316,14 @@ int page_fault(interrupt_cpu_state *state) {
 		sched_kill(sched_get_current()->pid, state->eax, SIGSEGV);
 	}
 
+	if (fault_addr >= (uintptr_t)&stack && fault_addr < (uintptr_t)&stack + 0x1000) {
+		early_mesg(LEVEL_ERR, "vmm", "possible kernel stack overrun(writing inside of the stack guard page)");
+	}
+
+	if (fault_addr >= (uintptr_t)&isr_stack && fault_addr < (uintptr_t)&isr_stack + 0x1000) {
+		early_mesg(LEVEL_ERR, "vmm", "possible kernel isr stack overrun(writing inside of the stack guard page)");
+	}
+
 	panic("Page fault", state, 1, 1);
 	return 1;
 }
@@ -339,6 +351,9 @@ void paging_init(void) {
 	dir_.entries[i++] = (uint32_t *)(addr | 0x3);
 
 	set_cr3(addr);
+
+	unmap_page(&stack);
+	unmap_page(&isr_stack);
 
 	early_mesg(LEVEL_INFO, "vmm", "paging ok");
 }

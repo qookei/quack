@@ -141,12 +141,16 @@ l:
 	jmp l
 
 section .bss
-align 32
+
+global stack
+
+align 0x1000
 stack:
-	resb STACKSIZE		; reserve 16k stack on a uint64_t boundary
+	resb STACKSIZE
 
 global isr_stack
 
-align 32
+align 0x1000
 isr_stack:
-	resb STACKSIZE		; reserve 16k stack on a uint64_t boundary
+	resb STACKSIZE
+
