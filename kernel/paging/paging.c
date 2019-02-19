@@ -132,6 +132,7 @@ void *alloc_mem_at(uint32_t pd, uint32_t where, size_t pages, uint32_t flags) {
 	for (size_t i = 0; i < pages; i++) {
 		void *p = pmm_alloc();
 		map_page(p, (void *)(where + i * 0x1000), flags);
+		memset((void *)(where + i * 0x1000), 0, 0x1000);
 		if (!i) dst_phys = p;
 	}
 	set_cr3(opd);

@@ -97,6 +97,14 @@ void usprintf(char *buf, const char *fmt, ...) {
 
 	va_end(arg);
 }
+
+void *memset(void *dst, int val, size_t len) {
+	for (size_t i = 0; i < len; i++)
+		((unsigned char *)dst)[i] = val;
+
+	return dst;
+}
+
 struct spawn_message {
 	int operation;
 	int is_privileged;
@@ -118,6 +126,10 @@ int alloc_mem_at(int32_t pid, uintptr_t virt, size_t pages) {
 
 		sys_map_to(pid, virt, phys);
 
+		sys_map_to(sys_getpid(), 0xB0000000, phys);
+		memset((void *)0xB0000000, 0, 0x1000);
+		sys_unmap_from(sys_getpid(), 0xB0000000);
+
 		virt += 0x1000;
 		pages--;
 	}
@@ -128,13 +140,6 @@ int alloc_mem_at(int32_t pid, uintptr_t virt, size_t pages) {
 void *memcpy(void *dst, const void *src, size_t len) {
 	for (size_t i = 0; i < len; i++)
 		((unsigned char *)dst)[i] = ((const unsigned char *)src)[i];
-
-	return dst;
-}
-
-void *memset(void *dst, int val, size_t len) {
-	for (size_t i = 0; i < len; i++)
-		((unsigned char *)dst)[i] = val;
 
 	return dst;
 }
@@ -273,8 +278,6 @@ void _start(void) {
 	sys_debug_log("init: spawning exec server\n");
 	int32_t pid = sys_spawn_new(sys_getpid(), 1);
 	create_proc_from_elf(pid, exec);
-
-	sys_debug_log("init: spawning a process with the exec server\n");
 
 	int32_t i8042d_pid = spawn(pid, i8042d, i8042d_size);
 	int32_t vgatty_pid = spawn(pid, vgatty, vgatty_size);

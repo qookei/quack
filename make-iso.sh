@@ -22,5 +22,5 @@ EOL
 cp kernel.elf isodir/boot/kernel.elf
 make -C initrd
 cp initrd/initrd isodir/boot/initrd
-grub-mkrescue -o quack.iso isodir > /dev/null 2>&1
+grub-mkrescue -o quack.iso isodir > /dev/null
 rm -r isodir

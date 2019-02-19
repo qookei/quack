@@ -25,6 +25,13 @@ struct spawn_response {
 	int32_t pid;
 };
 
+void *memset(void *dst, int n, size_t len) {
+	for (size_t i = 0; i < len; i++)
+		((unsigned char *)dst)[i] = n;
+
+	return dst;
+}
+
 int alloc_mem_at(int32_t pid, uintptr_t virt, size_t pages) {
 	while(pages) {
 		uintptr_t phys = sys_alloc_phys();
@@ -34,6 +41,10 @@ int alloc_mem_at(int32_t pid, uintptr_t virt, size_t pages) {
 		
 		sys_map_to(pid, virt, phys);
 		
+		sys_map_to(sys_getpid(), 0xB0000000, phys);
+		memset((void *)0xB0000000, 0, 0x1000);
+		sys_unmap_from(sys_getpid(), 0xB0000000);
+
 		virt += 0x1000;
 		pages--;
 	}
@@ -44,7 +55,7 @@ int alloc_mem_at(int32_t pid, uintptr_t virt, size_t pages) {
 void *memcpy(void *dst, const void *src, size_t len) {
 	for (size_t i = 0; i < len; i++)
 		((unsigned char *)dst)[i] = ((const unsigned char *)src)[i];
-	
+
 	return dst;
 }
 

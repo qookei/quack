@@ -8,6 +8,7 @@
 
 static interrupt_handler_f *interrupt_handlers[IDT_size] = {0};
 static pid_t userspace_interrupt_handlers[IDT_size] = {0};
+static int pre_register_interrupt_count[IDT_size] = {0};
 
 int isr_in_kdir = 0;
 uint32_t isr_old_cr3;
@@ -86,6 +87,8 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 		}
 
 		is_servicing_driver = 1;
+	} else if (!userspace_interrupt_handlers[r.interrupt_number]) {
+		pre_register_interrupt_count[r.interrupt_number]++;
 	}
 
 
@@ -129,6 +132,8 @@ int unregister_interrupt_handler(uint8_t int_no, interrupt_handler_f handler) {
 void register_userspace_handler(uint8_t int_no, pid_t pid) {
 	if (!userspace_interrupt_handlers[int_no]) {
 		userspace_interrupt_handlers[int_no] = pid;
+		sched_get_task(pid)->pending_irqs = pre_register_interrupt_count[int_no];
+		pre_register_interrupt_count[int_no] = 0;
 	}
 }
 
