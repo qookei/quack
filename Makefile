@@ -1,10 +1,8 @@
-include config.mk
-
 ifndef OLEVEL
 OLEVEL = 2
 endif
 
-CFLAGS = -ffreestanding -O$(OLEVEL) -Wall -Wextra -std=gnu11 -Ikernel -Ikernel/lib -fno-omit-frame-pointer -mno-sse -mno-avx -nostdlib $(FLAGS_C)
+CFLAGS = -ffreestanding -O$(OLEVEL) -Wall -Wextra -std=gnu11 -Ikernel -Ikernel/lib -fno-omit-frame-pointer -mno-sse -mno-avx -nostdlib
 
 ifdef DEBUG
 CFLAGS += -g
@@ -19,7 +17,7 @@ OBJS = boot/boot.o kernel/kernel.o kernel/io/debug_port.o kernel/io/ports.o kern
 	   kernel/sched/task.o kernel/cpu/gdt_new.o \
 	   kernel/sched/task_enter.o kernel/lib/string.o \
 	   kernel/lib/stdlib.o kernel/lib/ctype.o kernel/kheap/liballoc.o kernel/kheap/liballoc_funcs.o \
-	   kernel/panic.o kernel/mesg.o kernel/sched/elf.o kernel/fs/ustar.o kernel/sched/sched.o kernel/syscall/handlers.o kernel/syscall/syscall.o
+	   kernel/panic.o kernel/kmesg.o kernel/sched/elf.o kernel/fs/ustar.o kernel/sched/sched.o kernel/syscall/handlers.o kernel/syscall/syscall.o
 
 CC = i686-elf-gcc
 ASM = nasm
@@ -36,15 +34,7 @@ kernel.elf: $(OBJS)
 	@printf "ASM\t\t%s\n" $@
 	@$(ASM) -g -felf32 -F dwarf $< -o $@
 
-config.mk:
-	cd utils; \
-	./menuconfig.sh
-
-config:
-	cd utils; \
-	./menuconfig.sh
-
-.PHONY: clean run config
+.PHONY: clean
 
 clean:
 	@printf "cleaning\n"

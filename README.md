@@ -5,9 +5,7 @@ quack is a 32bit open source operating system written primarily in C and Assembl
 To build quack, you need to have the following:
 - `i686-elf` GCC and Binutils
 - `nasm`
-- `python` 2 or 3
 - `make`
-- `dialog`
 
 To generate a bootable ISO image, you need:
 - `grub-mkrescue` and everything else needed to use it(`mkisofs`, `xorriso`, etc.)

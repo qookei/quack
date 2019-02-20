@@ -1,5 +1,4 @@
 #include "syscall.h"
-#include <mesg.h>
 
 /*
 	process:

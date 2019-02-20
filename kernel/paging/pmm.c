@@ -1,6 +1,6 @@
 #include "pmm.h"
 #include <string.h>
-#include <mesg.h>
+#include <kmesg.h>
 
 uint32_t pmm_stack[1048576]={0x0};
 page_metadata_t pmm_metadata[1048576]={{0}};
@@ -28,14 +28,14 @@ int is_available(uint32_t page_begin, multiboot_info_t *mbt) {
 
 void pmm_push(uint32_t val) {
 	if (pmm_stack_size > 1048576) return;
-	if ((val & 0xFFF) != 0) early_mesg(LEVEL_WARN, "pmm", "adding an unaligned page to page frame pool! address: %08x", val);
+	if ((val & 0xFFF) != 0) kmesg("pmm", "adding an unaligned page to page frame pool! address: %08x", val);
 	pmm_stack[pmm_stack_pointer] = val;
 	pmm_stack_pointer++;
 	pmm_stack_size++;
 }
 
 uint32_t pmm_pop() {
-	if(pmm_stack_size == 0) {asm volatile ("cli"); early_mesg(LEVEL_ERR, "pmm", "out of physical memory!"); while(1);}
+	if(pmm_stack_size == 0) {asm volatile ("cli"); kmesg("pmm", "out of physical memory!"); while(1);}
 	pmm_stack_pointer--;
 	pmm_stack_size--;
 	return pmm_stack[pmm_stack_pointer];
@@ -62,7 +62,7 @@ void pmm_init(multiboot_info_t *mbt) {
 	mem_sz *= 1024;
 
 	if (old_sz - mem_sz > old_sz) {
-		asm volatile ("cli"); early_mesg(LEVEL_ERR, "pmm", "insufficient memory"); while(1);
+		asm volatile ("cli"); kmesg("pmm", "insufficient memory"); while(1);
 	}
 
 	for (uint32_t i = 0; i < mem_sz; i += 4096) {
@@ -70,11 +70,11 @@ void pmm_init(multiboot_info_t *mbt) {
 			pmm_push(0xC00000 + i);
 			pmm_stack_max_size ++;
 		} else {
-			early_mesg(LEVEL_DBG, "pmm", "unavailable address %08x", 0xC00000 + i);
+			kmesg("pmm", "unavailable address %08x", 0xC00000 + i);
 		}
 	} 
 
-	early_mesg(LEVEL_INFO, "pmm", "pmm ok");
+	kmesg("pmm", "pmm ok");
 }
 
 void *pmm_alloc() {

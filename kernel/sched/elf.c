@@ -1,5 +1,5 @@
 #include "elf.h"
-#include <mesg.h>
+#include <kmesg.h>
 #include <panic.h>
 
 #define ELF_FATAL() panic("failed to load init server", NULL, 0, 0);
@@ -43,7 +43,7 @@ const char *elf_get_section_name(void *elf_file, int num) {
 
 void elf_create_proc(void *elf_file, int is_privileged) {
 	if(!elf_check_header((elf_hdr *)elf_file)){
-		early_mesg(LEVEL_INFO, "elf", "failed to verify header");
+		kmesg("elf", "failed to verify header");
 		ELF_FATAL();
 	}
 

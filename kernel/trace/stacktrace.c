@@ -12,7 +12,7 @@ void stack_trace(uintptr_t max_frames) {
 		if ((uintptr_t)ebp < 0xC0000000 || (uintptr_t)ebp > 0xCFFFFFFF)
 			break;
 
-		early_mesg(LEVEL_DBG, "trace", "#%u: [%08x]", frame, eip);
+		kmesg("trace", "#%u: [%08x]", frame, eip);
 
 		if (!ebp)
 			break;

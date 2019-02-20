@@ -1,6 +1,6 @@
 #include "isr.h"
 #include <trace/stacktrace.h>
-#include <mesg.h>
+#include <kmesg.h>
 #include <paging/paging.h>
 #include <sched/sched.h>
 #include <sched/task.h>
@@ -65,7 +65,7 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 	}
 
 	if (r.interrupt_number < 32 && !handled && r.cs != 0x08) {
-		early_mesg(LEVEL_WARN, "isr", "process %d caused an exception %s and will be terminated.", sched_get_current()->pid, int_names[r.interrupt_number]);
+		kmesg("isr", "process %d caused an exception %s and will be terminated.", sched_get_current()->pid, int_names[r.interrupt_number]);
 		sched_kill(sched_get_current()->pid, r.eax, SIGILL);
 	}
 
@@ -94,15 +94,15 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 
 	if (r.interrupt_number < 32 && !handled) {
 		if (r.interrupt_number == 0x08) {
-			early_mesg(LEVEL_ERR, "kernel", "double fault!");
+			kmesg("kernel", "double fault!");
 			while(1) asm volatile ("hlt");
 		}
 
-			early_mesg(LEVEL_ERR, "isr", "Kernel Panic!");
-			early_mesg(LEVEL_ERR, "isr", "eax: %08x ebx:    %08x ecx: %08x edx: %08x ebp: %08x", r.eax, r.ebx, r.ecx, r.edx, r.ebp);
-			early_mesg(LEVEL_ERR, "isr", "eip: %08x eflags: %08x esp: %08x edi: %08x esi: %08x", r.eip, r.eflags, r.esp, r.edi, r.esi);
-			early_mesg(LEVEL_ERR, "isr", "cs: %04x ds: %04x", r.cs, r.ds);
-			early_mesg(LEVEL_ERR, "isr", "exception:  %s    error code: %08x", int_names[r.interrupt_number], r.err_code);
+			kmesg("isr", "Kernel Panic!");
+			kmesg("isr", "eax: %08x ebx:    %08x ecx: %08x edx: %08x ebp: %08x", r.eax, r.ebx, r.ecx, r.edx, r.ebp);
+			kmesg("isr", "eip: %08x eflags: %08x esp: %08x edi: %08x esi: %08x", r.eip, r.eflags, r.esp, r.edi, r.esi);
+			kmesg("isr", "cs: %04x ds: %04x", r.cs, r.ds);
+			kmesg("isr", "exception:  %s    error code: %08x", int_names[r.interrupt_number], r.err_code);
 			stack_trace(20);
 			while(1) asm volatile ("hlt");
 	}

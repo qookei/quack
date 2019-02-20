@@ -2,7 +2,7 @@
 
 #include <sched/sched.h>
 #include <io/debug_port.h>
-#include <mesg.h>
+#include <kmesg.h>
 
 void exit_handler(uintptr_t *exit_code,
 			uintptr_t *unused1, uintptr_t *unused2,
@@ -278,7 +278,7 @@ void dummy_handler(uintptr_t *unused1, uintptr_t *unused2, uintptr_t *unused3, v
 	(void)unused3;
 	(void)unused4;
 
-	early_mesg(LEVEL_WARN, "syscall", "process %d used an unsupported system call!", sched_get_current()->pid);
+	kmesg("syscall", "process %d used an unsupported system call!", sched_get_current()->pid);
 }
 
 void enable_ports_handler(uintptr_t *port, uintptr_t *count, uintptr_t *unused1, void *unused2) {

@@ -1,7 +1,6 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
-#include <mesg.h>
 
 #define SEG_DESCTYPE(x)  ((x) << 0x04) // Descriptor type (0 for system, 1 for code/data)
 #define SEG_PRES(x)		 ((x) << 0x07) // Present
@@ -129,8 +128,6 @@ void gdt_new_setup() {
 	memset(&tss_io, 0, sizeof(tss_io));
 	tss_io.tss.ss0 = 0x10;
 	tss_io.tss.iomap_base = (uintptr_t)tss_io.io_bitmap - (uintptr_t)&tss_io;
-
-	early_mesg(LEVEL_INFO, "gdt", "bitmap offset is %u", tss_io.tss.iomap_base);
 
 	asm volatile ("call setup_gdt" : : "c"((uint32_t)gdt_arr), "d"((uint16_t)6*8));
 }

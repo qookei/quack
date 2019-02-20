@@ -1,5 +1,5 @@
 #include "sched.h"
-#include <mesg.h>
+#include <kmesg.h>
 
 task_t **tasks = NULL;
 
@@ -39,7 +39,7 @@ int sched_queue_remove(task_t *task) {
 	}
 
 	if (!temp || temp->task != task) {
-		early_mesg(LEVEL_WARN, "sched",
+		kmesg("sched",
 					"trying to suspend a process that's not running");
 
 		return 0;

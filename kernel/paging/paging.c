@@ -3,7 +3,7 @@
 #include <interrupt/isr.h>
 #include <trace/stacktrace.h>
 #include <panic.h>
-#include <mesg.h>
+#include <kmesg.h>
 
 struct page_directory dir_;
 
@@ -164,7 +164,7 @@ uint32_t alloc_clean_page() {
 
 void map_page(void *physaddr, void *virtualaddr, unsigned int flags) {
 	if ((((uint32_t)physaddr) & 0xFFF) != 0 || (((uint32_t)virtualaddr)&0xFFF) != 0) {
-		early_mesg(LEVEL_WARN, "vmm", "map_page with unaligned address(es)!");
+		kmesg("vmm", "map_page with unaligned address(es)!");
 		return;
 	}
 
@@ -178,7 +178,7 @@ void map_page(void *physaddr, void *virtualaddr, unsigned int flags) {
 	uint32_t *pt = ((uint32_t *)0xFFC00000) + (0x400 * pdindex);
 
 	if(pt[ptindex] & 0x1) {
- 		early_mesg(LEVEL_WARN, "vmm", "map_page on already mapped address! %08p %08p %08p", physaddr, virtualaddr, __builtin_return_address(0));
+ 		kmesg("vmm", "map_page on already mapped address! %08p %08p %08p", physaddr, virtualaddr, __builtin_return_address(0));
 		return;
 	}
 	
@@ -189,7 +189,7 @@ void map_page(void *physaddr, void *virtualaddr, unsigned int flags) {
 
 void unmap_page(void *virtualaddr) {
 	if ((((uint32_t)virtualaddr)&0xFFF) != 0) {
-		early_mesg(LEVEL_WARN, "vmm", "unmap_page with unaligned address!");
+		kmesg("vmm", "unmap_page with unaligned address!");
 		return;
 	}
  
@@ -198,7 +198,7 @@ void unmap_page(void *virtualaddr) {
 
 	uint32_t *pd = (uint32_t *)0xFFFFF000;
 	if (!(pd[pdindex] & 0x1)) {
-		early_mesg(LEVEL_WARN, "vmm", "unmap_page on nonexistent page directory entry!");
+		kmesg("vmm", "unmap_page on nonexistent page directory entry!");
 	}
 
 	uint32_t *pt = ((uint32_t *)0xFFC00000) + (0x400 * pdindex);
@@ -276,7 +276,7 @@ uint32_t create_page_directory() {
 
 void destroy_page_directory(void *pd) {
 	if (get_cr3() == (uint32_t)pd) {
-		early_mesg(LEVEL_WARN, "vmm", "destroy_page_directory on used page directory!");
+		kmesg("vmm", "destroy_page_directory on used page directory!");
 		return;
 	}
 
@@ -301,15 +301,15 @@ int page_fault(interrupt_cpu_state *state) {
 
 	if (us) {
 
-		early_mesg(LEVEL_WARN, "vmm", "process %d crashed with a page fault", sched_get_current()->pid);
-		if (present) early_mesg(LEVEL_WARN, "vmm", "present ");
-		if (rw)	early_mesg(LEVEL_WARN, "vmm", "write ");
-		if (reserved) early_mesg(LEVEL_WARN, "vmm", "rb overwritten ");
-		if (id) early_mesg(LEVEL_WARN, "vmm", "instr fetch ");	
-		early_mesg(LEVEL_WARN, "vmm", "at %08x faulting process regs at crash:", fault_addr);
-		early_mesg(LEVEL_WARN, "vmm", "eax: %08x ebx:    %08x ecx: %08x edx: %08x ebp: %08x", state->eax, state->ebx, state->ecx, state->edx, state->ebp);
-		early_mesg(LEVEL_WARN, "vmm", "eip: %08x eflags: %08x esp: %08x edi: %08x esi: %08x", state->eip, state->eflags, state->esp, state->edi, state->esi);
-		early_mesg(LEVEL_WARN, "vmm", "cs: %04x ds: %04x", state->cs, state->ds);
+		kmesg("vmm", "process %d crashed with a page fault", sched_get_current()->pid);
+		if (present) kmesg("vmm", "present ");
+		if (rw)	kmesg("vmm", "write ");
+		if (reserved) kmesg("vmm", "rb overwritten ");
+		if (id) kmesg("vmm", "instr fetch ");	
+		kmesg("vmm", "at %08x faulting process regs at crash:", fault_addr);
+		kmesg("vmm", "eax: %08x ebx:    %08x ecx: %08x edx: %08x ebp: %08x", state->eax, state->ebx, state->ecx, state->edx, state->ebp);
+		kmesg("vmm", "eip: %08x eflags: %08x esp: %08x edi: %08x esi: %08x", state->eip, state->eflags, state->esp, state->edi, state->esi);
+		kmesg("vmm", "cs: %04x ds: %04x", state->cs, state->ds);
 
 		set_cr3(def_cr3());
 
@@ -317,11 +317,11 @@ int page_fault(interrupt_cpu_state *state) {
 	}
 
 	if (fault_addr >= (uintptr_t)&stack && fault_addr < (uintptr_t)&stack + 0x1000) {
-		early_mesg(LEVEL_ERR, "vmm", "possible kernel stack overrun(writing inside of the stack guard page)");
+		kmesg("vmm", "possible kernel stack overrun(writing inside of the stack guard page)");
 	}
 
 	if (fault_addr >= (uintptr_t)&isr_stack && fault_addr < (uintptr_t)&isr_stack + 0x1000) {
-		early_mesg(LEVEL_ERR, "vmm", "possible kernel isr stack overrun(writing inside of the stack guard page)");
+		kmesg("vmm", "possible kernel isr stack overrun(writing inside of the stack guard page)");
 	}
 
 	panic("Page fault", state, 1, 1);
@@ -355,5 +355,5 @@ void paging_init(void) {
 	unmap_page(&stack);
 	unmap_page(&isr_stack);
 
-	early_mesg(LEVEL_INFO, "vmm", "paging ok");
+	kmesg("vmm", "paging ok");
 }

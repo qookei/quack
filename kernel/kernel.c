@@ -10,7 +10,7 @@
 #include <kheap/heap.h>
 #include <sched/sched.h>
 #include <sched/elf.h>
-#include <mesg.h>
+#include <kmesg.h>
 #include <fs/ustar.h>
 #include <syscall/syscall.h>
 
@@ -62,17 +62,17 @@ extern void *isr_stack;
 
 void kernel_main(multiboot_info_t *mboot) {
 	if (((uintptr_t)mboot) - 0xC0000000 > 0x800000) {
-		early_mesg(LEVEL_ERR, "mboot", "hdr out of page");
+		kmesg("mboot", "hdr out of page");
 		return;
 	}
 
 	gdt_new_setup();
-	early_mesg(LEVEL_INFO, "cpu", "GDT ok");
+	kmesg("cpu", "GDT ok");
 
 	pic_remap(0x20, 0x28);
 	idt_init();
 	pit_freq(1000);
-	early_mesg(LEVEL_INFO, "cpu", "interrupts ok");
+	kmesg("cpu", "interrupts ok");
 
 	pmm_init(mboot);
 	paging_init();
@@ -82,12 +82,12 @@ void kernel_main(multiboot_info_t *mboot) {
 	void *init_file;
 
 	if (!initrd) {
-		early_mesg(LEVEL_ERR, "kernel", "no initrd present... halting");
+		kmesg("kernel", "no initrd present... halting");
 		while(1);
 	}
 
 	if (!ustar_read(initrd, initrd_sz, "init", &init_file)) {
-		early_mesg(LEVEL_ERR, "kernel", "failed to load init... halting");
+		kmesg("kernel", "failed to load init... halting");
 		while(1);
 	}
 

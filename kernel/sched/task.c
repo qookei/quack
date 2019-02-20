@@ -5,7 +5,7 @@
 #include <interrupt/isr.h>
 #include <trace/stacktrace.h>
 #include <panic.h>
-#include <mesg.h>
+#include <kmesg.h>
 #include <sched/sched.h>
 
 void task_destroy_address_space(task_t *t) {
@@ -227,7 +227,7 @@ int task_wait(interrupt_cpu_state *state, task_t *t, int wait_for, int data) {
 			task_t *c = sched_get_task(data);
 
 			if (!c || c->parent != t) {
-				early_mesg(LEVEL_WARN, "task", "tried to wait on a nonexistent process or on someone else's child");
+				kmesg("task", "tried to wait on a nonexistent process or on someone else's child");
 				ret = -WAIT_PROC;
 			} else {
 				t->waiting_status |= WAIT_PROC;
@@ -356,7 +356,7 @@ int task_int_handler(interrupt_cpu_state *state) {
 
 	task_switch_to(sched_schedule_next());
 
-	early_mesg(LEVEL_WARN, "task", "how did we get here");
+	kmesg("task", "how did we get here");
 
 	return 1;
 }
