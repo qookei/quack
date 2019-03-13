@@ -117,11 +117,6 @@ void sbrk_handler(uintptr_t *increment, uintptr_t *break_ptr, uintptr_t *unused1
 void ipc_send_handler(uintptr_t *pid, uintptr_t *size, uintptr_t *data, void *unused1) {
 	(void)unused1;
 
-	if (*size > 8388608) {		// 8 MiB limit
-		*size = -1;
-		return;
-	}
-
 	if (!verify_addr(sched_get_current()->cr3, *data, *size, 0x5)) {
 		*size = -2;
 		return;
