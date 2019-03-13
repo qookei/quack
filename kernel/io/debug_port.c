@@ -14,8 +14,10 @@ void debug_write(uint8_t byte) {
 	#ifndef NO_DEBUG_OUT
 	if (debug_is_present > 0)
 		outb(DEBUG_PORT, byte);
-	else if (!debug_is_present)
+	else if (!debug_is_present) {
 		debug_is_present = inb(DEBUG_PORT) == 0xE9 ? 1 : -1;
+		debug_write(byte);
+	}
 	#else
 	(void)byte;
 	#endif
