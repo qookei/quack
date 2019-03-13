@@ -1,12 +1,17 @@
-#ifndef USTAR
-#define USTAR
-
-#define USTAR_BLOCK_SIZE		512
+#ifndef INITRD_H
+#define INITRD_H
 
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
 #include <kheap/heap.h>
+#include <multiboot.h>
+#include <paging/paging.h>
+
+void initrd_init(multiboot_module_t *mod);
+size_t initrd_read_file(const char *path, void **data);
+
+#define USTAR_BLOCK_SIZE		512
 
 typedef struct {
 	char name[100];
@@ -28,6 +33,6 @@ typedef struct {
 	char reserved[12];
 }__attribute__((packed)) ustar_entry_t;
 
-int ustar_read(void *, size_t, const char *, void **);
+
 
 #endif

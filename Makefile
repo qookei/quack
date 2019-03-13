@@ -17,7 +17,7 @@ OBJS = boot/boot.o kernel/kernel.o kernel/io/debug_port.o kernel/io/ports.o kern
 	   kernel/sched/task.o kernel/cpu/gdt_new.o \
 	   kernel/sched/task_enter.o kernel/lib/string.o \
 	   kernel/lib/stdlib.o kernel/lib/ctype.o kernel/kheap/liballoc.o kernel/kheap/liballoc_funcs.o \
-	   kernel/panic.o kernel/kmesg.o kernel/sched/elf.o kernel/fs/ustar.o kernel/sched/sched.o kernel/syscall/handlers.o kernel/syscall/syscall.o
+	   kernel/panic.o kernel/kmesg.o kernel/sched/elf.o kernel/initrd.o kernel/sched/sched.o kernel/syscall/handlers.o kernel/syscall/syscall.o
 
 CC = i686-elf-gcc
 ASM = nasm
