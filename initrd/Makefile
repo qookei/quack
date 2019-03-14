@@ -1,4 +1,4 @@
-OBJ = init exec vgatty i8042d
+OBJ = init exec vgatty i8042d initfs
 LIB = src/sys/sys.o
 OUT = $(OBJ:%=out/%)
 CLEAN = $(OBJ:%=clean-%)

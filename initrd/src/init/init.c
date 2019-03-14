@@ -173,58 +173,51 @@ struct event_key_typed {
 	uint32_t character;
 };
 
+struct msg_fs_file_resp {
+	int status;
+	size_t size;
+	uint8_t data[];
+};
+
+#define FS_REQUEST_FILE 0xBEEF0001
+#define FS_FILE_RESPONSE 0xCAFE0002
+
 void _start(void) {
-	size_t i8042d_size = sys_ipc_recv(NULL);
-	sys_ipc_recv(i8042d);
-	sys_ipc_remove();
-
-	size_t vgatty_size = sys_ipc_recv(NULL);
-	sys_ipc_recv(vgatty);
-	sys_ipc_remove();
-
-	sys_map_to(sys_getpid(), 0xB8000, 0xB8000);
-
 	sys_debug_log("init: welcome to quack\n");
+
+	char buf[sizeof(struct message) + 7];
+	struct message *m = (struct message *)buf;
+	m->type = FS_REQUEST_FILE;
+	uuid_generate(0, m->uuid);
+	memcpy(m->data, "vgatty", 7);
+	
+	sys_ipc_send(3, sizeof(buf), buf);
+	sys_wait(WAIT_IPC, 0, NULL, NULL);
+
+	size_t size = sys_ipc_recv(NULL);
+	char rbuf[size];
+	sys_ipc_recv(rbuf);
+	sys_ipc_remove();
+
+	struct message *rm = (struct message *)rbuf;
+	struct msg_fs_file_resp *resp = (struct msg_fs_file_resp *)rm->data;
+
+	if (resp->status < 0) {
+		sys_debug_log("init: failed to read vgatty off of the initrd\n");
+	}
 
 	int32_t exec_pid = 2;
 
-	int32_t i8042d_pid = spawn(exec_pid, i8042d, i8042d_size);
-	int32_t vgatty_pid = spawn(exec_pid, vgatty, vgatty_size);
+	int32_t vgatty_pid = spawn(exec_pid, resp->data, resp->size);
 
-	sys_map_timer(0x1000);
-	uint64_t *timer = (uint64_t *)0x1000;
-
-	char resp_buf[sizeof(struct message) + sizeof(struct event_subscribe_msg)];
-	struct message *msg = (struct message *)resp_buf;
-	struct event_subscribe_msg *resp = (struct event_subscribe_msg *)msg->data;
-	uuid_generate(*timer, msg->uuid);
-	msg->type = DRIVER_EVENT_SUBSCRIBE;
-	resp->subscriber = sys_getpid();
-
-	sys_ipc_send(i8042d_pid, sizeof(resp_buf), resp_buf);
-	sys_wait(WAIT_IPC, 0, NULL, NULL);
-
-	sys_ipc_remove();
+	char c = ' ';
 
 	while(1) {
-		sys_wait(WAIT_IPC, 0, NULL, NULL);
-
-		int32_t sender = sys_ipc_get_sender();
-		size_t size = sys_ipc_recv(NULL);
-		char buf[size];
-		sys_ipc_recv(buf);
-		sys_ipc_remove();
-
-		struct message *m = (struct message *)buf;
-		struct event_key_typed *ev = (struct event_key_typed *)m->data;
-
-		char c[2];
-		memset(c, 0, 2);
-		c[0] = ev->character;
-
-		sys_ipc_send(vgatty_pid, 2, c);
+		sys_ipc_send(vgatty_pid, 1, &c);
+		c++;
+		if (!c) c = ' ';
 	}
-
+	
 	sys_debug_log("init: exiting\n");
 	sys_exit(0);
 }

@@ -48,6 +48,7 @@ void kernel_main(multiboot_info_t *mboot) {
 
 	void *init_file;
 	void *exec_file;
+	void *initfs_file;
 
 	if (!mboot->mods_count) {
 		kmesg("kernel", "no initrd present... halting");
@@ -66,19 +67,20 @@ void kernel_main(multiboot_info_t *mboot) {
 		while(1);
 	}
 
+	if (!initrd_read_file("initfs", &initfs_file)) {
+		kmesg("kernel", "failed to load initfs... halting");
+		while(1);
+	}
+
 	syscall_init();
 	sched_init();
 
 	elf_create_proc(init_file, 1);
 	elf_create_proc(exec_file, 1);
+	elf_create_proc(initfs_file, 1);
 
-	void *i8042d_file;
-	size_t i8042d_size = initrd_read_file("i8042d", &i8042d_file);
-	task_ipcsend(sched_get_task(1), sched_get_task(1), i8042d_size, i8042d_file);
-
-	void *vgatty_file;
-	size_t vgatty_size = initrd_read_file("vgatty", &vgatty_file);
-	task_ipcsend(sched_get_task(1), sched_get_task(1), vgatty_size, vgatty_file);
+	initrd_t i = initrd_get_info();
+	task_ipcsend(sched_get_task(3), sched_get_task(3), i.size, i.data);
 
 	gdt_set_tss_stack((uintptr_t)&isr_stack + 0x4000);
 	gdt_ltr();

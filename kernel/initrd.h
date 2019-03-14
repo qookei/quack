@@ -8,8 +8,14 @@
 #include <multiboot.h>
 #include <paging/paging.h>
 
+typedef struct {
+	void *data;
+	size_t size;
+} initrd_t;
+
 void initrd_init(multiboot_module_t *mod);
 size_t initrd_read_file(const char *path, void **data);
+initrd_t initrd_get_info();
 
 #define USTAR_BLOCK_SIZE		512
 
@@ -32,7 +38,5 @@ typedef struct {
 	char name_prefix[155];
 	char reserved[12];
 }__attribute__((packed)) ustar_entry_t;
-
-
 
 #endif

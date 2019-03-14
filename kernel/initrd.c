@@ -1,7 +1,7 @@
 #include "initrd.h"
 
 static void *initrd_buf;
-size_t initrd_size;
+static size_t initrd_size;
 
 void initrd_init(multiboot_module_t *mod) {
 	uintptr_t start_addr = mod->mod_start;
@@ -52,7 +52,7 @@ size_t initrd_read_file(const char *path, void **dst) {
 		}
 
 		if (memcmp(entry->signature, "ustar", 5) != 0) {
-			return -1;
+			return 0;
 		}
 
 		if (!strcmp(entry->name, path)) {
@@ -74,4 +74,11 @@ size_t initrd_read_file(const char *path, void **dst) {
 	memcpy(*dst, data, file_size);
 
 	return file_size;
+}
+
+initrd_t initrd_get_info() {
+	initrd_t i = {.data = initrd_buf,
+				.size = initrd_size};
+
+	return i;
 }
