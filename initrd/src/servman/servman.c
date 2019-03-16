@@ -2,10 +2,6 @@
  * quack server manager
  * */
 
-/*
- * TODO: fix this crap, this is a buffer overflow galore right now
- * */
-
 #include <stdint.h>
 #include <stddef.h>
 
@@ -18,6 +14,8 @@
 
 #define SERV_MANAGE_ADD 0x1
 #define SERV_MANAGE_REMOVE 0x2
+
+#define MIN(x, y) ((x) > (y) ? (y) : (x))
 
 struct message {
 	uint32_t type;
@@ -73,6 +71,8 @@ size_t strlen(const char *s) {
 }
 
 struct msg_serv_resp serv_manage(struct msg_serv_manage *m) {
+	m->name[31] = 0;
+
 	struct msg_serv_resp r;
 
 	if (m->type == SERV_MANAGE_ADD) {
@@ -83,7 +83,7 @@ struct msg_serv_resp serv_manage(struct msg_serv_manage *m) {
 			r.status = -1;
 		} else {
 			servers[i].pid = m->pid;
-			memcpy(servers[i].name, m->name, strlen(m->name) + 1);
+			memcpy(servers[i].name, m->name, MIN(strlen(m->name) + 1, 32));
 			r.status = 0;
 		}
 	} else if (m->type == SERV_MANAGE_REMOVE) {
@@ -114,6 +114,8 @@ int strcmp(const char *str1, const char *str2) {
 }
 
 struct msg_serv_resp serv_get(struct msg_serv_get *m) {
+	m->name[31] = 0;
+
 	struct msg_serv_resp r;
 
 	if (m->pid) {
@@ -124,7 +126,7 @@ struct msg_serv_resp serv_get(struct msg_serv_get *m) {
 			r.status = -1;
 		} else {
 			r.pid = m->pid;
-			memcpy(r.name, servers[i].name, strlen(servers[i].name) + 1);
+			memcpy(r.name, servers[i].name, MIN(strlen(servers[i].name) + 1, 32));
 			r.status = 0;
 		}
 	} else if (m->name[0]) {
@@ -135,7 +137,7 @@ struct msg_serv_resp serv_get(struct msg_serv_get *m) {
 			r.status = -2;
 		} else {
 			r.pid = servers[i].pid;	
-			memcpy(r.name, servers[i].name, strlen(servers[i].name) + 1);
+			memcpy(r.name, servers[i].name, MIN(strlen(servers[i].name) + 1, 32));
 			r.status = 0;
 		}
 
@@ -160,6 +162,18 @@ void respond_to(int32_t pid, struct msg_serv_resp resp) {
 void handle_ipc_message() {
 	int32_t sender = sys_ipc_get_sender();
 	size_t size = sys_ipc_recv(NULL);
+
+	if ((size > sizeof(struct message) + sizeof(struct msg_serv_manage)) ||
+		(size > sizeof(struct message) + sizeof(struct msg_serv_get))) {
+
+		sys_debug_log("servman: message too large\n");
+		sys_ipc_remove();
+
+		struct msg_serv_resp r = {.status = -4};
+		respond_to(sender, r);
+		return;
+	}
+
 	char buf[size];
 	sys_ipc_recv(buf);
 	sys_ipc_remove();
