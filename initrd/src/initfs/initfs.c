@@ -6,8 +6,11 @@
 #include <stddef.h>
 #include <stdarg.h>
 
-#include "../sys/syscall.h"
-#include "../sys/uuid.h"
+#include <string.h>
+#include <liballoc.h>
+
+#include <syscall.h>
+#include <uuid.h>
 
 #define USTAR_BLOCK_SIZE		512
 
@@ -30,47 +33,6 @@ typedef struct {
 	char name_prefix[155];
 	char reserved[12];
 }__attribute__((packed)) ustar_entry_t;
-
-int memcmp(const void *m1, const void *m2, size_t len) {
-	size_t i;
-	for (i = 0; i< len; i++) {
-		if (((unsigned char*)m1)[i] > ((unsigned char*)m2)[i])
-			return 1;
-
-		if (((unsigned char*)m1)[i] < ((unsigned char*)m2)[i])
-			return -1;
-	}
-	return 0;
-}
-
-void *memset(void *dst, int val, size_t len) {
-	for (size_t i = 0; i < len; i++)
-		((unsigned char *)dst)[i] = val;
-
-	return dst;
-}
-
-void *memcpy(void *dst, const void *src, size_t len) {
-	for (size_t i = 0; i < len; i++)
-		((unsigned char *)dst)[i] = ((const unsigned char *)src)[i];
-
-	return dst;
-}
-
-size_t strlen(const char *s) {
-	size_t len = 0;
-	while(s[len]) {
-		len++;
-	}
-	return len;
-}
-
-int strcmp(const char *str1, const char *str2) {
-	size_t i = 0;
-	while (str1[i] && str1[i] == str2[i]) i++;
-
-	return str1[i] - str2[i];
-}
 
 typedef struct {
 	void *data;
@@ -138,6 +100,8 @@ int ustar_read(initrd_t i, const char *path, void **dst) {
 	return fsize;
 }
 
+struct global_data *global_data;
+
 #define FS_REQUEST_FILE 0xBEEF0001
 #define FS_FILE_RESPONSE 0xCAFE0002
 
@@ -200,7 +164,7 @@ void _start(void) {
 	}
 
 	initrd.size = sys_ipc_recv(NULL);
-	initrd.data = sys_sbrk(initrd.size);
+	initrd.data = calloc(1, initrd.size);
 	
 	if (!initrd.data) {
 		sys_debug_log("initfs: sbrk failed, bailing out!\n");
@@ -210,8 +174,7 @@ void _start(void) {
 	sys_ipc_recv(initrd.data);
 	sys_ipc_remove();
 
-	sys_map_timer(0x1000);
-	uint64_t *timer = (uint64_t *)0x1000;
+	global_data = (struct global_data *)0xD0000000;
 
 	while(1) {
 		sys_wait(WAIT_IPC, 0, NULL, NULL);

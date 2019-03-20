@@ -24,6 +24,8 @@ typedef int (interrupt_handler_f)(interrupt_cpu_state *);
 void enter_kernel_directory();
 void leave_kernel_directory();
 
+void global_data_setup();
+
 int register_interrupt_handler(uint8_t int_no, interrupt_handler_f handler);
 int unregister_interrupt_handler(uint8_t int_no, interrupt_handler_f handler);
 

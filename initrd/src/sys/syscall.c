@@ -111,10 +111,6 @@ void sys_debug_log(char *message) {
 	asm volatile ("int $0x30" : : "a"(16), "b"(message), "c"(i));
 }
 
-void sys_map_timer(uintptr_t addr) {
-	asm volatile ("int $0x30" : : "a"(22), "b"(addr));
-}
-
 void sys_enable_ports(uint16_t port, size_t count) {
 	asm volatile ("int $0x30" : : "a"(24), "b"(port), "c"(count));
 }

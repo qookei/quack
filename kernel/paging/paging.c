@@ -130,10 +130,12 @@ void *alloc_mem_at(uint32_t pd, uint32_t where, size_t pages, uint32_t flags) {
 	void *dst_phys = NULL;
 	set_cr3(pd);
 	for (size_t i = 0; i < pages; i++) {
-		void *p = pmm_alloc();
-		map_page(p, (void *)(where + i * 0x1000), flags);
-		memset((void *)(where + i * 0x1000), 0, 0x1000);
-		if (!i) dst_phys = p;
+		if (!(get_flag(pd, (void *)(where + i * 0x1000)) & 1)) {
+			void *p = pmm_alloc();
+			map_page(p, (void *)(where + i * 0x1000), flags);
+			memset((void *)(where + i * 0x1000), 0, 0x1000);
+			if (!i) dst_phys = p;
+		}
 	}
 	set_cr3(opd);
 	return dst_phys;
@@ -251,6 +253,10 @@ extern void *page_tab1;
 extern void *page_tab2;
 extern void *page_tab3;
 
+extern void *global_data_ptr;
+
+#define GLOBAL_DATA_ADDR 0xD0000000
+
 uint32_t create_page_directory() {
 	uint32_t kernel_addr = (0xC0000000 >> 22);
 
@@ -265,13 +271,16 @@ uint32_t create_page_directory() {
 	new_dir[kernel_addr] = ((uint32_t)&page_tab1 - 0xC0000000) | 3;
 	new_dir[kernel_addr + 1] = ((uint32_t)&page_tab2 - 0xC0000000) | 3;
 	new_dir[kernel_addr + 2] = ((uint32_t)&page_tab3 - 0xC0000000) | 3;
-	
+
 	new_dir[1023] = (tmp_addr | 0x3);
 
 	unmap_page((void*)0xEDA9B000);
 
-	return tmp_addr;
+	set_cr3(tmp_addr);
+	map_page(global_data_ptr, (void *)GLOBAL_DATA_ADDR, 0x5);
+	set_cr3(def_cr3());
 
+	return tmp_addr;
 }
 
 void destroy_page_directory(void *pd) {

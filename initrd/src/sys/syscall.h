@@ -39,7 +39,6 @@ int32_t sys_ipc_get_sender();
 
 /* misc */
 void sys_debug_log(char *message);
-void sys_map_timer(uintptr_t addr);
 void sys_enable_ports(uint16_t port, size_t count);
 
 /* irq */

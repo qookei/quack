@@ -5,8 +5,10 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#include "../sys/syscall.h"
-#include "../sys/elf.h"
+#include <string.h>
+
+#include <syscall.h>
+#include <elf.h>
 
 #define OPERATION_SPAWN_NEW 0x1
 #define OPERATION_EXEC 0x2
@@ -24,13 +26,6 @@ struct spawn_response {
 	int status;
 	int32_t pid;
 };
-
-void *memset(void *dst, int n, size_t len) {
-	for (size_t i = 0; i < len; i++)
-		((unsigned char *)dst)[i] = n;
-
-	return dst;
-}
 
 int alloc_mem_at(int32_t pid, uintptr_t virt, size_t pages) {
 	while(pages) {
@@ -50,13 +45,6 @@ int alloc_mem_at(int32_t pid, uintptr_t virt, size_t pages) {
 	}
 
 	return 1;
-}
-
-void *memcpy(void *dst, const void *src, size_t len) {
-	for (size_t i = 0; i < len; i++)
-		((unsigned char *)dst)[i] = ((const unsigned char *)src)[i];
-
-	return dst;
 }
 
 void proc_memcpy(int32_t pid, uintptr_t src, uintptr_t dst, size_t size) {

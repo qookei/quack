@@ -295,25 +295,6 @@ void *task_sbrk(int increment, task_t *t) {
 		if (increment < 0) {
 			// decrement heap size
 			if (t->heap_end < t->heap_begin) return (void *)-1;
-			size_t new_sz = t->heap_end - t->heap_begin;
-			size_t new_pages = (new_sz + 0x1000 - 1) / 0x1000;
-			
-			if (new_pages < t->heap_pages) {
-				
-				size_t pages_delete = t->heap_pages - new_pages;
-				for (size_t i = 0; i < pages_delete; i++) {
-					uint32_t addr = t->heap_begin + (new_pages + i) * 0x1000;
-					
-					void *phys = get_phys(t->cr3, (void *)addr);
-					pmm_free(phys);
-					
-					set_cr3(t->cr3);
-					unmap_page((void *)addr);
-					set_cr3(def_cr3());
-				}
-				t->heap_pages = new_pages;
-			}
-			
 			
 			return (void *)t->heap_end;
 		} else {

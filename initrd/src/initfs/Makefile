@@ -2,7 +2,7 @@ include ../rules.mk
 
 OUT = initfs
 OBJS = initfs.o
-EXT_OBJS = ../sys/sys.o
+EXT_OBJS = ../sys/sys.o ../lib/lib.o
 
 $(OUT): $(OBJS) $(EXT_OBJS)
 	@printf "LINK\t\t%s\n" $@

@@ -26,7 +26,6 @@ void is_privileged_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);
 void sched_prioritize_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);
 void register_handler_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);
 void unregister_handler_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);
-void map_timer_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);
 void wait_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);
 void dummy_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);
 void enable_ports_handler(uintptr_t *, uintptr_t *, uintptr_t *, void *);

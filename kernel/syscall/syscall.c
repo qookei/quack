@@ -30,7 +30,6 @@
 
 	misc:
 	debug_log(msg, len) -> none
-	map_timer(addr) -> none
 	enable_ports(port, count) -> none
 
 	irq:
@@ -63,7 +62,7 @@ syscall_handler handlers[] = {
 	register_handler_handler,
 	unregister_handler_handler,
 	dummy_handler,
-	map_timer_handler,
+	dummy_handler,
 	wait_handler,
 	enable_ports_handler,
 };

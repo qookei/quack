@@ -5,10 +5,12 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdarg.h>
+#include <liballoc.h>
+#include <string.h>
 
-#include "../sys/syscall.h"
-#include "../sys/elf.h"
-#include "../sys/uuid.h"
+#include <syscall.h>
+#include <elf.h>
+#include <uuid.h>
 
 #define OPERATION_SPAWN_NEW 0x1
 #define OPERATION_EXEC 0x2
@@ -98,13 +100,6 @@ void usprintf(char *buf, const char *fmt, ...) {
 	va_end(arg);
 }
 
-void *memset(void *dst, int val, size_t len) {
-	for (size_t i = 0; i < len; i++)
-		((unsigned char *)dst)[i] = val;
-
-	return dst;
-}
-
 struct spawn_message {
 	int operation;
 	int is_privileged;
@@ -116,19 +111,6 @@ struct spawn_response {
 	int status;
 	int32_t pid;
 };
-
-void *memcpy(void *dst, const void *src, size_t len) {
-	for (size_t i = 0; i < len; i++)
-		((unsigned char *)dst)[i] = ((const unsigned char *)src)[i];
-
-	return dst;
-}
-
-size_t strlen(const char *s) {
-	size_t l = 0;
-	while(s[l]) l++;
-	return l;
-}
 
 #define SERV_MANAGE 0xF00F0001
 #define SERV_GET 0xF00F0002
@@ -287,6 +269,19 @@ void _start(void) {
 	char tmp[256];
 	usprintf(tmp, "init: pid of testing is %u\n", id);
 	sys_debug_log(tmp);
+
+	void *test_buf = calloc(1024, 1);
+	usprintf(test_buf, "init: testing malloc, this buffer's been malloced and is at 0x%8x\n", (uintptr_t)test_buf);
+	sys_debug_log(test_buf);
+	void *test_buf2 = calloc(1024, 1);
+	usprintf(test_buf2, "init: this buffer's also been malloced and is at 0x%8x\n", (uintptr_t)test_buf2);
+	sys_debug_log(test_buf2);
+	free(test_buf2);
+	void *test_buf3 = calloc(1024, 1);
+	usprintf(test_buf3, "init: this next buffer's also been malloced and is at 0x%8x\n", (uintptr_t)test_buf3);
+	sys_debug_log(test_buf3);
+	free(test_buf3);
+	free(test_buf);
 
 	sys_debug_log("init: exiting\n");
 	sys_exit(0);

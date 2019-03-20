@@ -72,6 +72,8 @@ void kernel_main(multiboot_info_t *mboot) {
 		while(1);
 	}
 
+	global_data_setup();
+
 	syscall_init();
 	sched_init();
 

@@ -1,12 +1,11 @@
 include ../rules.mk
 
-OUT = exec
-OBJS = exec.o
-EXT_OBJS = ../sys/sys.o ../lib/lib.o
+OUT = lib.o
+OBJS = elf.o uuid.o string.o ctype.o liballoc.o liballoc_funcs.o
 
-$(OUT): $(OBJS) $(EXT_OBJS)
+$(OUT): $(OBJS)
 	@printf "LINK\t\t%s\n" $@
-	@$(CC) $^ -o $@ $(CFLAGS)
+	@$(LD) -r $^ -o $@
 
 %.o: %.c
 	@printf "CC\t\t%s\n" $@

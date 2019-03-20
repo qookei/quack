@@ -5,8 +5,10 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#include "../sys/syscall.h"
-#include "../sys/uuid.h"
+#include <string.h>
+
+#include <syscall.h>
+#include <uuid.h>
 
 #define SERV_MANAGE 0xF00F0001
 #define SERV_GET 0xF00F0002
@@ -50,26 +52,6 @@ struct server {
 
 struct server servers[64];
 
-void *memset(void *dst, int n, size_t len) {
-	for (size_t i = 0; i < len; i++)
-		((unsigned char *)dst)[i] = n;
-
-	return dst;
-}
-
-void *memcpy(void *dst, const void *src, size_t len) {
-	for (size_t i = 0; i < len; i++)
-		((unsigned char *)dst)[i] = ((const unsigned char *)src)[i];
-
-	return dst;
-}
-
-size_t strlen(const char *s) {
-	size_t l = 0;
-	while (s[l]) l++;
-	return l;
-}
-
 struct msg_serv_resp serv_manage(struct msg_serv_manage *m) {
 	m->name[31] = 0;
 
@@ -104,13 +86,6 @@ struct msg_serv_resp serv_manage(struct msg_serv_manage *m) {
 	}
 
 	return r;
-}
-
-int strcmp(const char *str1, const char *str2) {
-	size_t i = 0;
-	while (str1[i] && str1[i] == str2[i]) i++;
-
-	return str1[i] - str2[i];
 }
 
 struct msg_serv_resp serv_get(struct msg_serv_get *m) {

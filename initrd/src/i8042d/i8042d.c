@@ -5,8 +5,10 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#include "../sys/syscall.h"
-#include "../sys/uuid.h"
+#include <global_data.h>
+
+#include <syscall.h>
+#include <uuid.h>
 
 #define bittest(var,pos) ((var) & (1 << (pos)))
 #define ps2_wait_ready() {while(bittest(inb(0x64), 1));}
@@ -64,8 +66,7 @@ void _start(void) {
 	sys_enable_ports(0x60, 1);
 	sys_enable_ports(0x64, 1);
 
-	sys_map_timer(0x1000);
-	uint64_t *timer = (uint64_t *)0x1000;
+	struct global_data *global_data = (struct global_data *)0xD0000000;
 
 	while (inb(0x64) & 0x01)
 		(void)inb(0x60);
@@ -82,7 +83,7 @@ void _start(void) {
 			char resp_buf[sizeof(struct message) + sizeof(struct event_key_typed)];
 			struct message *msg = (struct message *)resp_buf;
 			struct event_key_typed *resp = (struct event_key_typed *)msg->data;
-			uuid_generate(*timer, msg->uuid);
+			uuid_generate(global_data->timer_ticks, msg->uuid);
 			msg->type = DRIVER_EVENT_KEY_TYPED;
 			resp->scancode = b;
 			resp->character = b < 0x57 ? lower_normal[b] : 0x00;
@@ -114,7 +115,7 @@ void _start(void) {
 				char resp_buf[sizeof(struct message) + sizeof(struct msg_response)];
 				struct message *msg = (struct message *)resp_buf;
 				struct msg_response *resp = (struct msg_response *)msg->data;
-				uuid_generate(*timer, msg->uuid);
+				uuid_generate(global_data->timer_ticks, msg->uuid);
 				msg->type = MESSAGE_RESPONSE;
 				resp->status = !was_set ? -1 : 0;
 

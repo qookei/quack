@@ -1,5 +1,6 @@
 OBJ = init exec vgatty i8042d initfs servman
-LIB = src/sys/sys.o
+SYS = src/sys/sys.o
+LIB = src/lib/lib.o
 OUT = $(OBJ:%=out/%)
 CLEAN = $(OBJ:%=clean-%)
 OUTDIR = out
@@ -9,15 +10,19 @@ initrd: $(OUT) $(OUTDIR)
 	-@rm -f initrd > /dev/null 2>&1
 	@tar cf initrd -C $(OUTDIR)/ $(OBJ)
 
-$(OUTDIR)/%: src/%/ $(LIB) 
+$(OUTDIR)/%: src/%/ $(LIB) $(SYS)
 	@printf "SUBDIR\t\t%s\n" $(dir $<)
 	@make -sC $(dir $<)
 	@printf "COPY\t\t%s\n" $@
 	@cp $<$(shell basename $@) $@
 
-$(LIB):
+$(SYS):
 	@printf "SUBDIR\t\t%s\n" $(dir $(LIB))
 	@make -sC src/sys
+
+$(LIB):
+	@printf "SUBDIR\t\t%s\n" $(dir $(LIB))
+	@make -sC src/lib
 
 $(OUTDIR):
 	@printf "MKDIR\t\t%s\n" $@

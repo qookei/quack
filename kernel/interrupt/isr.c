@@ -24,7 +24,9 @@ void leave_kernel_directory() {
 	set_cr3(isr_old_cr3);
 }
 
-void *timer_ticks_ptr = NULL;
+void *global_data_ptr = NULL;
+
+#define GLOBAL_DATA_ADDR 0xD0000000
 
 void pic_eoi(uint32_t r) {
 	if (r >= 0x20 && r < 0x30) {
@@ -39,6 +41,18 @@ void pic_eoi(uint32_t r) {
 	}
 }
 
+struct global_data {
+	uint64_t timer_ticks;
+};
+
+void global_data_setup() {
+	if (!global_data_ptr) {
+		global_data_ptr = pmm_alloc();
+		map_page(global_data_ptr, (void *)GLOBAL_DATA_ADDR, 0x3);
+		memset((void *)GLOBAL_DATA_ADDR, 0, 0x1000);
+	}
+}
+
 const char* int_names[] = {
 		"#DE", "#DB", "-", "#BP", "#OF", "#BR", "#UD", "#NM",
 		"#DF", "-", "#TS", "#NP", "#SS", "#GP", "#PF", "-",
@@ -50,12 +64,10 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 	enter_kernel_directory();
 
 	if (r.interrupt_number == 32) {
-		if (!timer_ticks_ptr) {
-			timer_ticks_ptr = pmm_alloc();
-			map_page(timer_ticks_ptr, (void *)0xD0000000, 0x3);
+		if (global_data_ptr) {
+			struct global_data *d = (struct global_data *)GLOBAL_DATA_ADDR;
+			d->timer_ticks++;
 		}
-
-		(*((uint64_t *)0xD0000000))++;
 	}
 
 	int handled = 0;

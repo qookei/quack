@@ -5,7 +5,9 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#include "../sys/syscall.h"
+#include <string.h>
+
+#include <syscall.h>
 
 #define WIDTH 80
 #define HEIGHT 25
@@ -18,24 +20,6 @@ uint8_t inb(uint16_t port) {
 	uint8_t ret;
 	asm volatile ("inb %1, %0" : "=a"(ret) : "Nd"(port));
 	return ret;
-}
-
-void *memset(void *arr, int val, size_t len) {
-	for (size_t i = 0; i < len; i++)
-		((unsigned char*)arr)[i] = (unsigned char)val;
-	return arr;
-}
-
-void *memcpy(void *dest, const void *src, size_t len) {
-	for (size_t i = 0; i < len; i++)
-		((unsigned char*)dest)[i] = ((unsigned char*)src)[i];
-	return dest;
-}
-
-void *memmove(void *dest, const void *src, size_t len) {
-	unsigned char cpy[len];
-	memcpy(cpy, src, len);
-	return memcpy(dest, cpy, len);
 }
 
 void copy_line(void *vram, int y1, int y2) {

@@ -242,25 +242,6 @@ void unregister_handler_handler(uintptr_t *int_no, uintptr_t *unused1, uintptr_t
 	unregister_userspace_handler(*int_no, sched_get_current()->pid);
 }
 
-extern void *timer_ticks_ptr;
-
-void map_timer_handler(uintptr_t *addr, uintptr_t *unused1, uintptr_t *unused2, void *unused3) {
-	(void)unused1;
-	(void)unused2;
-	(void)unused3;
-
-	if (!sched_get_current()->is_privileged) {
-		return;
-	}
-
-	if(!get_phys(sched_get_current()->cr3, (void *)(*addr))) {
-		set_cr3(sched_get_current()->cr3);
-		map_page(timer_ticks_ptr, (void *)(*addr), 0x5);
-		set_cr3(def_cr3());
-	}
-
-}
-
 void wait_handler(uintptr_t *bitmask, uintptr_t *data, uintptr_t *ret, void *state) {
 	*ret = task_wait((interrupt_cpu_state *)state, sched_get_current(), *bitmask, *data);
 	if (!(*ret))
@@ -284,5 +265,4 @@ void enable_ports_handler(uintptr_t *port, uintptr_t *count, uintptr_t *unused1,
 		return;
 
 	task_enable_ports(*port, *count, sched_get_current());
-
 }
