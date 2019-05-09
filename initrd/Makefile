@@ -1,4 +1,4 @@
-OBJ = init exec vgatty i8042d initfs servman
+OBJ = init exec vgatty i8042d initfs servman logd
 SYS = src/sys/sys.o
 LIB = src/lib/lib.o
 OUT = $(OBJ:%=out/%)
@@ -35,6 +35,8 @@ clean-%:
 clean-lib:
 	@printf "SUBDIR\t\t%s\n" src/sys/
 	@make -sC src/sys/ clean
+	@printf "SUBDIR\t\t%s\n" src/lib/
+	@make -sC src/lib/ clean
 
 clean: clean-lib $(CLEAN)
 	-rm $(OUT)

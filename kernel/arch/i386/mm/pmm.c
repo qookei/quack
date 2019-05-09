@@ -2,6 +2,9 @@
 #include <string.h>
 #include <kmesg.h>
 
+//#include <sched/sched.h>
+#include <trace/stacktrace.h>
+
 uint32_t pmm_stack[1048576]={0x0};
 page_metadata_t pmm_metadata[1048576]={{0}};
 
@@ -35,7 +38,13 @@ void pmm_push(uint32_t val) {
 }
 
 uint32_t pmm_pop() {
-	if(pmm_stack_size == 0) {asm volatile ("cli"); kmesg("pmm", "out of physical memory!"); while(1);}
+	if(pmm_stack_size == 0) {
+		asm volatile ("cli");
+		kmesg("pmm", "out of physical memory!");
+		kmesg("pmm", "stack trace leading to oom:");
+		stack_trace(10);
+		while(1);
+	}
 	pmm_stack_pointer--;
 	pmm_stack_size--;
 	return pmm_stack[pmm_stack_pointer];

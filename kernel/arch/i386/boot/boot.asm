@@ -1,5 +1,5 @@
 global _loader
-extern kernel_main
+extern arch_entry
 
 MODULEALIGN equ  1<<0
 MEMINFO		equ  1<<1
@@ -82,37 +82,37 @@ _loader:
 	mov cr3, ecx
 
 	; set permission bits for first 3 kernel entries
-	mov eax, [ecx]
-	or eax, 3
-	mov [ecx], eax
+	mov edx, [ecx]
+	or edx, 3
+	mov [ecx], edx
 	add ecx, 4
 
-	mov eax, [ecx]
-	or eax, 3
-	mov [ecx], eax
+	mov edx, [ecx]
+	or edx, 3
+	mov [ecx], edx
 	add ecx, 4
 
-	mov eax, [ecx]
-	or eax, 3
-	mov [ecx], eax
+	mov edx, [ecx]
+	or edx, 3
+	mov [ecx], edx
 
 	; set permission bits for later 3 kernel entries
 	mov ecx, (page_dir - KERNEL_VIRTUAL_BASE)
 	add ecx, (KERNEL_PAGE_NUMBER * 4)
 
-	mov eax, [ecx]
-	or eax, 3
-	mov [ecx], eax
+	mov edx, [ecx]
+	or edx, 3
+	mov [ecx], edx
 	add ecx, 4
 
-	mov eax, [ecx]
-	or eax, 3
-	mov [ecx], eax
+	mov edx, [ecx]
+	or edx, 3
+	mov [ecx], edx
 	add ecx, 4
 
-	mov eax, [ecx]
-	or eax, 3
-	mov [ecx], eax
+	mov edx, [ecx]
+	or edx, 3
+	mov [ecx], edx
 
 	; enable paging
 	mov ecx, cr0
@@ -131,11 +131,13 @@ higher_half:
 	mov cr3, ecx
 
 	mov esp, stack+STACKSIZE
+	xor ebp, ebp
 
 	add ebx, 0xC0000000
+	push eax
 	push ebx
 
-	call  kernel_main
+	call arch_entry
 l:
 	hlt
 	jmp l

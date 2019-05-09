@@ -4,8 +4,10 @@
 #include <stdint.h>
 #include <stddef.h>
 
-struct global_data {
+#define GLOBAL_DATA_PTR ((global_data_t *)0xD0000000)
+
+typedef struct {
 	uint64_t timer_ticks;
-};
+} global_data_t;
 
 #endif

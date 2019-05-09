@@ -69,7 +69,7 @@ void task_kill(task_t *t, int ret_val, int sig) {
 
 	unregister_all_handlers_for_pid(dead_pid);
 
-	// notify parent that child is dead	
+	// notify parent that child is dead
 	if (p) {
 		if (sched_exists(p)) {
 			if (p->waiting_status & WAIT_PROC) {
@@ -100,7 +100,7 @@ task_t *task_create_new(int is_privileged) {
 	t->st.seg = 0x23;
 	t->st.cs = 0x1B;
 	t->st.ss = 0x23;
-	
+
 	t->st.eflags = 0x202; // | (is_privileged ? (0x3 << 12) : 0);
 	
 	t->ipc_message_queue = (ipc_message_t **)kmalloc(IPC_MAX_QUEUE * sizeof(ipc_message_t *));
@@ -112,9 +112,10 @@ task_t *task_create_new(int is_privileged) {
 }
 
 int task_ipcsend(task_t *recv, task_t *send, uint32_t size, void *data) {
-	if (!recv || !send)
+	if (!recv || !send) {
 		return 0;
-		
+	}
+
 	uint32_t i = 0;
 	
 	for (; i < IPC_MAX_QUEUE; i++) {
@@ -122,8 +123,9 @@ int task_ipcsend(task_t *recv, task_t *send, uint32_t size, void *data) {
 			break;
 	}
 	
-	if (i == IPC_MAX_QUEUE)
+	if (i == IPC_MAX_QUEUE) {	
 		return 0;
+	}
 
 	recv->ipc_message_queue[i] = (ipc_message_t *)kmalloc(sizeof(ipc_message_t));
 	recv->ipc_message_queue[i]->size = size;
@@ -139,7 +141,7 @@ int task_ipcsend(task_t *recv, task_t *send, uint32_t size, void *data) {
 	return 1;
 }
 
-uint32_t task_ipcrecv(void **data, task_t *t) {
+int64_t task_ipcrecv(void **data, task_t *t) {
 	if (!t->ipc_message_queue[0])
 		return -1;
 
@@ -149,8 +151,9 @@ uint32_t task_ipcrecv(void **data, task_t *t) {
 }
 
 void task_ipcremov(task_t *t) {
-	if (!t->ipc_message_queue[0])
+	if (!t->ipc_message_queue[0]) {
 		return;
+	}
 	
 	kfree(t->ipc_message_queue[0]);
 	
@@ -264,50 +267,14 @@ int task_wait(interrupt_cpu_state *state, task_t *t, int wait_for, int data) {
 	return ret;
 }
 
-void task_init_heap(size_t size, task_t *t) {
-	size_t pages = (size + 0x1000 - 1) / 0x1000;
-	
-	alloc_mem_at(t->cr3, 0x30000000, pages, 0x7);
-
-	t->heap_pages = pages;
-	t->heap_begin = 0x30000000;
-	t->heap_end = 0x30000000 + size;
-	
+int task_mem_dealloc(void *addr, size_t pages, task_t *t) {
+	// TODO
+	panic("TODO in task_mem_dealloc()!", NULL, 0, 0);
 }
 
-// TODO: replace with something better
-// 		 allow processes to just choose an address?
-// 		 anon mmap style function?
-void *task_sbrk(int increment, task_t *t) {
-	
-	if (!increment) return (void *)t->heap_end;
-
-	if (!t->heap_begin) {
-		if (increment < 0) {
-			return (void *)-1;
-		} else {
-			// init heap
-			task_init_heap(increment, t);
-			return (void *)t->heap_begin;
-		}
-	} else {
-		t->heap_end += increment;
-		if (increment < 0) {
-			// decrement heap size
-			if (t->heap_end < t->heap_begin) return (void *)-1;
-			
-			return (void *)t->heap_end;
-		} else {
-			// increment heap size
-			
-			size_t new_sz = t->heap_end - t->heap_begin;
-			size_t new_pages = (new_sz + 0x1000 - 1) / 0x1000;
-			alloc_mem_at(t->cr3, t->heap_begin + t->heap_pages * 0x1000, new_pages, 0x7);
-			t->heap_pages = new_pages;
-			
-			return (void *)(t->heap_end - increment);
-		}
-	}
+void *task_mem_alloc(void *addr, size_t pages, task_t *t) {
+	// TODO
+	panic("TODO in task_mem_alloc()!", NULL, 0, 0);
 }
 
 static int task_idling = 0;

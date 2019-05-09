@@ -9,39 +9,12 @@
 
 #include <syscall.h>
 #include <uuid.h>
+#include <liballoc.h>
 
-#define SERV_MANAGE 0xF00F0001
-#define SERV_GET 0xF00F0002
-#define SERV_RESPONSE 0xF00F0003
-
-#define SERV_MANAGE_ADD 0x1
-#define SERV_MANAGE_REMOVE 0x2
+#include <message.h>
+#include <debug_out.h>
 
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
-
-struct message {
-	uint32_t type;
-	uint8_t uuid[16];
-	uint8_t data[];
-};
-
-struct msg_serv_manage {
-	int type;
-	int32_t pid;
-	char name[32];
-};
-
-struct msg_serv_get {
-	int32_t pid;
-	int by_name;
-	char name[32];
-};
-
-struct msg_serv_resp {
-	int status;
-	int32_t pid;
-	char name[32];
-};
 
 struct server {
 	int32_t pid;
@@ -52,12 +25,14 @@ struct server {
 
 struct server servers[64];
 
-struct msg_serv_resp serv_manage(struct msg_serv_manage *m) {
+msg_serv_response_t serv_manage(msg_serv_manage_t *m) {
 	m->name[31] = 0;
 
-	struct msg_serv_resp r;
+	msg_serv_response_t r;
 
-	if (m->type == SERV_MANAGE_ADD) {
+	debugf("servman: manage: %u %s %u\n", m->type, m->name, m->pid);
+
+	if (m->type == msg_serv_manage_add) {
 		int i = 0;
 		while (i < MAX_SERVERS && servers[i].pid) i++;
 		
@@ -65,10 +40,10 @@ struct msg_serv_resp serv_manage(struct msg_serv_manage *m) {
 			r.status = -1;
 		} else {
 			servers[i].pid = m->pid;
-			memcpy(servers[i].name, m->name, MIN(strlen(m->name) + 1, 32));
+			memcpy(servers[i].name, m->name, 32);
 			r.status = 0;
 		}
-	} else if (m->type == SERV_MANAGE_REMOVE) {
+	} else if (m->type == msg_serv_manage_remove) {
 		int i = 0;
 		while (i < MAX_SERVERS && servers[i].pid != m->pid) i++;
 		
@@ -88,10 +63,12 @@ struct msg_serv_resp serv_manage(struct msg_serv_manage *m) {
 	return r;
 }
 
-struct msg_serv_resp serv_get(struct msg_serv_get *m) {
+msg_serv_response_t serv_get(msg_serv_get_t *m) {
 	m->name[31] = 0;
 
-	struct msg_serv_resp r;
+	msg_serv_response_t r;
+
+	debugf("servman: get! %s %u\n", m->name, m->pid);
 
 	if (m->pid) {
 		int i = 0;
@@ -101,7 +78,7 @@ struct msg_serv_resp serv_get(struct msg_serv_get *m) {
 			r.status = -1;
 		} else {
 			r.pid = m->pid;
-			memcpy(r.name, servers[i].name, MIN(strlen(servers[i].name) + 1, 32));
+			memcpy(r.name, servers[i].name, 32);
 			r.status = 0;
 		}
 	} else if (m->name[0]) {
@@ -112,7 +89,8 @@ struct msg_serv_resp serv_get(struct msg_serv_get *m) {
 			r.status = -2;
 		} else {
 			r.pid = servers[i].pid;	
-			memcpy(r.name, servers[i].name, MIN(strlen(servers[i].name) + 1, 32));
+			memcpy(r.name, servers[i].name, 32);
+			debugf("servman: found %s at pid %u\n", servers[i].name, servers[i].pid);
 			r.status = 0;
 		}
 
@@ -124,59 +102,38 @@ struct msg_serv_resp serv_get(struct msg_serv_get *m) {
 	return r;
 }
 
-void respond_to(int32_t pid, struct msg_serv_resp resp) {
-	char buf[sizeof(struct message) + sizeof(struct msg_serv_resp)];
-	struct message *m = (struct message *)buf;
-	m->type = SERV_RESPONSE;
-	uuid_generate(0, m->uuid); // TODO
-	memcpy(m->data, &resp, sizeof(resp));
-
-	sys_ipc_send(pid, sizeof(buf), buf);
+void respond_to(int32_t pid, msg_serv_response_t resp) {
+	message_send_new(msg_serv_name_resp, &resp, sizeof(msg_serv_response_t), pid);
 }
 
 void handle_ipc_message() {
-	int32_t sender = sys_ipc_get_sender();
-	size_t size = sys_ipc_recv(NULL);
-
-	if ((size > sizeof(struct message) + sizeof(struct msg_serv_manage)) ||
-		(size > sizeof(struct message) + sizeof(struct msg_serv_get))) {
-
-		sys_debug_log("servman: message too large\n");
-		sys_ipc_remove();
-
-		struct msg_serv_resp r = {.status = -4};
-		respond_to(sender, r);
-		return;
-	}
-
-	char buf[size];
-	sys_ipc_recv(buf);
-	sys_ipc_remove();
-
-	struct message *msg = (struct message *)buf;
-	
+	message_t *msg;
+	int32_t sender;
+	message_recv(true, &msg, &sender);
+		
 	sys_debug_log("servman: parsing message\n");
 
 	switch (msg->type) {
-	case SERV_MANAGE: {
-		struct msg_serv_resp r = serv_manage((struct msg_serv_manage *)msg->data);
+	case msg_serv_manage: {
+		msg_serv_response_t r = serv_manage((msg_serv_manage_t *)msg->data);
 		respond_to(sender, r);
 		break;
 	}
 	
-	case SERV_GET: {
-		struct msg_serv_resp r = serv_get((struct msg_serv_get *)msg->data);
+	case msg_serv_get: {
+		msg_serv_response_t r = serv_get((msg_serv_get_t *)msg->data);
 		respond_to(sender, r);
 		break;
 	}
 	
 	default:
 		sys_debug_log("servman: what? unsupported operation\n");
-		struct msg_serv_resp r = {.status = -5};
+		msg_serv_response_t r = {.status = -5};
 		respond_to(sender, r);
 		break;
 	}
 
+	free(msg);
 }
 
 void _start(void) {
@@ -184,7 +141,6 @@ void _start(void) {
 	sys_debug_log("servman: waiting for messages...\n");
 
 	while (1) {
-		sys_wait(WAIT_IPC, 0, NULL, NULL);
 		handle_ipc_message();
 	}
 

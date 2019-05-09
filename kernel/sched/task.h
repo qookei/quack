@@ -89,7 +89,7 @@ int task_wakeup_irq(task_t *);
 int task_wait(interrupt_cpu_state *, task_t *, int, int);
 
 int task_ipcsend(task_t *recv, task_t *send, uint32_t size, void *data);
-uint32_t task_ipcrecv(void **data, task_t *);
+int64_t task_ipcrecv(void **data, task_t *);
 void task_ipcremov(task_t *);
 uint32_t task_ipcqueuelen(task_t *);
 uint32_t task_ipcgetsender(task_t *);

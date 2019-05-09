@@ -1,6 +1,6 @@
-#include "paging.h"
-#include <sched/sched.h>
-#include <interrupt/isr.h>
+#include "vmm.h"
+//#include <sched/sched.h>
+#include <cpu/int/isr.h>
 #include <trace/stacktrace.h>
 #include <panic.h>
 #include <kmesg.h>
@@ -307,7 +307,7 @@ int page_fault(interrupt_cpu_state *state) {
 	int us = state->err_code & 0x4;				// Processor was in user-mode?
 	int reserved = state->err_code & 0x8;		// Overwritten CPU-reserved bits of page entry?
 	int id = state->err_code & 0x10;			// Caused by an instruction fetch?
-
+/*
 	if (us) {
 
 		kmesg("vmm", "process %d crashed with a page fault", sched_get_current()->pid);
@@ -324,7 +324,7 @@ int page_fault(interrupt_cpu_state *state) {
 
 		sched_kill(sched_get_current()->pid, state->eax, SIGSEGV);
 	}
-
+*/
 	if (fault_addr >= (uintptr_t)&stack && fault_addr < (uintptr_t)&stack + 0x1000) {
 		kmesg("vmm", "possible kernel stack overrun(writing inside of the stack guard page)");
 	}

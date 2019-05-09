@@ -8,12 +8,11 @@
 #include <string.h>
 
 #include <syscall.h>
+#include <liballoc.h>
 #include <elf.h>
 
-#define OPERATION_SPAWN_NEW 0x1
-#define OPERATION_EXEC 0x2
-#define OPERATION_FORK 0x3
-#define OPERATION_EXIT 0x4
+#include <message.h>
+#include <debug_out.h>
 
 struct spawn_message {
 	int operation;
@@ -78,7 +77,7 @@ void proc_memcpy(int32_t pid, uintptr_t src, uintptr_t dst, size_t size) {
 	}
 }
 
-int32_t exec_spawn_new(int32_t parent, struct spawn_message *msg) {
+int32_t exec_spawn_new(int32_t parent, msg_exec_request_t *msg) {
 	void *elf_file = msg->binary;
 
 	if (!elf_check_header((elf_hdr *)elf_file)){
@@ -123,46 +122,49 @@ int32_t exec_spawn_new(int32_t parent, struct spawn_message *msg) {
 }
 
 void respond(int32_t to, int status, int32_t pid) {
-	struct spawn_response resp;
+	msg_exec_response_t resp;
 	resp.status = status;
 	resp.pid = pid;
 
-	sys_ipc_send(to, sizeof(resp), &resp);
+	message_send_new(msg_exec_resp, &resp, sizeof(resp), to);
 }
 
 void handle_ipc_message() {
-	char num_buf[2] = {0, 0};
+	int32_t sender;
+	message_t *msg;
+	message_recv(true, &msg, &sender);
 
-	int32_t sender = sys_ipc_get_sender();
-	size_t size = sys_ipc_recv(NULL);
-	char buf[size];
-	sys_ipc_recv(buf);
-	sys_ipc_remove();
+	if (msg->type != msg_exec_req) {
+		sys_debug_log("exec: eek...! not a msg_exec_req!\n");
+		free(msg);
+		return;
+	}
 
-	struct spawn_message *msg = (struct spawn_message *)buf;
-	
+	msg_exec_request_t *req = (msg_exec_request_t *)msg->data;
+
 	sys_debug_log("exec: parsing message\n");
 
-	switch (msg->operation) {
-	case OPERATION_SPAWN_NEW: {
+	switch (req->operation) {
+	case msg_exec_spawn_new: {
 		sys_debug_log("exec: spawning a new process\n");
-		int32_t p = exec_spawn_new(sender, msg);
+		int32_t p = exec_spawn_new(sender, req);
 		if (p < 0) respond(sender, p, -1);
 		else respond(sender, 0, p);
 		break;
 	}
-	
-	case OPERATION_EXEC:
-	case OPERATION_FORK:
+
+	case msg_exec_fork:
+	case msg_exec_exec:
 	default:
 		sys_debug_log("exec: operation not implemented\n");
 		respond(sender, -2, -1);
 		break;
 	
-	case OPERATION_EXIT:
+	case msg_exec_exit:
 		sys_exit(0);
 	}
 
+	free(msg);
 }
 
 void _start(void) {
@@ -170,7 +172,6 @@ void _start(void) {
 	sys_debug_log("exec: waiting for messages...\n");
 
 	while (1) {
-		sys_wait(WAIT_IPC, 0, NULL, NULL);
 		handle_ipc_message();
 	}
 

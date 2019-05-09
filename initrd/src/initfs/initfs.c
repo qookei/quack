@@ -12,7 +12,9 @@
 #include <syscall.h>
 #include <uuid.h>
 
-#define USTAR_BLOCK_SIZE		512
+#include <message.h>
+
+#define USTAR_BLOCK_SIZE 512
 
 typedef struct {
 	char name[100];
@@ -94,65 +96,54 @@ int ustar_read(initrd_t i, const char *path, void **dst) {
 
 	size_t fsize = oct_to_dec(entry.size);
 
-	*dst = sys_sbrk(fsize);
+	*dst = malloc(fsize);
 
 	memcpy(*dst, data, fsize);
 	return fsize;
 }
 
-struct global_data *global_data;
-
-#define FS_REQUEST_FILE 0xBEEF0001
-#define FS_FILE_RESPONSE 0xCAFE0002
-
-struct message {
-	uint32_t type;
-	uint8_t uuid[16];
-	uint8_t data[];
-};
-
-struct msg_fs_file_resp {
-	int status;
-	size_t size;
-	uint8_t data[];
-};
-
 initrd_t initrd;
 
 void handle_req() {
-	int32_t sender = sys_ipc_get_sender();
-	size_t size = sys_ipc_recv(NULL);
-	char buf[size];
-	sys_ipc_recv(buf);
-	sys_ipc_remove();
+	message_t *msg;
+	int32_t sender;
+	int status = message_recv(true, &msg, &sender);
 
-	struct message *m = (struct message *)buf;
+	if (status != msg_status_ok) {
+		sys_debug_log("initfs: error occured while receiving a message!\n");
+		return;
+	}
 
-	if (m->type == FS_REQUEST_FILE) {
-		char *fname = (char *)m->data;
-		fname[size - 1] = 0;
+	if (msg->type == msg_initfs_get_file) {
+		msg_initfs_request_t *req = (msg_initfs_request_t *)msg->data;
+		req->filename[127] = 0;
 
 		void *dst;
-		size_t fsize = ustar_read(initrd, fname, &dst);
+		size_t file_size = ustar_read(initrd, req->filename, &dst);
 
-		size_t out_size = sizeof(struct message) + sizeof(struct msg_fs_file_resp) + fsize;
+		size_t buf_size = sizeof(msg_initfs_response_t) + file_size;
 
-		void *out_buf = sys_sbrk(out_size);
-		struct message *out_m = (struct message *)out_buf;
-		memcpy(out_m->uuid, m->uuid, 16);
+		msg_initfs_response_t *res = calloc(buf_size, 1);
+		res->status = file_size > 0 ? msg_status_ok : msg_status_failed;
+		res->size = file_size;
+		memcpy(res->data, dst, file_size);
 
-		struct msg_fs_file_resp *resp = (struct msg_fs_file_resp *)out_m->data;
-		resp->status = fsize > 0 ? 1 : -1;
-		resp->size = fsize;
-		memcpy(resp->data, dst, fsize);
+		uuid_t u;
+		memcpy(u.uuid, msg->uuid, 16);
 
-		sys_ipc_send(sender, out_size, out_buf);
+		status = message_send_new_uuid(msg_initfs_file_resp, res, buf_size, &u, sender);
 
-		sys_sbrk(-out_size);
-		sys_sbrk(-fsize);
+		if (status != msg_status_ok) {
+			sys_debug_log("initfs: failed to respond!\n");
+		}
+		
+		free(res);
+		free(dst);
 	} else {
 		sys_debug_log("initfs: what? received an event that I can't handle\n");
 	}
+
+	free(msg);
 }
 
 void _start(void) {
@@ -173,8 +164,6 @@ void _start(void) {
 
 	sys_ipc_recv(initrd.data);
 	sys_ipc_remove();
-
-	global_data = (struct global_data *)0xD0000000;
 
 	while(1) {
 		sys_wait(WAIT_IPC, 0, NULL, NULL);

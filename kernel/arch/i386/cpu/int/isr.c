@@ -1,9 +1,10 @@
 #include "isr.h"
 #include <trace/stacktrace.h>
 #include <kmesg.h>
-#include <paging/paging.h>
-#include <sched/sched.h>
-#include <sched/task.h>
+//#include <paging/paging.h>
+#include <mm/vmm.h>
+//#include <sched/sched.h>
+//#include <sched/task.h>
 #include <panic.h>
 
 static interrupt_handler_f *interrupt_handlers[IDT_size] = {0};
@@ -60,6 +61,10 @@ const char* int_names[] = {
 		"-", "-", "-", "-", "-", "-", "#SX", "-", "-"
 };
 
+static inline void rdtsc(uint32_t *lo, uint32_t *hi) {
+	asm volatile("xor %%eax, %%eax; cpuid; rdtsc" : "=a"(*lo), "=d"(*hi) : : "%ebx", "%ecx");
+}
+
 void dispatch_interrupt(interrupt_cpu_state r) {
 	enter_kernel_directory();
 
@@ -71,7 +76,7 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 	}
 
 	int handled = 0;
-
+/*
 	if (interrupt_handlers[r.interrupt_number] != NULL) {
 		handled = interrupt_handlers[r.interrupt_number](&r);
 	}
@@ -103,7 +108,7 @@ void dispatch_interrupt(interrupt_cpu_state r) {
 		pre_register_interrupt_count[r.interrupt_number]++;
 	}
 
-
+*/
 	if (r.interrupt_number < 32 && !handled) {
 		if (r.interrupt_number == 0x08) {
 			kmesg("kernel", "double fault!");
@@ -140,7 +145,7 @@ int unregister_interrupt_handler(uint8_t int_no, interrupt_handler_f handler) {
 
 	return 0;
 }
-
+/*
 void register_userspace_handler(uint8_t int_no, pid_t pid) {
 	if (!userspace_interrupt_handlers[int_no]) {
 		userspace_interrupt_handlers[int_no] = pid;
@@ -160,4 +165,4 @@ void unregister_all_handlers_for_pid(pid_t pid) {
 			userspace_interrupt_handlers[i] = 0;
 	}
 }
-
+*/

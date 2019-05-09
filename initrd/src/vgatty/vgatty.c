@@ -8,6 +8,11 @@
 #include <string.h>
 
 #include <syscall.h>
+#include <liballoc.h>
+#include <message.h>
+#include <debug_out.h>
+
+#define SERVMAN_PID 4
 
 #define WIDTH 80
 #define HEIGHT 25
@@ -27,11 +32,45 @@ void copy_line(void *vram, int y1, int y2) {
 		((unsigned char*)vram)[y1 * WIDTH * 2 + i] = ((unsigned char*)vram)[y2 * WIDTH * 2 + i];
 }
 
+void server_register_self(const char *name) {
+	msg_serv_manage_t req;
+	memset(&req, 0, sizeof(req));
+	strcpy(req.name, name);
+	req.pid = sys_getpid();
+	req.type = msg_serv_manage_add;
+
+	int status = message_send_new(msg_serv_manage, &req, sizeof(req), SERVMAN_PID);
+
+	if (status != msg_status_ok) {
+		debugf("init: error sending message to servman: %s\n", msg_get_status_name(status));
+		return;
+	}
+
+	message_t *recv;
+	status = message_recv(true, &recv, NULL);
+
+	if (status != msg_status_ok) {
+		debugf("init: failed to recv message from servman: %s\n", msg_get_status_name(status));
+		return;
+	}
+
+	msg_serv_response_t *resp = (msg_serv_response_t *)recv->data;
+
+	if (resp->status < 0) {
+		sys_debug_log("init: specified server was not found\n");
+		return;
+	}
+
+	free(recv);
+}
+
 void _start(void) {
 	int x = 0, y = 0;
 	uint8_t *vram;
 
 	sys_debug_log("vgatty: initializing tty interface\n");
+
+	server_register_self("vgatty");
 
 	sys_map_to(sys_getpid(), 0xB8000, 0xB8000);
 	vram = (uint8_t *)0xB8000;
@@ -51,7 +90,7 @@ void _start(void) {
 		sys_wait(WAIT_IPC, 0, NULL, NULL);
 
 		size_t recv_size = sys_ipc_recv(NULL);
-		char buf[recv_size];
+		char *buf = malloc(recv_size);
 		sys_ipc_recv(buf);
 		sys_ipc_remove();
 
@@ -90,6 +129,8 @@ void _start(void) {
 		outb(0x3D5, (uint8_t) (pos & 0xFF));
 		outb(0x3D4, 0x0E);
 		outb(0x3D5, (uint8_t) ((pos >> 8) & 0xFF));
+	
+		free(buf);
 	}
 
 	sys_debug_log("vgatty: exitting\n");

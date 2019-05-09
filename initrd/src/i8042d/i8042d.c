@@ -9,6 +9,7 @@
 
 #include <syscall.h>
 #include <uuid.h>
+#include <liballoc.h>
 
 #define bittest(var,pos) ((var) & (1 << (pos)))
 #define ps2_wait_ready() {while(bittest(inb(0x64), 1));}
@@ -66,7 +67,7 @@ void _start(void) {
 	sys_enable_ports(0x60, 1);
 	sys_enable_ports(0x64, 1);
 
-	struct global_data *global_data = (struct global_data *)0xD0000000;
+	global_data_t *global_data = GLOBAL_DATA_PTR;
 
 	while (inb(0x64) & 0x01)
 		(void)inb(0x60);
@@ -80,7 +81,8 @@ void _start(void) {
 		if (i == WAIT_IRQ) {
 			uint8_t b = inb(0x60);
 
-			char resp_buf[sizeof(struct message) + sizeof(struct event_key_typed)];
+			size_t s = sizeof(struct message) + sizeof(struct event_key_typed);
+			char *resp_buf = calloc(s, 1);
 			struct message *msg = (struct message *)resp_buf;
 			struct event_key_typed *resp = (struct event_key_typed *)msg->data;
 			uuid_generate(global_data->timer_ticks, msg->uuid);
@@ -90,13 +92,15 @@ void _start(void) {
 
 			for (int i = 0; i < 8; i++) {
 				if (respond_to[i]) {
-					sys_ipc_send(respond_to[i], sizeof(resp_buf), resp_buf);
+					sys_ipc_send(respond_to[i], s, resp_buf);
 				}
 			}
+
+			free(resp_buf);
 		} else {
 			int32_t sender = sys_ipc_get_sender();
 			size_t size = sys_ipc_recv(NULL);
-			char buf[size];
+			char *buf = malloc(size);
 			sys_ipc_recv(buf);
 			sys_ipc_remove();
 
@@ -112,15 +116,18 @@ void _start(void) {
 					}
 				}
 
-				char resp_buf[sizeof(struct message) + sizeof(struct msg_response)];
+				size_t s = sizeof(struct message) + sizeof(struct msg_response);
+				char *resp_buf = calloc(s, 1);
 				struct message *msg = (struct message *)resp_buf;
 				struct msg_response *resp = (struct msg_response *)msg->data;
 				uuid_generate(global_data->timer_ticks, msg->uuid);
 				msg->type = MESSAGE_RESPONSE;
 				resp->status = !was_set ? -1 : 0;
 
-				sys_ipc_send(sender, sizeof(resp_buf), resp_buf);
+				sys_ipc_send(sender, s, resp_buf);
+				free(resp_buf);
 			}
+			free(buf);
 		}
 	}
 

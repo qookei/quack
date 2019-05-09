@@ -111,7 +111,7 @@ void sbrk_handler(uintptr_t *increment, uintptr_t *break_ptr, uintptr_t *unused1
 	(void)unused1;
 	(void)unused2;
 
-	*break_ptr = (uintptr_t)task_sbrk(*increment, sched_get_current());
+	*break_ptr = (uintptr_t)-1;//task_sbrk(*increment, sched_get_current());
 }
 
 void ipc_send_handler(uintptr_t *pid, uintptr_t *size, uintptr_t *data, void *unused1) {
@@ -129,6 +129,8 @@ void ipc_send_handler(uintptr_t *pid, uintptr_t *size, uintptr_t *data, void *un
 		*size = -3;
 		kfree(kdata);
 	}
+
+	*size = 0;
 }
 
 void ipc_recv_handler(uintptr_t *unused1, uintptr_t *size, uintptr_t *data, void *unused2) {
@@ -136,21 +138,23 @@ void ipc_recv_handler(uintptr_t *unused1, uintptr_t *size, uintptr_t *data, void
 	(void)unused2;
 
 	void *rec_data;
-	size_t rec_size = task_ipcrecv(&rec_data, sched_get_current());
+	int64_t rec_size = task_ipcrecv(&rec_data, sched_get_current());
 
 	if (!(*data)) {
 		*size = rec_size;
 		return;
 	}
 
-	if (!verify_addr(sched_get_current()->cr3, *data, rec_size, 0x7)) {
-		*size = -1;
-		return;
+	if (rec_size != -1) {
+		if (!verify_addr(sched_get_current()->cr3, *data, rec_size, 0x7)) {
+			*size = -1;
+			return;
+		}
+
+		copy_to_user((void *)(*data), rec_data, rec_size);
 	}
 
-	copy_to_user((void *)(*data), rec_data, rec_size);
-
-	*size = rec_size;
+	*size = (uintptr_t)rec_size;
 }
 
 void ipc_remove_handler(uintptr_t *unused1, uintptr_t *unused2, uintptr_t *unused3, void *unused4) {
