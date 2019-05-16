@@ -31,8 +31,8 @@ void arch_entry(void *mboot, uint32_t magic) {
 	idt_init();				// TODO: fill all 256 interrupt vectors
 	pit_freq(1000);			// TODO: use APIC timer when using the APIC
 
-	pmm_init(mboot);		// TODO
-	paging_init();				// TODO
+	pmm_init(mboot);
+	paging_init();				// TODO: change to vmm_init once done
 
 	// TODO: Do some ACPI magic here to detect APICs and all that stuff
 	// TODO: Prepare arch independent info for kernel 
