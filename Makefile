@@ -20,7 +20,7 @@ else
 CFLAGS += -DNO_DEBUG_OUT
 endif
 
-OBJS = kernel/kernel.o kernel/io/debug_port.o kernel/io/ports.o kernel/vsprintf.o \
+#OBJS = kernel/kernel.o kernel/io/debug_port.o kernel/io/ports.o kernel/vsprintf.o \
 	   kernel/trace/stacktrace.o kernel/kmesg.o kernel/panic.o \
 	   kernel/pic/pic.o \
 		kernel/lib/stdlib.o kernel/lib/ctype.o kernel/lib/string.o \
@@ -28,6 +28,8 @@ OBJS = kernel/kernel.o kernel/io/debug_port.o kernel/io/ports.o kernel/vsprintf.
 	   kernel/sched/task_enter.o kernel/lib/string.o \
 	   kernel/lib/stdlib.o kernel/lib/ctype.o kernel/kheap/liballoc.o kernel/kheap/liballoc_funcs.o \
 	   kernel/panic.o kernel/kmesg.o kernel/sched/elf.o kernel/initrd.o kernel/sched/sched.o kernel/syscall/handlers.o kernel/syscall/syscall.o
+
+OBJS = 
 
 LDSCRIPT = $(ARCHDIR)/$(LINKER_SCRIPT)
 
