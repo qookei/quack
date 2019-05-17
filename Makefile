@@ -4,7 +4,7 @@ ifndef OLEVEL
 OLEVEL = 2
 endif
 
-ARCHS = $(sort $(patsubst kernel/arch/%/, %, $(dir $(wildcard kernel/arch/*/))))
+ARCHS = $(subst kernel/arch/,, $(sort $(patsubst kernel/arch/%/, %, $(dir $(wildcard kernel/arch/*/)))))
 
 ifndef ARCH
 $(error Please select an architecture, available architectures: $(ARCHS))
