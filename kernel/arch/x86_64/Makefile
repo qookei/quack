@@ -1,6 +1,8 @@
 include rules.mk
 
-OBJS = boot/boot.o arch_entry.o
+OBJS = boot/boot.o arch_entry.o \
+	   io/port.o io/debug.o \
+	   irq/idt.o irq/irq_handler.o irq/isr.o
 
 OWN_CFLAGS = -I../.. -I.. -I../../lib -I.
 
