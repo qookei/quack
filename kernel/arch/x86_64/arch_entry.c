@@ -4,6 +4,8 @@
 #include <io/debug.h>
 #include <multiboot.h>
 #include <irq/idt.h>
+#include <irq/isr.h>
+#include <pic/pic.h>
 
 static char *itoa(uint32_t i, int base, int padding) {
 	static char buf[50];
@@ -93,42 +95,24 @@ void logf(const char *fmt, ...) {
 	va_end(arg);
 }
 
+int ps2_kbd_handler(irq_cpu_state_t *state) {
+	(void)state;
+
+	uint8_t scancode = inb(0x60);
+	logf("%x ", scancode);
+}
+
 void arch_entry(void *mboot, uint32_t magic) {
 	if (magic != 0x2BADB002) {
 		logf("quack: signature %x does not match 0x2BADB002\n", magic);
 	}
 
-	logf("quack: welcome to the x86_64 land\n");
-
-	logf("quack: multiboot header is at %x\n", (uint32_t)mboot);
-
-	multiboot_info_t *mbt = mboot;
-
-	const char *bootloader = (const char *)mbt->boot_loader_name;
-	logf("quack: booted by %s\n", bootloader);
-
-	size_t mmap_ents = mbt->mmap_length / sizeof(multiboot_memory_map_t);
-	multiboot_memory_map_t *map = (multiboot_memory_map_t *)mbt->mmap_addr;
-
-	for (size_t i = 0 ; i < mmap_ents; i++) {
-		uint32_t start = map[i].addr;
-		uint32_t end = start + map[i].len;
-		uint32_t size = map[i].len;
-		uint32_t type = map[i].type;
-
-		const char *types[] = {
-			"??",
-			"Available",
-			"Reserved",
-			"ACPI Reclaimable",
-			"NVS",
-			"Bad RAM"
-		};
-
-		logf("%8x - %8x -- %u -- %s\n", start, end, size, types[type]);
-	}
+	logf("quack: welcome to quack for x86_64\n");
 
 	idt_init();
+	pic_remap(0x20, 0x28);
+
+	isr_register_handler(0x21, ps2_kbd_handler);
 
 	asm volatile("sti");
 
