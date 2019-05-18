@@ -37,28 +37,46 @@ KERNEL_VIRTUAL_BASE equ 0xFFFFFFFF80000000
 section .data
 align 0x1000
 init_pml4:
-	dq init_pdp - KERNEL_VIRTUAL_BASE + 3
-	times 510 dq 0
-	dq init_pdp - KERNEL_VIRTUAL_BASE + 3
+	dq init_pdp1 - KERNEL_VIRTUAL_BASE + 3
+	times 255 dq 0
+	dq phys_pdp - KERNEL_VIRTUAL_BASE + 3
+	times 254 dq 0
+	dq init_pdp2 - KERNEL_VIRTUAL_BASE + 3
 
-%macro gen_pd_2mb 1
+%macro gen_pd_2mb 3
 	%assign i %1
-	%rep 512
+	%rep %2
 		dq (i | 0x83)
 		%assign i i+0x200000
+	%endrep
+	%rep %3
+		dq 0
 	%endrep
 %endmacro
 
 align 0x1000
-init_pdp:
+init_pdp1:
 	dq init_pd - KERNEL_VIRTUAL_BASE + 3
-	times 509 dq 0
+	times 511 dq 0
+
+align 0x1000
+init_pdp2:
+	times 510 dq 0
 	dq init_pd - KERNEL_VIRTUAL_BASE + 3
 	dq 0
 
 align 0x1000
+phys_pdp:
+	dq phys_pd - KERNEL_VIRTUAL_BASE + 3
+	times 511 dq 0
+
+align 0x1000
 init_pd:
-	gen_pd_2mb 0
+	gen_pd_2mb 0,64,448
+
+align 0x1000
+phys_pd:
+	gen_pd_2mb 0,512,0
 
 align 0x10
 init_gdt:
