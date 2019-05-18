@@ -41,12 +41,24 @@ init_pml4:
 	times 510 dq 0
 	dq init_pdp - KERNEL_VIRTUAL_BASE + 3
 
+%macro gen_pd_2mb 1
+	%assign i %1
+	%rep 512
+		dq (i | 0x83)
+		%assign i i+0x200000
+	%endrep
+%endmacro
+
 align 0x1000
 init_pdp:
-	dq 0x0000000000000083
+	dq init_pd - KERNEL_VIRTUAL_BASE + 3
 	times 509 dq 0
-	dq 0x0000000000000083
+	dq init_pd - KERNEL_VIRTUAL_BASE + 3
 	dq 0
+
+align 0x1000
+init_pd:
+	gen_pd_2mb 0
 
 align 0x10
 init_gdt:
