@@ -122,20 +122,20 @@ void pmm_init(multiboot_memory_map_t *mmap, size_t mmap_len) {
 
 			if (start < PMM_MEMORY_BASE) {
 				logf("pmm: adjusting start addr\n");
+				len -= PMM_MEMORY_BASE - start;
 				start = PMM_MEMORY_BASE;
-				len -= start - PMM_MEMORY_BASE;
 				count = len / PAGE_SIZE;
 			}
 
 
 			if (OVERLAPS(bitmap_phys, pmm_bitmap_len / 8, start, len)) {
 				logf("pmm: adjusting, overlaps bitmap\n");
-				
-				if ((size_t)start < bitmap_phys)
-					pmm_free((void *)start, ((size_t)start - bitmap_phys) /PAGE_SIZE);
+
+				if (start < bitmap_phys)
+					pmm_free((void *)start, (start - bitmap_phys) / PAGE_SIZE);
 
 				start = bitmap_phys + pmm_bitmap_len / 8;
-				len -= start - PMM_MEMORY_BASE;
+				len -= pmm_bitmap_len / 8;
 				count = len / PAGE_SIZE;
 			}
 
