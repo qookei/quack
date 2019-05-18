@@ -4,7 +4,7 @@
 
 irq_handler_t irq_handlers[IDT_ENTRIES];
 
-void logf(const char *, ...);
+void logf(const char *, ...);		// XXX: remove
 
 void irq_eoi(uint8_t irq) {
 	if (irq >= 0x20 && irq < 0x30) {

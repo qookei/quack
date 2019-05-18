@@ -6,6 +6,8 @@
 #include <irq/idt.h>
 #include <irq/isr.h>
 #include <pic/pic.h>
+#include <mm/pmm.h>
+#include <mm/mm.h>
 
 static char *itoa(uint32_t i, int base, int padding) {
 	static char buf[50];
@@ -102,15 +104,21 @@ int ps2_kbd_handler(irq_cpu_state_t *state) {
 	logf("%x ", scancode);
 }
 
-void arch_entry(void *mboot, uint32_t magic) {
+void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 	if (magic != 0x2BADB002) {
 		logf("quack: signature %x does not match 0x2BADB002\n", magic);
 	}
+
+	mboot = (multiboot_info_t *)((uintptr_t)mboot + VIRT_PHYS_BASE);
 
 	logf("quack: welcome to quack for x86_64\n");
 
 	idt_init();
 	pic_remap(0x20, 0x28);
+
+	uintptr_t ptr = mboot->mmap_addr + VIRT_PHYS_BASE;
+
+	pmm_init((multiboot_memory_map_t *)ptr, mboot->mmap_length / sizeof(multiboot_memory_map_t));
 
 	isr_register_handler(0x21, ps2_kbd_handler);
 
