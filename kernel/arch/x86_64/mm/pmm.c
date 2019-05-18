@@ -74,10 +74,8 @@ void pmm_init(multiboot_memory_map_t *mmap, size_t mmap_len) {
 	uintptr_t mem_top = pmm_find_avail_memory_top(mmap, mmap_len);
 	uint32_t mem_pages = (mem_top + PAGE_SIZE - 1) / PAGE_SIZE;
 	uint32_t bitmap_bytes = (mem_pages + 7) / 8;
-	logf("pmm: keeping track of %u pages, which will cost us %u bytes\n", mem_pages, bitmap_bytes);
 
 	while (mem_pages > pmm_bitmap_len) {
-		logf("pmm: allocating a larger bitmap\n");
 
 		size_t can_alloc = (bitmap_bytes + PAGE_SIZE - 1) / PAGE_SIZE;
 		if (can_alloc > pmm_bitmap_len) can_alloc = pmm_bitmap_len;
@@ -93,12 +91,7 @@ void pmm_init(multiboot_memory_map_t *mmap, size_t mmap_len) {
 		pmm_bitmap_len = can_alloc * PAGE_SIZE * 8;
 	}
 
-	logf("pmm: allocation done\n");
-	logf("pmm: bitmap length is %u, which is %u bytes\n", (uint32_t)pmm_bitmap_len, (uint32_t)(pmm_bitmap_len / 8));
-
 	size_t bitmap_phys = (size_t)pmm_bitmap - VIRT_PHYS_BASE;
-
-	logf("pmm: bitmap is at %8x\n", (uint32_t)bitmap_phys);
 
 	memset(pmm_bitmap, 0xFF, pmm_bitmap_len / 8);
 
@@ -108,20 +101,10 @@ void pmm_init(multiboot_memory_map_t *mmap, size_t mmap_len) {
 			size_t len = ROUND_DOWN(mmap[i].len, PAGE_SIZE);
 			size_t count = len / PAGE_SIZE;
 
-			logf("pmm: checking region %8x -- %8x - %u - %u\n", (uint32_t)start, (uint32_t)start + (uint32_t)len, (uint32_t)len, (uint32_t)count);
-
-			if (!len) {
-				logf("pmm: discarded, less than one page\n");
-				continue;
-			}
-
-			if (start + len < PMM_MEMORY_BASE) {
-				logf("pmm: discarded, below memory base\n");
-				continue;
-			}
+			if (!len) continue;
+			if (start + len < PMM_MEMORY_BASE) continue;
 
 			if (start < PMM_MEMORY_BASE) {
-				logf("pmm: adjusting start addr\n");
 				len -= PMM_MEMORY_BASE - start;
 				start = PMM_MEMORY_BASE;
 				count = len / PAGE_SIZE;
@@ -129,8 +112,6 @@ void pmm_init(multiboot_memory_map_t *mmap, size_t mmap_len) {
 
 
 			if (OVERLAPS(bitmap_phys, pmm_bitmap_len / 8, start, len)) {
-				logf("pmm: adjusting, overlaps bitmap\n");
-
 				if (start < bitmap_phys)
 					pmm_free((void *)start, (start - bitmap_phys) / PAGE_SIZE);
 
