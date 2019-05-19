@@ -5,9 +5,6 @@
 #include <stdint.h>
 #include <stddef.h>
 
-size_t strlen(const char*);
-int vsprintf(char *, const char *, va_list);
-int sprintf(char *, const char *, ...);
-int printf(const char*, ...);
+void vsprintf(char *, const char *, va_list);
 
 #endif
