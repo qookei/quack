@@ -2,7 +2,7 @@
 
 #include <mm/mm.h>
 
-#include <lib/string.c>				// XXX: remove this
+#include <string.h>
 
 #define PMM_MEMORY_BASE 0x1000000
 
@@ -60,9 +60,7 @@ static uintptr_t pmm_find_avail_memory_top(multiboot_memory_map_t *mmap, size_t 
 	if (!top) {
 		logf("pmm: failed to find top of available memory\n");
 	} else {
-		uint32_t top_high = top >> 32;
-		uint32_t top_low = top & 0xFFFFFFFF;
-		logf("pmm: top of available memory is %8x%8x\n", top_high, top_low);
+		logf("pmm: top of available memory is %016x\n", top);
 	}
 
 	return top;

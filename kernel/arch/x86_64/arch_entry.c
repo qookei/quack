@@ -8,90 +8,14 @@
 #include <pic/pic.h>
 #include <mm/pmm.h>
 #include <mm/mm.h>
-
-static char *itoa(uint32_t i, int base, int padding) {
-	static char buf[50];
-	char *ptr = buf + 49;
-	*ptr = '\0';
-
-	do {
-		*--ptr = "0123456789ABCDEF"[i % base];
-		if (padding)
-			padding--;
-	} while ((i /= base) != 0);
-
-	while (padding) {
-		*--ptr = '0';
-		padding--;
-	}
-
-	return ptr;
-}
-
-void uvsprintf(char *buf, const char *fmt, va_list arg) {
-	uint32_t i;
-	char *s;
-
-	while(*fmt) {
-		if (*fmt != '%') {
-			*buf++ = *fmt;
-			fmt++;
-			continue;
-		}
-
-		fmt++;
-		int padding = 0;
-		if (*fmt >= '0' && *fmt <= '9')
-			padding = *fmt++ - '0';
-
-		switch (*fmt) {
-			case 'c': {
-				i = va_arg(arg, int);
-				*buf++ = i;
-				break;
-			}
-
-			case 'u': {
-				i = va_arg(arg, int);
-				char *c = itoa(i, 10, padding);
-				while (*c)
-					*buf++ = *c++;
-				break;
-			}
-
-			case 'x': {
-				i = va_arg(arg, int);
-				char *c = itoa(i, 16, padding);
-				while (*c)
-					*buf++ = *c++;
-				break;
-			}
-
-			case 's': {
-				s = va_arg(arg, char *);
-				while (*s)
-					*buf++ = *s++;
-				break;
-			}
-
-			case '%': {
-				*buf++ = '%';
-				break;
-			}
-		}
-
-		fmt++;
-	}
-
-	*buf++ = '\0';
-}
+#include <vsprintf.h>
 
 void logf(const char *fmt, ...) {
 	va_list arg;
 	va_start(arg, fmt);
 
 	static char buf[512];
-	uvsprintf(buf, fmt, arg);
+	vsprintf(buf, fmt, arg);
 	debug_putstr(buf);
 
 	va_end(arg);
@@ -119,6 +43,21 @@ void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 	uintptr_t ptr = mboot->mmap_addr + VIRT_PHYS_BASE;
 
 	pmm_init((multiboot_memory_map_t *)ptr, mboot->mmap_length / sizeof(multiboot_memory_map_t));
+
+	logf("vsprintf test:\n");
+	logf("%%x, 0xDEADBEEF == %x\n", 0xDEADBEEF);
+	logf("%%lx, 0xDEADBEEFCAFEBABE == %lx\n", 0xDEADBEEFCAFEBABE);
+	logf("%%u, 1337 == %u\n", 1337);
+	logf("%%d, -15 == %d\n", -15);
+	logf("%%o, 0755 == %o\n", 0755);
+	logf("%%c, 'a' == '%c'\n", 'a');
+	logf("%%8x, 0xDEAD == %8x\n", 0xDEAD);
+	logf("%%16lx, 0xDEADBEEFED == %16lx\n", 0xDEADBEEFED);
+	logf("%%08x, 0xDEAD == %08x\n", 0xDEAD);
+	logf("%%016lx, 0xDEADBEEFED == %016lx\n", 0xDEADBEEFED);
+	logf("%%X, 0xDEADBEEF == %X\n", 0xDEADBEEF);
+	logf("%%p, (void *)0xCAFEBABE == %p\n", (void *)0xCAFEBABE);
+	logf("%%P, (void *)0xFFFF800000000000 == %P\n", (void *)0xFFFF800000000000);
 
 	isr_register_handler(0x21, ps2_kbd_handler);
 

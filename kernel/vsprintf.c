@@ -1,11 +1,10 @@
 #include "vsprintf.h"
 #include <ctype.h>
-#include <ctype.c> // XXX: remove
 
 static const char *digits_upper = "0123456789ABCDEF";
 static const char *digits_lower = "0123456789abcdef";
 
-static char *itoa(uint64_t i, int base, int padding, char pad_with, int handle_signed, int upper, int len) {
+static char *num_fmt(uint64_t i, int base, int padding, char pad_with, int handle_signed, int upper, int len) {
 	int neg = (signed)i < 0 && handle_signed;
 
 	if (neg)
@@ -82,7 +81,7 @@ void vsprintf(char *buf, const char *fmt, va_list arg) {
 				else
 					i = va_arg(arg, int);
 
-				char *c = itoa(i, 10, padding, pad_with, 1, 0, -1);
+				char *c = num_fmt(i, 10, padding, pad_with, 1, 0, -1);
 				while (*c)
 					*buf++ = *c++;
 				break;
@@ -94,7 +93,7 @@ void vsprintf(char *buf, const char *fmt, va_list arg) {
 				else
 					i = va_arg(arg, int);
 
-				char *c = itoa(i, 10, padding, pad_with, 0, 0, -1);
+				char *c = num_fmt(i, 10, padding, pad_with, 0, 0, -1);
 				while (*c)
 					*buf++ = *c++;
 				break;
@@ -106,7 +105,7 @@ void vsprintf(char *buf, const char *fmt, va_list arg) {
 				else
 					i = va_arg(arg, int);
 
-				char *c = itoa(i, 8, padding, pad_with, 0, 0, -1);
+				char *c = num_fmt(i, 8, padding, pad_with, 0, 0, -1);
 				while (*c)
 					*buf++ = *c++;
 				break;
@@ -119,7 +118,7 @@ void vsprintf(char *buf, const char *fmt, va_list arg) {
 				else
 					i = va_arg(arg, int);
 
-				char *c = itoa(i, 16, padding, pad_with, 0, upper, wide ? 16 : 8);
+				char *c = num_fmt(i, 16, padding, pad_with, 0, upper, wide ? 16 : 8);
 				while (*c)
 					*buf++ = *c++;
 				break;
@@ -129,7 +128,7 @@ void vsprintf(char *buf, const char *fmt, va_list arg) {
 			case 'p': {
 				i = (uint64_t)(va_arg(arg, void *));
 
-				char *c = itoa(i, 16, padding, pad_with, 0, upper, 16);
+				char *c = num_fmt(i, 16, padding, pad_with, 0, upper, 16);
 				while (*c)
 					*buf++ = *c++;
 				break;
