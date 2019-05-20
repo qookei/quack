@@ -5,6 +5,6 @@
 #include <stdint.h>
 #include <stddef.h>
 
-void vsprintf(char *, const char *, va_list);
+void vsnprintf(char *, size_t, const char *, va_list);
 
 #endif

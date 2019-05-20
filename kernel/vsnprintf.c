@@ -1,5 +1,11 @@
-#include "vsprintf.h"
+#include "vsnprintf.h"
 #include <ctype.h>
+
+#define FMT_PUT(dst, len, c) {\
+				if(!(len)) goto end; \
+				*(dst)++ = (c); \
+				len--; \
+			}
 
 static const char *digits_upper = "0123456789ABCDEF";
 static const char *digits_lower = "0123456789abcdef";
@@ -35,11 +41,11 @@ static char *num_fmt(uint64_t i, int base, int padding, char pad_with, int handl
 	return ptr;
 }
 
-void vsprintf(char *buf, const char *fmt, va_list arg) {
+void vsnprintf(char *buf, size_t len, const char *fmt, va_list arg) {
 	uint64_t i;
 	char *s;
 
-	while(*fmt) {
+	while(*fmt && len) {
 		if (*fmt != '%') {
 			*buf++ = *fmt;
 			fmt++;
@@ -71,7 +77,7 @@ void vsprintf(char *buf, const char *fmt, va_list arg) {
 		switch (*fmt) {
 			case 'c': {
 				i = va_arg(arg, int);
-				*buf++ = i;
+				FMT_PUT(buf, len, i)
 				break;
 			}
 
@@ -82,8 +88,10 @@ void vsprintf(char *buf, const char *fmt, va_list arg) {
 					i = va_arg(arg, int);
 
 				char *c = num_fmt(i, 10, padding, pad_with, 1, 0, -1);
-				while (*c)
-					*buf++ = *c++;
+				while (*c) {
+					FMT_PUT(buf, len, *c);
+					c++;
+				}
 				break;
 			}
 
@@ -94,8 +102,10 @@ void vsprintf(char *buf, const char *fmt, va_list arg) {
 					i = va_arg(arg, int);
 
 				char *c = num_fmt(i, 10, padding, pad_with, 0, 0, -1);
-				while (*c)
-					*buf++ = *c++;
+				while (*c) {
+					FMT_PUT(buf, len, *c);
+					c++;
+				}
 				break;
 			}
 
@@ -106,8 +116,10 @@ void vsprintf(char *buf, const char *fmt, va_list arg) {
 					i = va_arg(arg, int);
 
 				char *c = num_fmt(i, 8, padding, pad_with, 0, 0, -1);
-				while (*c)
-					*buf++ = *c++;
+				while (*c) {
+					FMT_PUT(buf, len, *c);
+					c++;
+				}
 				break;
 			}
 
@@ -119,8 +131,10 @@ void vsprintf(char *buf, const char *fmt, va_list arg) {
 					i = va_arg(arg, int);
 
 				char *c = num_fmt(i, 16, padding, pad_with, 0, upper, wide ? 16 : 8);
-				while (*c)
-					*buf++ = *c++;
+				while (*c) {
+					FMT_PUT(buf, len, *c);
+					c++;
+				}
 				break;
 			}
 
@@ -129,25 +143,36 @@ void vsprintf(char *buf, const char *fmt, va_list arg) {
 				i = (uint64_t)(va_arg(arg, void *));
 
 				char *c = num_fmt(i, 16, padding, pad_with, 0, upper, 16);
-				while (*c)
-					*buf++ = *c++;
+				while (*c) {
+					FMT_PUT(buf, len, *c);
+					c++;
+				}
 				break;
 			}
 
 			case 's': {
 				s = va_arg(arg, char *);
-				while (*s)
-					*buf++ = *s++;
+				while (*s) {
+					FMT_PUT(buf, len, *s);
+					s++;
+				}
 				break;
 			}
 
 			case '%': {
-				*buf++ = '%';
+				FMT_PUT(buf, len, '%');
 				break;
 			}
 		}
 
 		fmt++;
+	}
+
+end:
+	if (!len) {	
+		*buf++ = '.';	// requires extra reserved space
+		*buf++ = '.';
+		*buf++ = '.';
 	}
 
 	*buf++ = '\0';

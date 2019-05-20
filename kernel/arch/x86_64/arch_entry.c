@@ -8,14 +8,14 @@
 #include <pic/pic.h>
 #include <mm/pmm.h>
 #include <mm/mm.h>
-#include <vsprintf.h>
+#include <vsnprintf.h>
 
 void logf(const char *fmt, ...) {
 	va_list arg;
 	va_start(arg, fmt);
 
-	static char buf[512];
-	vsprintf(buf, fmt, arg);
+	static char buf[512 + 16];
+	vsnprintf(buf, 512, fmt, arg);
 	debug_putstr(buf);
 
 	va_end(arg);
