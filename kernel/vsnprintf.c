@@ -180,3 +180,9 @@ end:
 	*buf++ = '\0';
 }
 
+void snprintf(char *buf, size_t len, const char *fmt, ...) {
+	va_list va;
+	va_start(va, fmt);
+	vsnprintf(buf, len, fmt, va);
+	va_end(va);
+}
