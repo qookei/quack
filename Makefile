@@ -29,7 +29,7 @@ endif
 	   kernel/lib/stdlib.o kernel/lib/ctype.o kernel/kheap/liballoc.o kernel/kheap/liballoc_funcs.o \
 	   kernel/panic.o kernel/kmesg.o kernel/sched/elf.o kernel/initrd.o kernel/sched/sched.o kernel/syscall/handlers.o kernel/syscall/syscall.o
 
-OBJS = kernel/vsnprintf.o kernel/lib/ctype.o kernel/lib/string.o kernel/lib/stdlib.o
+OBJS = kernel/vsnprintf.o kernel/lib/ctype.o kernel/lib/string.o kernel/lib/stdlib.o kernel/kmesg.o
 
 LDSCRIPT = $(ARCHDIR)/$(LINKER_SCRIPT)
 

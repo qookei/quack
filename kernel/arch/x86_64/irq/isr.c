@@ -1,10 +1,9 @@
 #include "isr.h"
 #include <irq/idt.h>
 #include <io/port.h>
+#include <kmesg.h>
 
 irq_handler_t irq_handlers[IDT_ENTRIES];
-
-void logf(const char *, ...);		// XXX: remove
 
 void irq_eoi(uint8_t irq) {
 	if (irq >= 0x20 && irq < 0x30) {
@@ -18,9 +17,6 @@ void irq_eoi(uint8_t irq) {
 void dispatch_interrupt(irq_cpu_state_t *state) {
 	uint32_t irq = state->int_no;
 
-	uint32_t ip_high = state->rip >> 32;
-	uint32_t ip_low = state->rip & 0xFFFFFFFF;
-
 	int success = 0;
 	if (irq_handlers[irq])
 		success = irq_handlers[irq](state);
@@ -30,13 +26,13 @@ void dispatch_interrupt(irq_cpu_state_t *state) {
 			// cpu exception
 			if (state->cs == 0x08) {
 				// kernel fault, panic
-				logf("quack: kernel panic!\n");
-				logf("quack: TODO: dump registers and stack!\n");
+				kmesg("irq", "kernel panic!");
+				kmesg("irq", "TODO: dump registers and stack!");
 				while(1) asm volatile("hlt");
 			} else {
 				// user mode
-				logf("quack: user mode panic!\n");
-				logf("quack: how did we get here at this point!\n");
+				kmesg("irq", "user mode panic!");
+				kmesg("irq", "how did we get here at this point!");
 			}
 		}
 	}

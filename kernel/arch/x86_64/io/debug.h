@@ -1,7 +1,6 @@
 #ifndef DEBUG_H
 #define DEBUG_H
 
-void debug_putch(char c);
-void debug_putstr(const char *s);
+void arch_debug_write(char c);
 
 #endif

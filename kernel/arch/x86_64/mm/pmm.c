@@ -1,8 +1,7 @@
 #include "pmm.h"
-
 #include <mm/mm.h>
-
 #include <string.h>
+#include <kmesg.h>
 
 #define PMM_MEMORY_BASE 0x1000000
 
@@ -43,8 +42,6 @@ static int pmm_bitmap_is_free(size_t idx, size_t count) {
 	return 1;
 }
 
-void logf(const char *, ...);			// XXX: remove
-
 static size_t pmm_free_pages = 0;
 static size_t pmm_total_pages = 0;
 
@@ -58,9 +55,9 @@ static uintptr_t pmm_find_avail_memory_top(multiboot_memory_map_t *mmap, size_t 
 	}
 
 	if (!top) {
-		logf("pmm: failed to find top of available memory\n");
+		kmesg("pmm", "failed to find top of available memory");
 	} else {
-		logf("pmm: top of available memory is %016x\n", top);
+		kmesg("pmm", "top of available memory is %016lx", top);
 	}
 
 	return top;
@@ -124,7 +121,7 @@ void pmm_init(multiboot_memory_map_t *mmap, size_t mmap_len) {
 
 	pmm_total_pages = pmm_free_pages;	// all available pages are free
 
-	logf("pmm: done setting up, %u pages free\n", (uint32_t)pmm_free_pages);
+	kmesg("pmm", "done setting up, %lu pages free", pmm_free_pages);
 
 }
 
