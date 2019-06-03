@@ -10,14 +10,13 @@
 static const char *digits_upper = "0123456789ABCDEF";
 static const char *digits_lower = "0123456789abcdef";
 
-static char *num_fmt(uint64_t i, int base, int padding, char pad_with, int handle_signed, int upper, int len) {
+static char *num_fmt(char *buf, size_t buf_len, uint64_t i, int base, int padding, char pad_with, int handle_signed, int upper, int len) {
 	int neg = (signed)i < 0 && handle_signed;
 
 	if (neg)
 		i = (unsigned)(-((signed)i));
 
-	static char buf[50];
-	char *ptr = buf + 49;
+	char *ptr = buf + buf_len - 1;
 	*ptr = '\0';
 
 	const char *digits = upper ? digits_upper : digits_lower;
@@ -28,14 +27,16 @@ static char *num_fmt(uint64_t i, int base, int padding, char pad_with, int handl
 			padding--;
 		if (len > 0)
 			len--;
-	} while ((i /= base) != 0 && (len == -1 || len));
+		buf_len--;
+	} while ((i /= base) != 0 && (len == -1 || len) && buf_len);
 
-	while (padding) {
+	while (padding && buf_len) {
 		*--ptr = pad_with;
 		padding--;
+		buf_len--;
 	}
 
-	if (neg)
+	if (neg && buf_len)
 		*--ptr = '-';
 
 	return ptr;
@@ -44,7 +45,8 @@ static char *num_fmt(uint64_t i, int base, int padding, char pad_with, int handl
 void vsnprintf(char *buf, size_t len, const char *fmt, va_list arg) {
 	uint64_t i;
 	char *s;
-
+	char num_buf[48];
+	
 	while(*fmt && len) {
 		if (*fmt != '%') {
 			*buf++ = *fmt;
@@ -87,7 +89,7 @@ void vsnprintf(char *buf, size_t len, const char *fmt, va_list arg) {
 				else
 					i = va_arg(arg, int);
 
-				char *c = num_fmt(i, 10, padding, pad_with, 1, 0, -1);
+				char *c = num_fmt(num_buf, 48, i, 10, padding, pad_with, 1, 0, -1);
 				while (*c) {
 					FMT_PUT(buf, len, *c);
 					c++;
@@ -101,7 +103,7 @@ void vsnprintf(char *buf, size_t len, const char *fmt, va_list arg) {
 				else
 					i = va_arg(arg, int);
 
-				char *c = num_fmt(i, 10, padding, pad_with, 0, 0, -1);
+				char *c = num_fmt(num_buf, 48, i, 10, padding, pad_with, 0, 0, -1);
 				while (*c) {
 					FMT_PUT(buf, len, *c);
 					c++;
@@ -115,7 +117,7 @@ void vsnprintf(char *buf, size_t len, const char *fmt, va_list arg) {
 				else
 					i = va_arg(arg, int);
 
-				char *c = num_fmt(i, 8, padding, pad_with, 0, 0, -1);
+				char *c = num_fmt(num_buf, 48, i, 8, padding, pad_with, 0, 0, -1);
 				while (*c) {
 					FMT_PUT(buf, len, *c);
 					c++;
@@ -130,7 +132,7 @@ void vsnprintf(char *buf, size_t len, const char *fmt, va_list arg) {
 				else
 					i = va_arg(arg, int);
 
-				char *c = num_fmt(i, 16, padding, pad_with, 0, upper, wide ? 16 : 8);
+				char *c = num_fmt(num_buf, 48, i, 16, padding, pad_with, 0, upper, wide ? 16 : 8);
 				while (*c) {
 					FMT_PUT(buf, len, *c);
 					c++;
@@ -142,7 +144,7 @@ void vsnprintf(char *buf, size_t len, const char *fmt, va_list arg) {
 			case 'p': {
 				i = (uint64_t)(va_arg(arg, void *));
 
-				char *c = num_fmt(i, 16, padding, pad_with, 0, upper, 16);
+				char *c = num_fmt(num_buf, 48, i, 16, padding, pad_with, 0, upper, 16);
 				while (*c) {
 					FMT_PUT(buf, len, *c);
 					c++;
