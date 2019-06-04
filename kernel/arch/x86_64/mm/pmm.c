@@ -122,13 +122,15 @@ void pmm_init(multiboot_memory_map_t *mmap, size_t mmap_len) {
 	pmm_total_pages = pmm_free_pages;	// all available pages are free
 
 	kmesg("pmm", "done setting up, %lu pages free", pmm_free_pages);
-
 }
 
 void *pmm_alloc(size_t count) {
 	size_t idx = 0;
 	while(idx < pmm_bitmap_len) {
-		if (!pmm_bitmap_is_free(idx, count)) continue;
+		if (!pmm_bitmap_is_free(idx, count)) {
+			idx++;
+			continue;
+		}
 		pmm_bit_write(idx, 1, count);
 		if (pmm_total_pages)
 			pmm_free_pages -= count;
