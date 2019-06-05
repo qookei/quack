@@ -89,6 +89,10 @@ init_gdt_ptr:
 	dw init_gdt_end - init_gdt - 1
 	dq init_gdt - KERNEL_VIRTUAL_BASE
 
+init_gdt_ptr_high:
+	dw init_gdt_end - init_gdt - 1
+	dq init_gdt
+
 section .text
 align 4
 
@@ -130,7 +134,9 @@ higher_half_entry:
 	mov rax, higher_half
 	jmp rax
 
-higher_half:	
+higher_half:
+	lgdt [init_gdt_ptr_high]
+
 	mov ax, 0x10
 	mov ds, ax
 	mov es, ax
