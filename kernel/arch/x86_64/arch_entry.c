@@ -6,6 +6,7 @@
 #include <irq/isr.h>
 #include <pic/pic.h>
 #include <mm/pmm.h>
+#include <mm/vmm.h>
 #include <mm/mm.h>
 #include <kmesg.h>
 
@@ -31,6 +32,8 @@ void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 	uintptr_t ptr = mboot->mmap_addr + VIRT_PHYS_BASE;
 
 	pmm_init((multiboot_memory_map_t *)ptr, mboot->mmap_length / sizeof(multiboot_memory_map_t));
+
+	vmm_init();
 
 	isr_register_handler(0x21, ps2_kbd_handler);
 
