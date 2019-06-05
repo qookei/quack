@@ -10,6 +10,8 @@
 #include <mm/mm.h>
 #include <kmesg.h>
 
+#include <util.h>
+
 int ps2_kbd_handler(irq_cpu_state_t *state) {
 	(void)state;
 
@@ -34,6 +36,8 @@ void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 	pmm_init((multiboot_memory_map_t *)ptr, mboot->mmap_length / sizeof(multiboot_memory_map_t));
 
 	vmm_init();
+
+	assert(1 == 2);
 
 	isr_register_handler(0x21, ps2_kbd_handler);
 
