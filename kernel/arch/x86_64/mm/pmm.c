@@ -18,7 +18,7 @@ static int pmm_bit_read(size_t idx) {
 	size_t off = idx / 64;
 	size_t mask = (1 << (idx % 64));
 
-	return (pmm_bitmap[off] & mask) > 0;
+	return (pmm_bitmap[off] & mask) == mask;
 }
 
 static void pmm_bit_write(size_t idx, int bit, size_t count) {
@@ -121,6 +121,8 @@ void pmm_init(multiboot_memory_map_t *mmap, size_t mmap_len) {
 
 	pmm_total_pages = pmm_free_pages;	// all available pages are free
 
+	pmm_alloc((pmm_bitmap_len / 8 + 4095) / 4096);
+
 	kmesg("pmm", "done setting up, %lu pages free", pmm_free_pages);
 }
 
@@ -136,7 +138,7 @@ void *pmm_alloc(size_t count) {
 			pmm_free_pages -= count;
 		return (void *)(idx * PAGE_SIZE);
 	}
-
+	
 	return NULL;
 }
 
