@@ -47,6 +47,10 @@ static inline pt_t *vmm_get_or_alloc_ent(pt_t *tab, size_t off, int flags) {
 	uint64_t ent_addr = tab->ents[off] & VMM_ADDR_MASK;
 	if (!ent_addr) {
 		ent_addr = tab->ents[off] = (uint64_t)pmm_alloc(1);
+		if (!ent_addr) {
+			kmesg("vmm", "failed to allocate a page for a table");
+			return NULL;
+		}
 		tab->ents[off] |= flags | VMM_FLAG_PRESENT;
 		memset((void *)(ent_addr + VIRT_PHYS_BASE), 0, 4096);
 	}
@@ -72,7 +76,7 @@ int vmm_map_pages(pt_t *pml4, void *virt, void *phys, size_t count, int perms) {
 		pt_t *pd_virt = vmm_get_or_alloc_ent(pdp_virt, offs.pdp_off, perms);
 		pt_t *pt_virt = vmm_get_or_alloc_ent(pd_virt, offs.pd_off, perms);
 		pt_virt->ents[offs.pt_off] = (uint64_t)phys | perms | VMM_FLAG_PRESENT;
-	
+
 		virt = (void *)((uintptr_t)virt + 0x1000);
 		phys = (void *)((uintptr_t)phys + 0x1000);
 	}
@@ -183,9 +187,8 @@ pt_t *vmm_new_address_space(void) {
 	pt_t *new_pml4 = pmm_alloc(1);
 	memset((void *)((uintptr_t)new_pml4 + VIRT_PHYS_BASE), 0, 4096);
 
-	//vmm_map_pages(new_pml4, (void *)0xFFFFFFFF80000000, NULL, 1, 3);
-	vmm_map_huge_pages(new_pml4, (void *)0xFFFFFFFF80000000, NULL, 1, 3);
-	//vmm_map_pages(new_pml4, (void *)0xFFFF800000000000, NULL, 32768, 3);
+	vmm_map_huge_pages(new_pml4, (void *)0xFFFFFFFF80000000, NULL, 64, 3);
+	vmm_map_huge_pages(new_pml4, (void *)0xFFFF800000000000, NULL, 512 * 4, 3);
 
 	return new_pml4;
 }

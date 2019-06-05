@@ -13,7 +13,7 @@
 #define VMM_FLAG_WT			(1<<3)
 #define VMM_FLAG_NO_CACHE	(1<<4)
 #define VMM_FLAG_DIRTY		(1<<5)
-#define VMM_FLAG_LARGE		(1<<6)
+#define VMM_FLAG_LARGE		(1<<7)
 
 typedef struct {
 	uint64_t ents[512];
