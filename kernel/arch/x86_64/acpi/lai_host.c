@@ -4,6 +4,8 @@
 #include <kmesg.h>
 #include <io/port.h>
 #include <mm/mm.h>
+#include "acpi.h"
+#include <string.h>
 
 void *laihost_malloc(size_t len) {
 	return kmalloc(len);
@@ -19,18 +21,26 @@ void laihost_free(void *ptr) {
 
 void laihost_log(int level, const char *msg) {
 	(void)level;
-	kmesg("lai", "%s", msg);
+
+	char *buf = kmalloc(strlen(msg));
+	strncpy(buf, msg, strlen(msg) - 1);
+	kmesg("lai", "%s", buf);
+	kfree(buf);
 }
 
 __attribute__((noreturn)) void laihost_panic(const char *msg) {
 	kmesg("lai", "fatal error!");
-	kmesg("lai", "%s", msg);
+
+	char *buf = kmalloc(strlen(msg));
+	strncpy(buf, msg, strlen(msg) - 1);
+	kmesg("lai", "%s", buf);
+	kfree(buf);
+
 	__builtin_trap();
 }
 
 void *laihost_scan(char *sig, size_t idx) {
-	kmesg("laihost", "TODO scan");
-	__builtin_trap();
+	return acpi_find_table(sig, idx);
 }
 
 void *laihost_map(size_t addr, size_t count) {
