@@ -29,7 +29,7 @@ endif
 	   kernel/lib/stdlib.o kernel/lib/ctype.o kernel/kheap/liballoc.o kernel/kheap/liballoc_funcs.o \
 	   kernel/panic.o kernel/kmesg.o kernel/sched/elf.o kernel/initrd.o kernel/sched/sched.o kernel/syscall/handlers.o kernel/syscall/syscall.o
 
-OBJS = kernel/vsnprintf.o kernel/lib/ctype.o kernel/lib/string.o kernel/lib/stdlib.o kernel/kmesg.o kernel/util.o
+OBJS = kernel/vsnprintf.o kernel/lib/ctype.o kernel/lib/string.o kernel/lib/stdlib.o kernel/kmesg.o kernel/util.o kernel/mm/liballoc.o kernel/mm/liballoc_funcs.o
 
 LDSCRIPT = $(ARCHDIR)/$(LINKER_SCRIPT)
 
@@ -55,6 +55,6 @@ FORCE:
 clean:
 	@printf "cleaning\n"
 	-@rm $(OBJS)
-	-@rm kernel.elf
+	-@rm quack.elf
 	make -C kernel/arch/$(ARCH)/ clean
 

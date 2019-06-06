@@ -4,6 +4,8 @@
 #include <string.h>
 #include <kmesg.h>
 
+#include <arch/mm.h>
+
 pt_off_t vmm_virt_to_offs(void *virt) {
 	uintptr_t addr = (uintptr_t)virt;
 
@@ -226,3 +228,77 @@ pt_t *vmm_get_current_context(void) {
 	return (pt_t *)ctx;
 }
 
+void vmm_update_mapping(void *ptr) {
+	asm volatile ("invlpg (%0)" : : "r"(ptr) : "memory");
+}
+
+// arch functions
+// TODO: add locking
+
+int arch_mm_map_kernel(int cpu, void *dst, void *src, size_t size, int flags) {
+	(void)cpu; // TODO: ??
+
+	int arch_flags = (flags & ARCH_MM_FLAGS_WRITE ? VMM_FLAG_WRITE : 0)
+				| (flags & ARCH_MM_FLAGS_USER ? VMM_FLAG_USER : 0)
+				| (flags & ARCH_MM_FLAGS_NO_CACHE ? (VMM_FLAG_NO_CACHE | VMM_FLAG_WT) : 0);
+
+	// TODO: add EXECTUE permission bit support
+
+	return vmm_map_pages(kernel_pml4, dst, src, size, arch_flags);
+}
+
+int arch_mm_unmap_kernel(int cpu, void *dst, size_t size) {
+	(void)cpu;
+	return vmm_unmap_pages(kernel_pml4, dst, size);
+}
+
+uintptr_t arch_mm_get_phys_kernel(int cpu, void *dst) {
+	(void)cpu;
+	return vmm_get_entry(kernel_pml4, dst) & VMM_ADDR_MASK;
+}
+
+int arch_mm_get_flags_kernel(int cpu, void *dst) {
+	(void)cpu;
+	int arch_flags = vmm_get_entry(kernel_pml4, dst) & VMM_FLAG_MASK;
+	int flags = arch_flags ? (ARCH_MM_FLAGS_READ | ARCH_MM_FLAGS_EXECUTE) : 0;
+	if (arch_flags & VMM_FLAG_WRITE) flags |= ARCH_MM_FLAGS_WRITE;
+	if (arch_flags & VMM_FLAG_USER) flags |= ARCH_MM_FLAGS_USER;
+	if (arch_flags & VMM_FLAG_NO_CACHE) flags |= ARCH_MM_FLAGS_NO_CACHE;
+	if (arch_flags & VMM_FLAG_WT) flags |= ARCH_MM_FLAGS_NO_CACHE;
+	return flags;
+}
+
+void *arch_mm_get_ctx_kernel(int cpu) {
+	(void)cpu;
+	return kernel_pml4;
+}
+
+int arch_mm_store_context(void) {
+	vmm_save_context();
+	return 1;
+}
+
+int arch_mm_switch_context(void *ctx) {
+	vmm_set_context(ctx);
+	return 1;
+}
+
+int arch_mm_restore_context(void) {
+	vmm_restore_context();
+	return 1;
+}
+
+// -1 for this CPU
+// -2 for all CPUs
+int arch_mm_update_context_all(int cpu) {
+	(void)cpu; // TODO: handle this
+	pt_t *ctx = vmm_get_current_context();
+	vmm_set_context(ctx);
+	return 1;
+}
+
+int arch_mm_update_context_single(int cpu, void *dst) {
+	(void)cpu; // TODO: handle this
+	vmm_update_mapping(dst);
+	return 1;
+}

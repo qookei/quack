@@ -10,7 +10,7 @@
 #define ARCH_MM_FLAGS_USER			0x08		/* Page is accessible in a lesser privileged mode(user) */
 #define ARCH_MM_FLAGS_NO_CACHE		0x10		/* Page is not cached */
 
-#if ARCH == i386
+#if ARCH == i386 || ARCH == x86_64
 #define ARCH_MM_PAGE_SIZE 0x1000
 #endif
 
@@ -31,9 +31,9 @@ int arch_mm_free_phys(void *mem, size_t blocks);
 
 void *arch_mm_get_ctx_kernel(int cpu);
 
-int arch_mm_push_context();
+int arch_mm_store_context(void);
 int arch_mm_switch_context(void *ctx);
-int arch_mm_pop_context();
+int arch_mm_restore_context(void);
 
 // -1 for this CPU
 // -2 for all CPUs

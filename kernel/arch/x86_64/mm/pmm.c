@@ -3,6 +3,8 @@
 #include <string.h>
 #include <kmesg.h>
 
+#include <arch/mm.h>
+
 #define PMM_MEMORY_BASE 0x1000000
 
 #define ROUND_UP(N, S) ((((N) + (S) - 1) / (S)) * (S))
@@ -146,4 +148,15 @@ void pmm_free(void *mem, size_t count) {
 	size_t idx = (size_t)mem / PAGE_SIZE;
 	pmm_bit_write(idx, 0, count);
 	pmm_free_pages += count;
+}
+
+// arch functions
+
+void *arch_mm_alloc_phys(size_t blocks) {
+	return pmm_alloc(blocks);
+}
+
+int arch_mm_free_phys(void *mem, size_t blocks) {
+	pmm_free(mem, blocks);
+	return 1;
 }
