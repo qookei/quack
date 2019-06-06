@@ -42,10 +42,12 @@ static char *num_fmt(char *buf, size_t buf_len, uint64_t i, int base, int paddin
 	return ptr;
 }
 
+#define NUM_BUF_LEN 48
+
 void vsnprintf(char *buf, size_t len, const char *fmt, va_list arg) {
 	uint64_t i;
 	char *s;
-	char num_buf[48];
+	char num_buf[NUM_BUF_LEN];
 	
 	while(*fmt && len) {
 		if (*fmt != '%') {
@@ -89,7 +91,7 @@ void vsnprintf(char *buf, size_t len, const char *fmt, va_list arg) {
 				else
 					i = va_arg(arg, int);
 
-				char *c = num_fmt(num_buf, 48, i, 10, padding, pad_with, 1, 0, -1);
+				char *c = num_fmt(num_buf, NUM_BUF_LEN, i, 10, padding, pad_with, 1, 0, -1);
 				while (*c) {
 					FMT_PUT(buf, len, *c);
 					c++;
@@ -103,7 +105,7 @@ void vsnprintf(char *buf, size_t len, const char *fmt, va_list arg) {
 				else
 					i = va_arg(arg, int);
 
-				char *c = num_fmt(num_buf, 48, i, 10, padding, pad_with, 0, 0, -1);
+				char *c = num_fmt(num_buf, NUM_BUF_LEN, i, 10, padding, pad_with, 0, 0, -1);
 				while (*c) {
 					FMT_PUT(buf, len, *c);
 					c++;
@@ -117,7 +119,7 @@ void vsnprintf(char *buf, size_t len, const char *fmt, va_list arg) {
 				else
 					i = va_arg(arg, int);
 
-				char *c = num_fmt(num_buf, 48, i, 8, padding, pad_with, 0, 0, -1);
+				char *c = num_fmt(num_buf, NUM_BUF_LEN, i, 8, padding, pad_with, 0, 0, -1);
 				while (*c) {
 					FMT_PUT(buf, len, *c);
 					c++;
@@ -132,7 +134,7 @@ void vsnprintf(char *buf, size_t len, const char *fmt, va_list arg) {
 				else
 					i = va_arg(arg, int);
 
-				char *c = num_fmt(num_buf, 48, i, 16, padding, pad_with, 0, upper, wide ? 16 : 8);
+				char *c = num_fmt(num_buf, NUM_BUF_LEN, i, 16, padding, pad_with, 0, upper, wide ? 16 : 8);
 				while (*c) {
 					FMT_PUT(buf, len, *c);
 					c++;
@@ -144,7 +146,7 @@ void vsnprintf(char *buf, size_t len, const char *fmt, va_list arg) {
 			case 'p': {
 				i = (uint64_t)(va_arg(arg, void *));
 
-				char *c = num_fmt(num_buf, 48, i, 16, padding, pad_with, 0, upper, 16);
+				char *c = num_fmt(num_buf, NUM_BUF_LEN, i, 16, padding, pad_with, 0, upper, 16);
 				while (*c) {
 					FMT_PUT(buf, len, *c);
 					c++;
