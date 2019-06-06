@@ -23,6 +23,7 @@ void laihost_log(int level, const char *msg) {
 	(void)level;
 
 	char *buf = kmalloc(strlen(msg));
+	memset(buf, 0, strlen(msg));
 	strncpy(buf, msg, strlen(msg) - 1);
 	kmesg("lai", "%s", buf);
 	kfree(buf);
@@ -32,6 +33,7 @@ __attribute__((noreturn)) void laihost_panic(const char *msg) {
 	kmesg("lai", "fatal error!");
 
 	char *buf = kmalloc(strlen(msg));
+	memset(buf, 0, strlen(msg));
 	strncpy(buf, msg, strlen(msg) - 1);
 	kmesg("lai", "%s", buf);
 	kfree(buf);
