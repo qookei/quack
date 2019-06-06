@@ -1,0 +1,3 @@
+[submodule "lai"]
+	path = kernel/arch/x86_64/acpi/lai
+	url = https://github.com/qword-os/lai

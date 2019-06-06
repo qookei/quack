@@ -8,16 +8,11 @@
 #include <mm/pmm.h>
 #include <mm/vmm.h>
 #include <mm/mm.h>
+#include <acpi/acpi.h>
+
 #include <kmesg.h>
-
 #include <util.h>
-
-int ps2_kbd_handler(irq_cpu_state_t *state) {
-	(void)state;
-
-	uint8_t scancode = inb(0x60);
-	kmesg("kbd", "%x ", scancode);
-}
+#include <mm/heap.h>
 
 void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 	if (magic != 0x2BADB002) {
@@ -37,11 +32,7 @@ void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 
 	vmm_init();
 
-	assert(1 == 2);
-
-	isr_register_handler(0x21, ps2_kbd_handler);
-
-	asm volatile("sti");
+	acpi_init();
 
 	while(1);
 }
