@@ -74,6 +74,8 @@ void acpi_init(void) {
 	lai_create_namespace();
 	
 	kmesg("acpi", "init done");
+
+	lai_enter_sleep(5);
 }
 
 static void *acpi_find_dsdt(void) {

@@ -9,12 +9,15 @@
 #include <mm/vmm.h>
 #include <mm/mm.h>
 #include <acpi/acpi.h>
+#include <io/vga.h>
 
 #include <kmesg.h>
 #include <util.h>
 #include <mm/heap.h>
 
 void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
+	vga_init();
+
 	if (magic != 0x2BADB002) {
 		kmesg("kernel", "signature %x does not match 0x2BADB002", magic);
 	}
@@ -29,7 +32,7 @@ void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 	uintptr_t ptr = mboot->mmap_addr + VIRT_PHYS_BASE;
 
 	pmm_init((multiboot_memory_map_t *)ptr, mboot->mmap_length / sizeof(multiboot_memory_map_t));
-
+	
 	vmm_init();
 
 	acpi_init();

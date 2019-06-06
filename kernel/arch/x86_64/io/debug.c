@@ -1,6 +1,7 @@
 #include "debug.h"
 #include <io/port.h>
 #include <arch/io.h>
+#include <io/vga.h>
 
 static int debug_port_exists = -1;
 
@@ -14,4 +15,5 @@ void arch_debug_write(char c) {
 	#else
 	(void)c;
 	#endif
+	vga_putch(c);
 }
