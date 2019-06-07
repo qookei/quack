@@ -6,6 +6,7 @@
 #include <mm/mm.h>
 #include "acpi.h"
 #include <string.h>
+#include <io/pci.h>
 
 void *laihost_malloc(size_t len) {
 	return kmalloc(len);
@@ -74,8 +75,14 @@ uint32_t laihost_ind(uint16_t port) {
 	return inl(port);
 }
 
-/* TODO: implement this once PCI stuff is there
-void laihost_pci_write(uint8_t, uint8_t, uint8_t, uint16_t, uint32_t);
-uint32_t laihost_pci_read(uint8_t, uint8_t, uint8_t, uint16_t);
+void laihost_pci_write(uint8_t bus, uint8_t fn, uint8_t dev, uint16_t off, uint32_t val) {
+	pci_write_word(bus, dev, fn, off, val);
+}
+
+uint32_t laihost_pci_read(uint8_t bus, uint8_t fn, uint8_t dev, uint16_t off) {
+	return pci_read_word(bus, dev, fn, off);
+}
+
+/* TODO: implement this once timer stuff is implemented
 void laihost_sleep(uint64_t);
 */

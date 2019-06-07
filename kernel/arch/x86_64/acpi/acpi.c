@@ -63,7 +63,7 @@ static rsdt_t *rsdt;
 
 void acpi_init(void) {
 	void *rsdt_ptr = acpi_find_rsdp(0x80000, 0x20000);
-	if (!rsdt_ptr) rsdt_ptr = acpi_find_rsdp(0xf0000, 0x10000);
+	if (!rsdt_ptr) rsdt_ptr = acpi_find_rsdp(0xe0000, 0x20000);
 	if (!rsdt_ptr) {
 		kmesg("acpi", "failed to find rsdp!");
 		__builtin_trap();
@@ -74,8 +74,6 @@ void acpi_init(void) {
 	lai_create_namespace();
 	
 	kmesg("acpi", "init done");
-
-	lai_enter_sleep(5);
 }
 
 static void *acpi_find_dsdt(void) {
