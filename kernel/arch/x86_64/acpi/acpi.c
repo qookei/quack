@@ -5,6 +5,7 @@
 #include <mm/mm.h>
 #include <string.h>
 #include <lai/core.h>
+#include <irq/isr.h>
 
 typedef struct {
 	char sig[8];
@@ -59,6 +60,30 @@ static void *acpi_find_rsdp(uintptr_t region_start, size_t region_len) {
 	return NULL;
 }
 
+static uint16_t acpi_get_sci_vector(void) {
+	acpi_fadt_t *fadt;
+	if ((fadt = acpi_find_table("FACP", 0))) {
+		return fadt->sci_irq;
+	}
+
+	return 0;
+}
+
+int acpi_sci_handler(irq_cpu_state_t *state) {
+	(void)state;
+
+	uint16_t ev = lai_get_sci_event();
+	
+	const char *ev_name = "?";
+	if (ev & ACPI_POWER_BUTTON) ev_name = "power button";
+	if (ev & ACPI_SLEEP_BUTTON) ev_name = "sleep button";
+	if (ev & ACPI_WAKE) ev_name = "sleep wake up";
+
+	kmesg("acpi", "a sci event has occured: %04x(%s)", ev, ev_name);
+	
+	return 1;
+}
+
 static rsdt_t *rsdt;
 
 void acpi_init(void) {
@@ -70,8 +95,17 @@ void acpi_init(void) {
 	}
 
 	rsdt = (rsdt_t *)((uintptr_t)rsdt_ptr + VIRT_PHYS_BASE);
-	
+
 	lai_create_namespace();
+
+	uint16_t sci_irq;
+	if ((sci_irq = acpi_get_sci_vector())) {
+		isr_register_handler(0x20 + sci_irq, acpi_sci_handler);
+		kmesg("acpi", "sci interrupt vector: %u", sci_irq);
+	} else
+		kmesg("acpi", "there is no defined sci interrupt vector");
+
+	lai_enable_acpi(1);
 	
 	kmesg("acpi", "init done");
 }

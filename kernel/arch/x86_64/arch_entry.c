@@ -37,5 +37,7 @@ void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 
 	acpi_init();
 
+	asm volatile ("sti");
+
 	while(1);
 }

@@ -83,6 +83,4 @@ uint32_t laihost_pci_read(uint8_t bus, uint8_t fn, uint8_t dev, uint16_t off) {
 	return pci_read_word(bus, dev, fn, off);
 }
 
-/* TODO: implement this once timer stuff is implemented
-void laihost_sleep(uint64_t);
-*/
+void laihost_sleep(uint64_t time) {}
