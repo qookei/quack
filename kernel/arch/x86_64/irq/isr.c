@@ -2,6 +2,7 @@
 #include <irq/idt.h>
 #include <io/port.h>
 #include <kmesg.h>
+#include <cpu/cpu.h>
 
 irq_handler_t irq_handlers[IDT_ENTRIES];
 
@@ -27,7 +28,8 @@ void dispatch_interrupt(irq_cpu_state_t *state) {
 			if (state->cs == 0x08) {
 				// kernel fault, panic
 				kmesg("irq", "kernel panic!");
-				kmesg("irq", "TODO: dump registers and stack!");
+				cpu_dump_regs_irq(state);
+				kmesg("irq", "TODO: dump stack!");
 				while(1) asm volatile("hlt");
 			} else {
 				// user mode

@@ -2,6 +2,7 @@ include rules.mk
 include acpi/Makefile
 
 OBJS = boot/boot.o arch_entry.o \
+	   cpu/cpu.o \
 	   io/port.o io/debug.o io/vga.o io/pci.o \
 	   irq/idt.o irq/irq_handler.o irq/isr.o irq/pic/pic.o \
 	   mm/pmm.o mm/vmm.o \

@@ -96,6 +96,8 @@ void acpi_init(void) {
 
 	rsdt = (rsdt_t *)((uintptr_t)rsdt_ptr + VIRT_PHYS_BASE);
 
+	lai_enable_tracing(1);
+
 	lai_create_namespace();
 
 	uint16_t sci_irq;
@@ -106,7 +108,7 @@ void acpi_init(void) {
 		kmesg("acpi", "there is no defined sci interrupt vector");
 
 	lai_enable_acpi(1);
-	
+
 	kmesg("acpi", "init done");
 }
 

@@ -4,7 +4,7 @@
 #include <multiboot.h>
 #include <irq/idt.h>
 #include <irq/isr.h>
-#include <pic/pic.h>
+#include <irq/pic/pic.h>
 #include <mm/pmm.h>
 #include <mm/vmm.h>
 #include <mm/mm.h>

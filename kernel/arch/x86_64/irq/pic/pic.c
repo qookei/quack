@@ -21,8 +21,6 @@
 #define ICW4_SFNM	0x10		/* Special fully nested (not) */
 
 void pic_remap(uint8_t offset1, uint8_t offset2) {
-	uint8_t a1, a2;
- 
 	outb(PIC1_COMMAND, ICW1_INIT+ICW1_ICW4);  // starts the initialization sequence (in cascade mode)
 	io_wait();
 	outb(PIC2_COMMAND, ICW1_INIT+ICW1_ICW4);
