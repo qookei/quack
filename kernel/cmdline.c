@@ -91,18 +91,6 @@ void cmdline_init(char *cmdline) {
 
 		c = strchr(c, ' ') + 1;
 	}
-
-	for (size_t i = 0; i < arg_count; i++) {
-		cmd_arg_t a = arg_list[i];
-		if (a.value_count) {
-			kmesg("cmdline", "flag '%s' is set and has %u value(s) assigned:", a.key, a.value_count);
-			for (size_t j = 0; j < a.value_count; j++) {
-				kmesg("cmdline", "\t\t'%s'%s", a.values[j], j != a.value_count - 1 ? "," : "");
-			}
-		} else {
-			kmesg("cmdline", "flag '%s' is set and has no values assigned", a.key);
-		}
-	}
 }
 
 int cmdline_is_enabled(const char *name) {
