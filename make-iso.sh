@@ -1,5 +1,7 @@
 #!/bin/sh
 
+make -C kernel $@
+
 mkdir -p isodir/boot/grub
 
 cat >isodir/boot/grub/grub.cfg << EOL
@@ -10,6 +12,6 @@ menuentry "quack - default" {
 }
 EOL
 
-cp quack.elf isodir/boot/quack.elf
+cp kernel/quack.elf isodir/boot/quack.elf
 grub-mkrescue -o quack.iso isodir > /dev/null
 rm -r isodir
