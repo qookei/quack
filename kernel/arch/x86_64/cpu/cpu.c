@@ -1,8 +1,7 @@
 #include "cpu.h"
-
 #include <irq/isr.h>
-
 #include <kmesg.h>
+#include <arch/cpu.h>
 
 void cpu_dump_regs_irq(irq_cpu_state_t *state) {
 	kmesg("cpu", "rax: %016lx rbx: %016lx", state->rax, state->rbx);
@@ -14,4 +13,44 @@ void cpu_dump_regs_irq(irq_cpu_state_t *state) {
 	kmesg("cpu", "r13: %016lx r12: %016lx", state->r13, state->r12);
 	kmesg("cpu", "r11: %016lx r10: %016lx", state->r11, state->r10);
 	kmesg("cpu", "r9:  %016lx r8:  %016lx", state->r9,  state->r8);
+	kmesg("cpu", "cs:  %016x ss:  %016x", state->cs,  state->ss);
+	
+	uintptr_t cr2;
+	asm volatile ("mov %%cr2, %0" : "=r"(cr2));
+
+	kmesg("cpu", "cr2: %016lx", cr2);
+}
+
+void cpu_trace_stack(void) {
+	uintptr_t *bp;
+	asm volatile ("mov %%rbp, %0" : "=r"(bp));
+
+	size_t idx = 0;
+
+	//if (!bp[0]) {
+	//	kmesg("cpu", "no traces on stack :thonk:");
+	//	return;
+	//}
+
+	//bp = (uintptr_t *)bp[0];
+
+	for (uintptr_t ip = bp[1]; bp; ip = bp[1], bp = (uintptr_t *)bp[0])
+		kmesg("cpu", "#%lu: [%016lx]", idx++, ip);
+}
+
+// -----
+
+void arch_cpu_dump_state(void *state) {
+	cpu_dump_regs_irq((irq_cpu_state_t *)state);
+}
+
+void arch_cpu_trace_stack(void) {
+	cpu_trace_stack();
+}
+
+void arch_cpu_halt_forever(void) {
+	asm volatile (	"cli\n"
+					"1:\n"
+						"hlt\n"
+						"jmp 1b" : : : "memory");
 }
