@@ -3,25 +3,9 @@
 static void *initrd_buf;
 static size_t initrd_size;
 
-void initrd_init(multiboot_module_t *mod) {
-	uintptr_t start_addr = mod->mod_start;
-	uintptr_t end_addr = mod->mod_end - 1;
-	size_t size = end_addr - start_addr + 1;
-
-	size_t page_size = (size + 0xFFF) / 0x1000 * 0x1000;
-
-	for (size_t i = 0; i <= page_size; i += 0x1000) {
-		map_page((void*)((start_addr & 0xFFFFF000) + i), (void*)(0xE0000000 + i), 0x3);
-	}
-
-	initrd_buf = kmalloc(size);
-	memcpy(initrd_buf, (void *)0xE0000000, size);
-
-	initrd_size = size;
-
-	for (size_t i = 0; i <= page_size; i += 0x1000) {
-		unmap_page((void*)(0xE0000000 + i));
-	}
+void initrd_init(void *_initrd_buf, size_t _initrd_size) {
+	initrd_buf = _initrd_buf;
+	initrd_size = _initrd_size;
 }
 
 size_t oct_to_dec(char *string) {
