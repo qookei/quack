@@ -1,8 +1,6 @@
-#ifndef PANIC
-#define PANIC
+#ifndef PANIC_H
+#define PANIC_H
 
-//#include <interrupt/isr.h>
-
-void panic(const char *, void *, int, int);
+void panic(void *, const char *, ...);
 
 #endif

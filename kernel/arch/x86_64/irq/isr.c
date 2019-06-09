@@ -2,6 +2,7 @@
 #include <irq/idt.h>
 #include <io/port.h>
 #include <kmesg.h>
+#include <panic.h>
 #include <cpu/cpu.h>
 
 irq_handler_t irq_handlers[IDT_ENTRIES];
@@ -15,6 +16,13 @@ void irq_eoi(uint8_t irq) {
 	}
 }
 
+static const char *exc_names[] = {
+		"#DE", "#DB", "NMI", "#BP", "#OF", "#BR", "#UD", "#NM",
+		"#DF", "-", "#TS", "#NP", "#SS", "#GP", "#PF", "-",
+		"#MF", "#AC", "#MC", "#XM", "#VE", "-", "-", "-",
+		"-", "-", "-", "-", "-", "-", "#SX", "-", "-"
+};
+
 void dispatch_interrupt(irq_cpu_state_t *state) {
 	uint32_t irq = state->int_no;
 
@@ -26,11 +34,7 @@ void dispatch_interrupt(irq_cpu_state_t *state) {
 		if (irq < 0x20) {
 			// cpu exception
 			if (state->cs == 0x08) {
-				// kernel fault, panic
-				kmesg("irq", "kernel panic!");
-				cpu_dump_regs_irq(state);
-				kmesg("irq", "TODO: dump stack!");
-				while(1) asm volatile("hlt");
+				panic(state, "unhandled exception %s (%u)", exc_names[irq], irq);
 			} else {
 				// user mode
 				kmesg("irq", "user mode panic!");

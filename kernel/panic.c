@@ -1,32 +1,28 @@
 #include "panic.h"
-//#include <interrupt/isr.h>
-#include <trace/stacktrace.h>
-//#include <paging/paging.h>
+#include <arch/cpu.h>
 #include <kmesg.h>
+#include <stdarg.h>
+#include <string.h>
+#include <vsnprintf.h>
 
-void panic(const char *message, void *state, int regs, int pf_error) {
+void panic(void *state, const char *message, ...) {
+	va_list va;
+	static char buf[512 + 16];
+	memset(buf, 0, 512 + 16);
 
-	//uint32_t cr3 = get_cr3();
-
-	//set_cr3(def_cr3());
+	va_start(va, message);
+	vsnprintf(buf, 512, message, va);
+	va_end(va);
 
 	kmesg("kernel", "Kernel panic!");
-	kmesg("kernel", "Message: '%s'", message);
-	if (regs) {
-		uint32_t fault_addr;
-		asm volatile("mov %%cr2, %0" : "=r" (fault_addr));
-		if (pf_error) {
-			kmesg("kernel", "cr2: %08x", fault_addr);
-			//kmesg("kernel", "cr3: %08x", cr3);
-		}
-		//kmesg("kernel", "eax: %08x ebx:    %08x ecx: %08x edx: %08x ebp: %08x", state->eax, state->ebx, state->ecx, state->edx, state->ebp);
-		//kmesg("kernel", "eip: %08x eflags: %08x esp: %08x edi: %08x esi: %08x", state->eip, state->eflags, state->esp, state->edi, state->esi);
-		//kmesg("kernel", "cs: %04x ds: %04x", state->cs, state->ds);
-	}
+	kmesg("kernel", "Message: '%s'", buf);
 
-	stack_trace(20);
+	if (state)
+		arch_cpu_dump_state(state);
+
+	arch_cpu_trace_stack();
 
 	kmesg("kernel", "halting");
 
-	asm volatile ("1:\nhlt\njmp 1b");
+	arch_cpu_halt_forever();
 }
