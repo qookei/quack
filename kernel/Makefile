@@ -31,7 +31,8 @@ endif
 
 OBJS = vsnprintf.o lib/ctype.o lib/string.o \
 	   lib/stdlib.o kmesg.o util.o \
-	   mm/liballoc.o mm/liballoc_funcs.o panic.o
+	   mm/liballoc.o mm/liballoc_funcs.o panic.o \
+	   cmdline.o
 
 LDSCRIPT = $(ARCHDIR)/$(LINKER_SCRIPT)
 
