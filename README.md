@@ -32,14 +32,14 @@ $ export ARCH=x86_64
 To see a list of architectures, either look in the `kernel/arch` directory or run `make` without selecting an architecture, which should look something like this:
 
 ```
-$ make
+$ make -C kernel
 Makefile:10: *** Please select an architecture, available architectures:  i386  x86_64.  Stop.
 ```
 
 Afterwards, you're ready to build the kernel.
 
 ```
-$ make
+$ make -C kernel
 ```
 
 The whole process looks like this:
@@ -48,7 +48,7 @@ The whole process looks like this:
 $ git clone https://gitlab.com/qookei/quack.git
 $ cd quack
 $ export ARCH=x86_64
-$ make
+$ make -C kernel
 ```
 
 After that's done, you should have a `quack.elf` file in the project directory.
