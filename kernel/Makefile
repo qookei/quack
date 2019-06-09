@@ -4,13 +4,13 @@ ifndef OLEVEL
 OLEVEL = 2
 endif
 
-ARCHS = $(subst kernel/arch/,, $(sort $(patsubst kernel/arch/%/, %, $(dir $(wildcard kernel/arch/*/)))))
+ARCHS = $(subst arch/,, $(sort $(patsubst arch/%/, %, $(dir $(wildcard arch/*/)))))
 
 ifndef ARCH
 $(error Please select an architecture, available architectures: $(ARCHS))
 endif
 
-ARCHDIR = kernel/arch/$(ARCH)
+ARCHDIR = arch/$(ARCH)
 
 include $(ARCHDIR)/rules.mk
 
@@ -29,13 +29,13 @@ endif
 	   kernel/lib/stdlib.o kernel/lib/ctype.o kernel/kheap/liballoc.o kernel/kheap/liballoc_funcs.o \
 	   kernel/panic.o kernel/kmesg.o kernel/sched/elf.o kernel/initrd.o kernel/sched/sched.o kernel/syscall/handlers.o kernel/syscall/syscall.o
 
-OBJS = kernel/vsnprintf.o kernel/lib/ctype.o kernel/lib/string.o \
-	   kernel/lib/stdlib.o kernel/kmesg.o kernel/util.o \
-	   kernel/mm/liballoc.o kernel/mm/liballoc_funcs.o kernel/panic.o
+OBJS = vsnprintf.o lib/ctype.o lib/string.o \
+	   lib/stdlib.o kmesg.o util.o \
+	   mm/liballoc.o mm/liballoc_funcs.o panic.o
 
 LDSCRIPT = $(ARCHDIR)/$(LINKER_SCRIPT)
 
-kernel.elf: $(OBJS) $(ARCHDIR)/$(ARCH_OBJ)
+quack.elf: $(OBJS) $(ARCHDIR)/$(ARCH_OBJ)
 	@printf "LINK\t\t%s\n" $@
 	@$(CC) -T $(LDSCRIPT) -o quack.elf $^ $(CFLAGS)
 
@@ -48,7 +48,7 @@ kernel.elf: $(OBJS) $(ARCHDIR)/$(ARCH_OBJ)
 	@$(ASM) -felf32 -F dwarf $< -o $@ $(ASMFLAGS)
 
 $(ARCHDIR)/$(ARCH_OBJ): FORCE
-	@make -C kernel/arch/$(ARCH)/
+	@make -C $(ARCHDIR)
 
 FORCE:
 
@@ -58,5 +58,5 @@ clean:
 	@printf "cleaning\n"
 	-@rm $(OBJS)
 	-@rm quack.elf
-	make -C kernel/arch/$(ARCH)/ clean
+	make -C $(ARCHDIR) clean
 
