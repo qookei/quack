@@ -10,13 +10,34 @@ quack is a microkernel based operating system. It currently supports i386 and x8
 - for x86\_64:
 	- `x86_64-elf` GCC and Binutils
 	- `nasm`
-- `make`
+- `meson`, `ninja`, `python`
 
 To generate a bootable ISO image, you need:
 - `grub-mkrescue` and everything else needed to use it(`mkisofs`, `xorriso`, etc.)
 
+### Supported architectures
+quack currently supports 2 architectures: i386 and x86\_64. Below is a list of architectures and paths(relative to project root) to their cross files(required for building)
+- x86\_64 - `kernel/arch/x86_64-cross-file`
+- i386 - not yet made, will be `kernel/arch/i386-cross-file`
+
 ### Instructions
-Building is simple and only requires a few steps.
+
+#### TL;DR
+
+The whole process looks like this:
+
+```
+$ git clone https://gitlab.com/qookei/quack.git
+$ cd quack
+$ mkdir build
+$ cd build
+$ meson ../kernel --cross-file <cross file>
+$ ninja
+```
+
+For explanations, refer to the next section.
+
+#### Step explanations
 
 First, clone the repo and enter the directory:
 ```
@@ -24,54 +45,42 @@ $ git clone https://gitlab.com/qookei/quack.git
 $ cd quack
 ```
 
-Then select the architecture by exporting an environment variable. For this example x86\_64 is chosen.
+To build the kernel, first create a build directory and enter it:
 ```
-$ export ARCH=x86_64
-```
-
-To see a list of architectures, either look in the `kernel/arch` directory or run `make` without selecting an architecture, which should look something like this:
-
-```
-$ make -C kernel
-Makefile:10: *** Please select an architecture, available architectures:  i386  x86_64.  Stop.
+$ mkdir build
+$ cd build
 ```
 
-Afterwards, you're ready to build the kernel.
-
+Then, generate the build script with Meson:
 ```
-$ make -C kernel
-```
-
-The whole process looks like this:
-
-```
-$ git clone https://gitlab.com/qookei/quack.git
-$ cd quack
-$ export ARCH=x86_64
-$ make -C kernel
+$ meson ../kernel --cross-file <cross file>
 ```
 
-After that's done, you should have a `quack.elf` file in the project directory.
+Each supported architecture has it's own cross file. Using a specific cross file means building quack for that architecture.
+For paths to cross files refer to the list in the section above.
+
+For example, when building the kernel for x86\_64, the `meson` command would look like this:
+```
+$ meson ../kernel --cross-file ../kernel/arch/x86_64/cross-file.build
+```
+
+Afterwards, you're ready to build the kernel using Ninja:
+```
+$ ninja
+```
+
+After that's done, you should have a `quack.elf` file in the build directory.
 If you built quack for the i386 or x86\_64 target, you can optionally generate a bootable ISO image using the following command:
 
 ```
-$ ./make-iso.sh
+$ ../make-iso.sh
 ```
 
 This should produce `quack.iso` in the current directory.
 To run this image, preferably use qemu like so:
-
 ```
 $ qemu-system-x86_64 -cdrom quack.iso -debugcon stdio
 ```
-
-Instead of generating an ISO image, you can also directly boot the OS in qemu(i386 only) using:
-
-```
-$ ./run.sh
-```
-
-You can pass other arguments to this script and they'll be passed directly to qemu.
 
 ## Reporting issues
 
@@ -92,9 +101,9 @@ kernel: halting
 Userspace issues on the other hand don't have any unified form. They commonly can show as register dumps or assertion failures.
 
 ## Planned features
- - fully working x86\_64 and i386 ports
- - a generic device management and resource allocation system
- - a [mlibc](https://github.com/managarm/mlibc) port
- - device drivers for common devices like ATA hard disks, PS/2 keyboards and mice, USB, some (virtualized) graphics adapters
- - an nice and useable user space
- - networking
+- fully working x86\_64 and i386 ports
+- a generic device management and resource allocation system
+- a [mlibc](https://github.com/managarm/mlibc) port
+- device drivers for common devices like ATA hard disks, PS/2 keyboards and mice, USB, some (virtualized) graphics adapters
+- an nice and useable user space
+- networking
