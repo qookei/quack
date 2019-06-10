@@ -14,6 +14,7 @@
 #include <kmesg.h>
 #include <util.h>
 #include <mm/heap.h>
+#include <cmdline.h>
 
 void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 	vga_init();
@@ -34,6 +35,8 @@ void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 	pmm_init((multiboot_memory_map_t *)ptr, mboot->mmap_length / sizeof(multiboot_memory_map_t));
 	
 	vmm_init();
+
+	cmdline_init((void *)(VIRT_PHYS_BASE + mboot->cmdline));
 
 	acpi_init();
 

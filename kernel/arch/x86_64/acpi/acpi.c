@@ -6,6 +6,7 @@
 #include <string.h>
 #include <lai/core.h>
 #include <irq/isr.h>
+#include <cmdline.h>
 
 typedef struct {
 	char sig[8];
@@ -14,18 +15,6 @@ typedef struct {
 	uint8_t rev;
 	uint32_t rsdt_addr;
 } rsdp_t;
-
-typedef struct {
-	char sig[4];
-	uint32_t len;
-	uint8_t rev;
-	uint8_t checksum;
-	char oemid[6];
-	char oemid_table[6];
-	uint32_t oem_rev;
-	uint32_t creator_id;
-	uint32_t creator_rev;
-} sdt_t;
 
 typedef struct {
 	sdt_t sdt;
@@ -87,6 +76,11 @@ int acpi_sci_handler(irq_cpu_state_t *state) {
 static rsdt_t *rsdt;
 
 void acpi_init(void) {
+	if (cmdline_has_value("acpi", "disable")) {
+		kmesg("acpi", "disabled by user");
+		return;
+	}
+
 	void *rsdt_ptr = acpi_find_rsdp(0x80000, 0x20000);
 	if (!rsdt_ptr) rsdt_ptr = acpi_find_rsdp(0xe0000, 0x20000);
 	if (!rsdt_ptr) {
@@ -96,7 +90,10 @@ void acpi_init(void) {
 
 	rsdt = (rsdt_t *)((uintptr_t)rsdt_ptr + VIRT_PHYS_BASE);
 
-	lai_enable_tracing(1);
+	if (cmdline_has_value("acpi", "debug")) {
+		kmesg("acpi", "debugging enabled by user");
+		lai_enable_tracing(1);
+	}
 
 	lai_create_namespace();
 
@@ -108,6 +105,8 @@ void acpi_init(void) {
 		kmesg("acpi", "there is no defined sci interrupt vector");
 
 	lai_enable_acpi(1);
+
+	madt_init();
 
 	kmesg("acpi", "init done");
 }

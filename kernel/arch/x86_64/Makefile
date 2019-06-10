@@ -6,7 +6,7 @@ OBJS = boot/boot.o arch_entry.o \
 	   io/port.o io/debug.o io/vga.o io/pci.o \
 	   irq/idt.o irq/irq_handler.o irq/isr.o irq/pic/pic.o \
 	   mm/pmm.o mm/vmm.o \
-	   acpi/lai_host.o acpi/acpi.o $(LAI_OBJECTS) \
+	   acpi/lai_host.o acpi/acpi.o acpi/madt.o $(LAI_OBJECTS) \
 
 OWN_CFLAGS = -I../.. -I.. -I../../lib -I. -I$(LAI_INCLUDE)
 
