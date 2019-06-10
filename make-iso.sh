@@ -1,7 +1,5 @@
 #!/bin/sh
 
-make -C kernel $@
-
 mkdir -p isodir/boot/grub
 
 cat >isodir/boot/grub/grub.cfg << EOL
