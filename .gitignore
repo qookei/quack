@@ -2,8 +2,6 @@ isodir/*
 quack.iso
 quack.elf
 **.o
-serial.txt
 initrd/out/*
 initrd/initrd
-config.mk
-tags
+build/
