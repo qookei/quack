@@ -43,16 +43,16 @@ static void lapic_nmi_set(uint8_t vector, uint8_t lint, uint16_t flags) {
 static void lapic_nmi_setup(void) {
 	madt_nmi_t *nmis = madt_get_nmis();
 	for (size_t i = 0; i < madt_get_nmi_count(); i++) {
-		lapic_nmi_set(0x90 + i, nmis[i].lint, nmis[i].flags);
+		lapic_nmi_set(0xE0 + i, nmis[i].lint, nmis[i].flags);
 	}
 }
 
 void lapic_eoi(void) {
-	lapic_write(0xb0, 0);
+	lapic_write(0xB0, 0);
 }
 
 void lapic_enable(void) {
-	lapic_write(0xf0, lapic_read(0xf0) | 0x1ff);
+	lapic_write(0xF0, lapic_read(0xF0) | 0x1FF);
 }
 
 void lapic_init(void) {
