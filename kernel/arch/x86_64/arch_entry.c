@@ -10,6 +10,7 @@
 #include <mm/mm.h>
 #include <acpi/acpi.h>
 #include <io/vga.h>
+#include <cpu/lapic.h>
 
 #include <kmesg.h>
 #include <util.h>
@@ -39,6 +40,11 @@ void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 	cmdline_init((void *)(VIRT_PHYS_BASE + mboot->cmdline));
 
 	acpi_init();
+
+	lapic_init();
+	
+	kmesg("kernel", "done initializing, enabling interrupts and stopping");
+	ioapic_init_isos(0, 0);
 
 	asm volatile ("sti");
 

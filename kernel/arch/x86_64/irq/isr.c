@@ -14,6 +14,8 @@ void irq_eoi(uint8_t irq) {
 
 		outb(0x20, 0x20);
 	}
+
+	lapic_eoi();
 }
 
 static const char *exc_names[] = {
@@ -25,6 +27,8 @@ static const char *exc_names[] = {
 
 void dispatch_interrupt(irq_cpu_state_t *state) {
 	uint32_t irq = state->int_no;
+
+	kmesg("irq", "interrupt 0x%x happened", irq);
 
 	int success = 0;
 	if (irq_handlers[irq])

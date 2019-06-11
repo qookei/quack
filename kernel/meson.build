@@ -3,8 +3,7 @@ project('quack', 'c')
 c_args = meson.get_cross_property('c_args')
 link_args = meson.get_cross_property('link_args')
 
-arch_c_srcs = []
-arch_others = []
+arch_srcs = []
 arch_inc_dirs = []
 arch_dependencies = []
 arch_linker_file = ''
@@ -33,7 +32,7 @@ subdir(arch_path)
 
 out = executable(
   'quack.elf',
-  c_srcs, arch_c_srcs, arch_others,
+  c_srcs, arch_srcs,
   include_directories : [inc_dirs, arch_inc_dirs],
   dependencies: arch_dependencies,
   c_args: ['-Wall', '-Wextra', c_args],

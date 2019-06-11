@@ -8,12 +8,14 @@ gen = generator(nasm,
   output  : '@BASENAME@.o',
   arguments : ['-f', 'elf64', '@INPUT@', '-o', '@OUTPUT@', '-F', 'dwarf'])
 
-arch_others += gen.process(asm_sources)
+arch_srcs += gen.process(asm_sources)
 
-arch_c_srcs += files(
+arch_srcs += files(
   'arch_entry.c',
 
   'cpu/cpu.c',
+  'cpu/lapic.c',
+  'cpu/ioapic.c',
 
   'io/port.c',
   'io/debug.c',
