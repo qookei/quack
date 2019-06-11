@@ -3,6 +3,7 @@
 #include <acpi/acpi.h>
 #include <mm/mm.h>
 #include <panic.h>
+#include <cpu/cpu_data.h>
 
 uint32_t ioapic_read(size_t ioapic, uint32_t reg) {
 	if (ioapic >= madt_get_ioapic_count())
@@ -60,12 +61,11 @@ void ioapic_map_gsi_to_irq(uint8_t irq, uint32_t gsi, uint16_t flags, uint8_t ap
 }
 
 void ioapic_init_isos(int cpu, int masked) {
-
-	// TODO: multicore
+	uint8_t lapic = cpu_data_get_for_cpu(cpu)->lapic_id;
 
 	for (size_t i = 0; i < madt_get_iso_count(); i++) {
 		madt_iso_t iso = madt_get_isos()[i];
-		ioapic_map_gsi_to_irq(iso.irq + 0x40, iso.gsi, iso.flags, 0, masked);
+		ioapic_map_gsi_to_irq(iso.irq + 0x40, iso.gsi, iso.flags, lapic, masked);
 	}
 
 

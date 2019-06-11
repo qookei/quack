@@ -4,6 +4,7 @@
 #include <kmesg.h>
 #include <panic.h>
 #include <cpu/cpu.h>
+#include <cpu/cpu_data.h>
 
 irq_handler_t irq_handlers[IDT_ENTRIES];
 
@@ -15,7 +16,8 @@ void irq_eoi(uint8_t irq) {
 		outb(0x20, 0x20);
 	}
 
-	lapic_eoi();
+	if (irq >= 0x40)
+		lapic_eoi();
 }
 
 static const char *exc_names[] = {
@@ -28,7 +30,15 @@ static const char *exc_names[] = {
 void dispatch_interrupt(irq_cpu_state_t *state) {
 	uint32_t irq = state->int_no;
 
+	cpu_data_t *cpu_data = cpu_data_get_for_cpu(0); // TODO: get cpu id
+
 	kmesg("irq", "interrupt 0x%x happened", irq);
+
+	if (irq >= 0x20 && irq < 0x30) {
+		// spurious pic irq
+		// shouldn't happen, pic is masked
+		cpu_data->spurious_pic++;
+	}
 
 	int success = 0;
 	if (irq_handlers[irq])

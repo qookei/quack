@@ -16,6 +16,7 @@ arch_srcs += files(
   'cpu/cpu.c',
   'cpu/lapic.c',
   'cpu/ioapic.c',
+  'cpu/cpu_data.c',
 
   'io/port.c',
   'io/debug.c',
