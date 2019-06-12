@@ -51,14 +51,13 @@ void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 	acpi_init();
 	cpu_data_init();
 	lapic_init();
-	//ioapic_init();
-
-	kmesg("kernel", "done initializing, enabling interrupts and stopping");
-	ioapic_init_isos(0, 0);
+	ioapic_init();
 
 	asm volatile ("sti");
 
 	lapic_timer_calc_freq();
+
+	kmesg("kernel", "done initializing");
 
 	isr_register_handler(0x41, ps2_kbd);
 

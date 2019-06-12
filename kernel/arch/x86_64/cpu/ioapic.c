@@ -1,9 +1,9 @@
 #include "ioapic.h"
 #include <acpi/acpi.h>
-#include <acpi/acpi.h>
 #include <mm/mm.h>
 #include <panic.h>
 #include <cpu/cpu_data.h>
+#include <util.h>
 
 uint32_t ioapic_read(size_t ioapic, uint32_t reg) {
 	if (ioapic >= madt_get_ioapic_count())
@@ -29,18 +29,16 @@ size_t ioapic_get_by_gsi(uint32_t gsi) {
 	for (size_t i = 0; i < madt_get_ioapic_count(); i++) {
 		madt_ioapic_t ioapic = madt_get_ioapics()[i];
 		size_t window_size = ioapic_get_gsi_window_size(i);
-		if (gsi >= ioapic.gsi_base && gsi < ioapic.gsi_base + window_size) {
+		if (gsi >= ioapic.gsi_base && gsi <= ioapic.gsi_base + window_size) {
 			return i;
 		}
 	}
 
 	panic(NULL, "No IOAPIC handles GSI %u", gsi);
+	return -1;
 }
 
-void ioapic_map_gsi_to_irq(uint8_t irq, uint32_t gsi, uint16_t flags, uint8_t apic, int masked) {
-	size_t ioapic = ioapic_get_by_gsi(gsi);
-
-	uint32_t pin = gsi - madt_get_ioapics()[ioapic].gsi_base;
+void ioapic_map_pin_to_irq(size_t ioapic, uint8_t irq, uint32_t pin, uint16_t flags, uint8_t apic, int masked) {
 	uint64_t ent = irq;
 
 	if (flags & 2)
@@ -58,16 +56,37 @@ void ioapic_map_gsi_to_irq(uint8_t irq, uint32_t gsi, uint16_t flags, uint8_t ap
 	uint32_t reg = pin * 2 + 16;
 	ioapic_write(ioapic, reg + 0, (uint32_t)ent);
 	ioapic_write(ioapic, reg + 1, (uint32_t)(ent >> 32));
+
 }
 
-void ioapic_init_isos(int cpu, int masked) {
-	uint8_t lapic = cpu_data_get_for_cpu(cpu)->lapic_id;
+void ioapic_map_gsi_to_irq(uint8_t irq, uint32_t gsi, uint16_t flags, uint8_t apic, int masked) {
+	size_t ioapic = ioapic_get_by_gsi(gsi);
 
-	for (size_t i = 0; i < madt_get_iso_count(); i++) {
-		madt_iso_t iso = madt_get_isos()[i];
-		ioapic_map_gsi_to_irq(iso.irq + 0x40, iso.gsi, iso.flags, lapic, masked);
+	uint32_t pin = gsi - madt_get_ioapics()[ioapic].gsi_base;
+	
+	ioapic_map_pin_to_irq(ioapic, irq, pin, flags, apic, masked);
+}
+
+void ioapic_init(void) {
+	size_t n_ioapics = madt_get_ioapic_count();
+
+	uint8_t vec = 0x40;
+
+	// map all ioapic pins into the idt
+	for (size_t i = 0; i < n_ioapics && vec < 0xE0; i++) {
+		size_t n_pins = ioapic_get_gsi_window_size(i);
+		for (size_t j = 0; j <= n_pins; j++, vec++) {
+			ioapic_map_pin_to_irq(i, vec, j, 0, 0, 0);
+		}
 	}
 
+	assert(vec < 0xE0);
 
-	ioapic_map_gsi_to_irq(0x41, 1, 0, 0, 0);
+	size_t n_isos = madt_get_iso_count();
+	madt_iso_t *isos = madt_get_isos();
+	for (size_t i = 0; i < n_isos; i++) {
+		if (isos[i].bus == 0) { // ISA
+			ioapic_map_gsi_to_irq(isos[i].irq + 0x40, isos[i].gsi, isos[i].flags, 0, 0);
+		}
+	}
 }
