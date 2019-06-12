@@ -32,8 +32,6 @@ void dispatch_interrupt(irq_cpu_state_t *state) {
 
 	cpu_data_t *cpu_data = cpu_data_get_for_cpu(0); // TODO: get cpu id
 
-	kmesg("irq", "interrupt 0x%x happened", irq);
-
 	if (irq >= 0x20 && irq < 0x30) {
 		// spurious pic irq
 		// shouldn't happen, pic is masked

@@ -4,6 +4,8 @@
 #include <acpi/acpi.h>
 #include <mm/mm.h>
 #include <string.h>
+#include <irq/isr.h>
+#include <io/port.h>
 
 static uintptr_t lapic_base;
 
@@ -62,4 +64,48 @@ void lapic_init(void) {
 	kmesg("lapic", "setting up the lapic");
 	lapic_nmi_setup();
 	lapic_enable();
+}
+
+static uint64_t lapic_speed_hz;
+
+static volatile uint64_t pit_ticks = 0;
+static int pit_irq(irq_cpu_state_t *s) {
+	(void)s;
+	pit_ticks ++;
+	return 1;
+}
+
+static void pit_set_freq(uint32_t frequency) {
+	uint16_t x = 1193182 / frequency;
+	if ((1193182 % frequency) > (frequency / 2))
+		x++;
+
+	outb(0x40, (uint8_t)(x & 0x00ff));
+	io_wait();
+	outb(0x40, (uint8_t)(x / 0x0100));
+	io_wait();
+}
+
+void lapic_timer_calc_freq(void) {
+	pit_set_freq(1000); // 1000 Hz
+	isr_register_handler(0x40, pit_irq);
+
+	lapic_write(0x320, 0);	// vector 0, non periodic, fixed delivery mode
+	lapic_write(0x3E0, 0x7); // 1x divider
+
+	pit_ticks = 0;
+	while(pit_ticks < 1000); // wait for 1 second to pass
+
+	lapic_write(0x380, 0xFFFFFFFF);
+	pit_ticks = 0;
+	while(pit_ticks < 1000); // wait for 1 second to pass
+
+	lapic_speed_hz = 0xFFFFFFFF - lapic_read(0x390);
+
+	isr_unregister_handler(0x40);
+
+	kmesg("lapic-timer", "timer speed is %luHz", lapic_speed_hz);
+}
+
+void lapic_timer_init(void) {
 }

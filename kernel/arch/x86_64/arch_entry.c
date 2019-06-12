@@ -19,6 +19,13 @@
 #include <mm/heap.h>
 #include <cmdline.h>
 
+int ps2_kbd(irq_cpu_state_t *s) {
+	(void)s;
+	uint8_t b = inb(0x60);
+	kmesg("ps2", "keyboard %02x", b);
+	return 1;
+}
+
 void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 	vga_init();
 
@@ -50,6 +57,10 @@ void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 	ioapic_init_isos(0, 0);
 
 	asm volatile ("sti");
+
+	lapic_timer_calc_freq();
+
+	isr_register_handler(0x41, ps2_kbd);
 
 	while(1);
 }
