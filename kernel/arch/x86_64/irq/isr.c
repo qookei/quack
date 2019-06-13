@@ -16,26 +16,28 @@ void irq_eoi(uint8_t irq) {
 		outb(0x20, 0x20);
 	}
 
-	if (irq >= 0x40)
+	if (irq >= 0x30)
 		lapic_eoi();
 }
 
 static const char *exc_names[] = {
 		"#DE", "#DB", "NMI", "#BP", "#OF", "#BR", "#UD", "#NM",
-		"#DF", "-", "#TS", "#NP", "#SS", "#GP", "#PF", "-",
-		"#MF", "#AC", "#MC", "#XM", "#VE", "-", "-", "-",
-		"-", "-", "-", "-", "-", "-", "#SX", "-", "-"
+		"#DF", "-",   "#TS", "#NP", "#SS", "#GP", "#PF", "-",
+		"#MF", "#AC", "#MC", "#XM", "#VE", "-",   "-",   "-",
+		"-",   "-",   "-",   "-",   "-",   "-",   "#SX", "-", "-"
 };
 
 void dispatch_interrupt(irq_cpu_state_t *state) {
 	uint32_t irq = state->int_no;
 
-	cpu_data_t *cpu_data = cpu_data_get_for_cpu(0); // TODO: get cpu id
+	uint32_t cpu = 0; // TODO: get cpu id
+	cpu_data_t *cpu_data = cpu_data_get_for_cpu(cpu);
 
 	if (irq >= 0x20 && irq < 0x30) {
 		// spurious pic irq
 		// shouldn't happen, pic is masked
 		cpu_data->spurious_pic++;
+		kmesg("irq", "spurious pic interrupt on cpu %u", cpu);
 	}
 
 	int success = 0;

@@ -59,11 +59,35 @@ void ioapic_map_pin_to_irq(size_t ioapic, uint8_t irq, uint32_t pin, uint16_t fl
 
 }
 
+void ioapic_mask_pin(size_t ioapic, uint32_t pin, int masked) {
+	uint32_t reg = pin * 2 + 16;
+	uint64_t ent = 0;
+	ent |= ioapic_read(ioapic, reg + 0);
+	ent |= (uint64_t)ioapic_read(ioapic, reg + 1) << 32;
+
+	if (masked) {
+		ent |= (1 << 16);
+	} else {
+		ent &= ~(1 << 16);
+	}
+
+	ioapic_write(ioapic, reg + 0, (uint32_t)ent);
+	ioapic_write(ioapic, reg + 1, (uint32_t)(ent >> 32));
+}
+
+void ioapic_mask_gsi(uint32_t gsi, int masked) {
+	size_t ioapic = ioapic_get_by_gsi(gsi);
+
+	uint32_t pin = gsi - madt_get_ioapics()[ioapic].gsi_base;
+
+	ioapic_mask_pin(ioapic, pin, masked);
+}
+
 void ioapic_map_gsi_to_irq(uint8_t irq, uint32_t gsi, uint16_t flags, uint8_t apic, int masked) {
 	size_t ioapic = ioapic_get_by_gsi(gsi);
 
 	uint32_t pin = gsi - madt_get_ioapics()[ioapic].gsi_base;
-	
+
 	ioapic_map_pin_to_irq(ioapic, irq, pin, flags, apic, masked);
 }
 
@@ -113,4 +137,16 @@ uint8_t ioapic_get_vector_by_irq(uint8_t irq) {
 	}
 
 	return ioapic_get_vector_by_gsi(irq);
+}
+
+uint32_t ioapic_get_gsi_by_irq(uint8_t irq) {
+	size_t n_isos = madt_get_iso_count();
+	madt_iso_t *isos = madt_get_isos();
+	for (size_t i = 0; i < n_isos; i++) {
+		if (isos[i].bus == 0 && isos[i].irq == irq) {
+			return isos[i].gsi;
+		}
+	}
+
+	return -1;
 }

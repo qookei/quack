@@ -6,6 +6,7 @@
 #include <string.h>
 #include <irq/isr.h>
 #include <io/port.h>
+#include <cpu/ioapic.h>
 
 static uintptr_t lapic_base;
 
@@ -87,6 +88,9 @@ static void pit_set_freq(uint32_t frequency) {
 }
 
 void lapic_timer_calc_freq(void) {
+	if (lapic_speed_hz)
+		return; // already calculated
+
 	uint8_t pit_vec = ioapic_get_vector_by_irq(0x0);
 	pit_set_freq(1000);
 	isr_register_handler(pit_vec, pit_irq);
@@ -94,12 +98,12 @@ void lapic_timer_calc_freq(void) {
 	lapic_write(0x320, 0);	// vector 0, non periodic, fixed delivery mode
 	lapic_write(0x3E0, 0x7); // 1x divider
 
-	pit_ticks = 0;
-	while(pit_ticks < 1000);
-
 	lapic_write(0x380, 0xFFFFFFFF);
+
+	asm volatile ("sti");
 	pit_ticks = 0;
 	while(pit_ticks < 1000);
+	asm volatile ("cli");
 
 	lapic_speed_hz = 0xFFFFFFFF - lapic_read(0x390);
 
@@ -108,9 +112,20 @@ void lapic_timer_calc_freq(void) {
 	kmesg("lapic-timer", "timer speed is %luHz", lapic_speed_hz);
 }
 
-void lapic_timer_init(void) {
-}
-
 void lapic_timer_set_frequency(uint64_t freq) {
 	uint64_t period = lapic_speed_hz / freq;
+
+	lapic_write(0x380, period);
+
+	kmesg("lapic-timer", "setting frequency to %luHz, period %lu", freq, period);
+}
+
+#define INITIAL_FREQ 1000 // Hz
+
+void lapic_timer_init(void) {
+	uint32_t vec = 0x31 | (1 << 17);
+	lapic_write(0x320, vec);
+	lapic_write(0x3E0, 0xB);
+
+	lapic_timer_set_frequency(INITIAL_FREQ);
 }
