@@ -12,7 +12,6 @@
 #define OVERLAPS(a, as, b, bs) ((a) >= (b) && (a + as) <= (b + bs)) // check if a is inside b
 
 uint64_t *pmm_bitmap = NULL;
-uint64_t pmm_initial_bitmap[] = {0x0000000000000000};
 
 size_t pmm_bitmap_len = 64;
 
@@ -66,27 +65,11 @@ static uintptr_t pmm_find_avail_memory_top(multiboot_memory_map_t *mmap, size_t 
 }
 
 void pmm_init(multiboot_memory_map_t *mmap, size_t mmap_len) {
-	pmm_bitmap = pmm_initial_bitmap;
-
 	uintptr_t mem_top = pmm_find_avail_memory_top(mmap, mmap_len);
 	uint32_t mem_pages = (mem_top + PAGE_SIZE - 1) / PAGE_SIZE;
-	uint32_t bitmap_bytes = (mem_pages + 7) / 8;
 
-	while (mem_pages > pmm_bitmap_len) {
-
-		size_t can_alloc = (bitmap_bytes + PAGE_SIZE - 1) / PAGE_SIZE;
-		if (can_alloc > pmm_bitmap_len) can_alloc = pmm_bitmap_len;
-
-		void *new_bm = (void *)((size_t)pmm_alloc(can_alloc) + PMM_MEMORY_BASE);
-		void *old_bm = pmm_bitmap;
-		pmm_bitmap = (void *)((uintptr_t)new_bm + VIRT_PHYS_BASE);
-		memcpy(pmm_bitmap, old_bm, pmm_bitmap_len / 8);
-	
-		if (old_bm != pmm_initial_bitmap)
-			pmm_free((void *)((uintptr_t)old_bm - VIRT_PHYS_BASE), pmm_bitmap_len / 8 / PAGE_SIZE);
-	
-		pmm_bitmap_len = can_alloc * PAGE_SIZE * 8;
-	}
+	pmm_bitmap = (uint64_t *)(PMM_MEMORY_BASE + VIRT_PHYS_BASE);
+	pmm_bitmap_len = mem_pages;
 
 	size_t bitmap_phys = (size_t)pmm_bitmap - VIRT_PHYS_BASE;
 
@@ -122,6 +105,8 @@ void pmm_init(multiboot_memory_map_t *mmap, size_t mmap_len) {
 	}
 
 	pmm_total_pages = pmm_free_pages;	// all available pages are free
+
+	pmm_bit_write(bitmap_phys / 4096, 1, (pmm_bitmap_len / 8 + 4095) / 4096);
 
 	pmm_alloc((pmm_bitmap_len / 8 + 4095) / 4096);
 
