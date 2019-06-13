@@ -59,7 +59,7 @@ void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 
 	kmesg("kernel", "done initializing");
 
-	isr_register_handler(0x41, ps2_kbd);
+	isr_register_handler(ioapic_get_vector_by_irq(0x1), ps2_kbd);
 
 	while(1);
 }

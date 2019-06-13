@@ -67,6 +67,18 @@ void ioapic_map_gsi_to_irq(uint8_t irq, uint32_t gsi, uint16_t flags, uint8_t ap
 	ioapic_map_pin_to_irq(ioapic, irq, pin, flags, apic, masked);
 }
 
+static madt_iso_t *ioapic_get_iso_by_gsi(uint32_t gsi) {
+	size_t n_isos = madt_get_iso_count();
+	madt_iso_t *isos = madt_get_isos();
+	for (size_t i = 0; i < n_isos; i++) {
+		if (isos[i].gsi == gsi) {
+			return &isos[i];
+		}
+	}
+
+	return NULL;
+}
+
 void ioapic_init(void) {
 	size_t n_ioapics = madt_get_ioapic_count();
 
@@ -76,17 +88,29 @@ void ioapic_init(void) {
 	for (size_t i = 0; i < n_ioapics && vec < 0xE0; i++) {
 		size_t n_pins = ioapic_get_gsi_window_size(i);
 		for (size_t j = 0; j <= n_pins; j++, vec++) {
-			ioapic_map_pin_to_irq(i, vec, j, 0, 0, 0);
+			madt_iso_t *iso = ioapic_get_iso_by_gsi(vec - 0x40);
+			if (!iso)
+				ioapic_map_pin_to_irq(i, vec, j, 0, 0, 0);
+			else
+				ioapic_map_pin_to_irq(i, vec, j, iso->flags, 0, 0);
 		}
 	}
 
 	assert(vec < 0xE0);
+}
 
+uint8_t ioapic_get_vector_by_gsi(uint32_t gsi) {
+	return 0x40 + gsi;	// TODO
+}
+
+uint8_t ioapic_get_vector_by_irq(uint8_t irq) {
 	size_t n_isos = madt_get_iso_count();
 	madt_iso_t *isos = madt_get_isos();
 	for (size_t i = 0; i < n_isos; i++) {
-		if (isos[i].bus == 0) { // ISA
-			ioapic_map_gsi_to_irq(isos[i].irq + 0x40, isos[i].gsi, isos[i].flags, 0, 0);
+		if (isos[i].bus == 0 && isos[i].irq == irq) {
+			return ioapic_get_vector_by_gsi(isos[i].gsi);
 		}
 	}
+
+	return ioapic_get_vector_by_gsi(irq);
 }

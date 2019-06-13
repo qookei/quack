@@ -87,25 +87,30 @@ static void pit_set_freq(uint32_t frequency) {
 }
 
 void lapic_timer_calc_freq(void) {
-	pit_set_freq(1000); // 1000 Hz
-	isr_register_handler(0x40, pit_irq);
+	uint8_t pit_vec = ioapic_get_vector_by_irq(0x0);
+	pit_set_freq(1000);
+	isr_register_handler(pit_vec, pit_irq);
 
 	lapic_write(0x320, 0);	// vector 0, non periodic, fixed delivery mode
 	lapic_write(0x3E0, 0x7); // 1x divider
 
 	pit_ticks = 0;
-	while(pit_ticks < 1000); // wait for 1 second to pass
+	while(pit_ticks < 1000);
 
 	lapic_write(0x380, 0xFFFFFFFF);
 	pit_ticks = 0;
-	while(pit_ticks < 1000); // wait for 1 second to pass
+	while(pit_ticks < 1000);
 
 	lapic_speed_hz = 0xFFFFFFFF - lapic_read(0x390);
 
-	isr_unregister_handler(0x40);
+	isr_unregister_handler(pit_vec);
 
 	kmesg("lapic-timer", "timer speed is %luHz", lapic_speed_hz);
 }
 
 void lapic_timer_init(void) {
+}
+
+void lapic_timer_set_frequency(uint64_t freq) {
+	uint64_t period = lapic_speed_hz / freq;
 }
