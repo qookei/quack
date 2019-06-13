@@ -5,7 +5,7 @@
 
 #include <arch/mm.h>
 
-#define PMM_MEMORY_BASE 0x1000000
+#define PMM_MEMORY_BASE 0x2000000
 
 #define ROUND_UP(N, S) ((((N) + (S) - 1) / (S)) * (S))
 #define ROUND_DOWN(N,S) ((N / S) * S)
