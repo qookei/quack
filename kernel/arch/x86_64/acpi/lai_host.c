@@ -7,6 +7,7 @@
 #include "acpi.h"
 #include <string.h>
 #include <io/pci.h>
+#include <panic.h>
 
 void *laihost_malloc(size_t len) {
 	return kmalloc(len);
@@ -31,15 +32,12 @@ void laihost_log(int level, const char *msg) {
 }
 
 __attribute__((noreturn)) void laihost_panic(const char *msg) {
-	kmesg("lai", "fatal error!");
-
 	char *buf = kmalloc(strlen(msg));
 	memset(buf, 0, strlen(msg));
 	strncpy(buf, msg, strlen(msg) - 1);
-	kmesg("lai", "%s", buf);
-	kfree(buf);
 
-	__builtin_trap();
+	panic(NULL, "lai: %s", buf);
+	__builtin_unreachable();
 }
 
 void *laihost_scan(char *sig, size_t idx) {
