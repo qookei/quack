@@ -49,9 +49,11 @@ void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 	lapic_timer_calc_freq();
 	lapic_timer_init();
 
-	kmesg("kernel", "done initializing");
-
 	ioapic_mask_gsi(ioapic_get_gsi_by_irq(0x0), 1);
+
+	pci_init();
+
+	kmesg("kernel", "done initializing");
 
 	asm volatile ("sti");
 
