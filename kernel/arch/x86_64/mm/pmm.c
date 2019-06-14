@@ -106,18 +106,24 @@ void pmm_init(multiboot_memory_map_t *mmap, size_t mmap_len) {
 
 	pmm_total_pages = pmm_free_pages;	// all available pages are free
 
-	pmm_bit_write(bitmap_phys / 4096, 1, (pmm_bitmap_len / 8 + 4095) / 4096);
+	pmm_bit_write(bitmap_phys / PAGE_SIZE, 1, (pmm_bitmap_len / 8 + PAGE_SIZE - 1) / PAGE_SIZE);
 
-	pmm_alloc((pmm_bitmap_len / 8 + 4095) / 4096);
+	pmm_alloc((pmm_bitmap_len / 8 + PAGE_SIZE - 1) / PAGE_SIZE);
 
 	kmesg("pmm", "done setting up, %lu pages free", pmm_free_pages);
 }
 
-void *pmm_alloc(size_t count) {
-	size_t idx = 0;
-	while(idx < pmm_bitmap_len) {
+void *pmm_alloc_ex(size_t count, size_t alignment, uintptr_t upper) {
+	size_t idx = PMM_MEMORY_BASE / PAGE_SIZE, max_idx = 0;
+	
+	if (!upper)
+		max_idx = pmm_bitmap_len;
+	else
+		max_idx = pmm_bitmap_len < (upper / PAGE_SIZE) ? pmm_bitmap_len : (upper / PAGE_SIZE);
+	
+	while(idx < max_idx) {
 		if (!pmm_bitmap_is_free(idx, count)) {
-			idx++;
+			idx += alignment;
 			continue;
 		}
 		pmm_bit_write(idx, 1, count);
@@ -127,6 +133,11 @@ void *pmm_alloc(size_t count) {
 	}
 	
 	return NULL;
+
+}
+
+void *pmm_alloc(size_t count) {
+	return pmm_alloc_ex(count, 1, 0);
 }
 
 void pmm_free(void *mem, size_t count) {
