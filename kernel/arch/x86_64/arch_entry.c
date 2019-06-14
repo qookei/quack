@@ -19,23 +19,6 @@
 #include <mm/heap.h>
 #include <cmdline.h>
 
-volatile uint64_t ticks = 0;
-
-int lapic_timer_int(irq_cpu_state_t *s) {
-	(void)s;
-	kmesg("lapic-timer", "timer interrupt no. %lu", ticks);
-	ticks++;
-
-	return 1;
-}
-
-int ps2_kbd(irq_cpu_state_t *s) {
-	(void)s;
-	uint8_t b = inb(0x60);
-	kmesg("ps2", "keyboard %02x", b);
-	return 1;
-}
-
 void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 	vga_init();
 
@@ -53,7 +36,7 @@ void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 	uintptr_t ptr = mboot->mmap_addr + VIRT_PHYS_BASE;
 
 	pmm_init((multiboot_memory_map_t *)ptr, mboot->mmap_length / sizeof(multiboot_memory_map_t));
-	
+
 	vmm_init();
 
 	cmdline_init((void *)(VIRT_PHYS_BASE + mboot->cmdline));
@@ -62,17 +45,15 @@ void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 	cpu_data_init();
 	lapic_init();
 	ioapic_init();
-	
+
 	lapic_timer_calc_freq();
 	lapic_timer_init();
 
 	kmesg("kernel", "done initializing");
 
 	ioapic_mask_gsi(ioapic_get_gsi_by_irq(0x0), 1);
-	isr_register_handler(0x31, lapic_timer_int);
-	isr_register_handler(ioapic_get_vector_by_irq(0x1), ps2_kbd);
 
 	asm volatile ("sti");
-	
+
 	while(1);
 }

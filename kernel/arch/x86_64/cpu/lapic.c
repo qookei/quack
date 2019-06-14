@@ -120,6 +120,16 @@ void lapic_timer_set_frequency(uint64_t freq) {
 	kmesg("lapic-timer", "setting frequency to %luHz, period %lu", freq, period);
 }
 
+static volatile uint64_t ticks = 0;
+
+static int lapic_timer_int(irq_cpu_state_t *s) {
+	// TODO: get cpu and store the count in a per-cpu variable
+	ticks++;
+	kmesg("lapic-timer", "interrupt fired, %lu", ticks);
+
+	return 1;
+}
+
 #define INITIAL_FREQ 1000 // Hz
 
 void lapic_timer_init(void) {
@@ -128,4 +138,6 @@ void lapic_timer_init(void) {
 	lapic_write(0x3E0, 0xB);
 
 	lapic_timer_set_frequency(INITIAL_FREQ);
+
+	isr_register_handler(0x31, lapic_timer_int);
 }
