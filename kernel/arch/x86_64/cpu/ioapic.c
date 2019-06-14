@@ -124,7 +124,18 @@ void ioapic_init(void) {
 }
 
 uint8_t ioapic_get_vector_by_gsi(uint32_t gsi) {
-	return 0x40 + gsi;	// TODO
+	uint8_t vec = 0x40;
+	size_t n_ioapics = madt_get_ioapic_count();
+
+	for (size_t i = 0; i < n_ioapics && vec < 0xE0; i++) {
+		size_t n_pins = ioapic_get_gsi_window_size(i);
+		for (size_t j = 0; j <= n_pins; j++, vec++) {
+			if (madt_get_ioapics()[i].gsi_base + j == gsi)
+				return vec;
+		}
+	}
+
+	return -1;
 }
 
 uint8_t ioapic_get_vector_by_irq(uint8_t irq) {

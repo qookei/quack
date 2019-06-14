@@ -125,7 +125,6 @@ static volatile uint64_t ticks = 0;
 static int lapic_timer_int(irq_cpu_state_t *s) {
 	// TODO: get cpu and store the count in a per-cpu variable
 	ticks++;
-	kmesg("lapic-timer", "interrupt fired, %lu", ticks);
 
 	return 1;
 }
