@@ -91,6 +91,9 @@ static void pci_fun_check(uint8_t bus, uint8_t dev, uint8_t fun) {
 	d->base_class = get_base_class(bus, dev, fun);
 	d->sub_class = get_sub_class(bus, dev, fun);
 
+	if (get_header_type(bus, dev, fun))
+		return; // bridges dont have bars
+
 	for (int i = 0; i < 6; i++) {
 		uint16_t idx = 0x10 + i * 4;
 		size_t len = 0;
@@ -113,9 +116,9 @@ static void pci_fun_check(uint8_t bus, uint8_t dev, uint8_t fun) {
 
 		if (io) {
 			d->bar[i].enabled = 1;
-			d->bar[i].addr = bar_val & (~0x3);
+			d->bar[i].addr = (bar_val & (~0x3)) & 0xFFFF;
 			d->bar[i].type = BAR_IO;
-			d->bar[i].length = len;
+			d->bar[i].length = len & 0xFFFF;
 		} else {
 			uint8_t type = (bar_val >> 1) & 3;
 			uint32_t top_bar = 0;
@@ -132,7 +135,7 @@ static void pci_fun_check(uint8_t bus, uint8_t dev, uint8_t fun) {
 			d->bar[i].prefetch = (bar_val >> 3) & 1;
 
 			if (top_bar)
-				i++; // skip next bar, it's just the top part of this bar's address
+				i++;
 		}
 	}
 }
@@ -185,7 +188,9 @@ void pci_init(void) {
 			pci_bar_t *bar = &dev->bar[j];
 			if (!bar->enabled)
 				continue;
-			kmesg("pci", "bar %u - %c%c %016lx %016lx", j, bar->type == BAR_IO ? 'i' : 'm', bar->prefetch ? 'p' : ' ', bar->addr, bar->length);
+			kmesg("pci", "\tbar %u - %c%c %016lx %016lx",
+					j, bar->type == BAR_IO ? 'i' : 'm',
+					bar->prefetch ? 'p' : ' ', bar->addr, bar->length);
 		}
 	}
 }
