@@ -9,9 +9,9 @@ arch_dependencies = []
 arch_linker_file = ''
 
 c_srcs = files(
-  'vsnprintf.c',
-  'kmesg.c',
-  'util.c',
+  'lib/vsnprintf.c',
+  'lib/kmesg.c',
+  'util/util.c',
 
   'lib/ctype.c',
   'lib/string.c',
@@ -20,12 +20,13 @@ c_srcs = files(
   'mm/liballoc.c',
   'mm/liballoc_funcs.c',
 
-  'panic.c',
-  'cmdline.c')
+  'lib/panic.c',
+  'util/cmdline.c')
 
 inc_dirs = include_directories(
   '.',
-  'lib/')
+  'lib/',
+  'util/')
 
 arch_path = 'arch/@0@/'.format(host_machine.cpu())
 subdir(arch_path)
