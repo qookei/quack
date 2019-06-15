@@ -36,7 +36,8 @@ __attribute__((noreturn)) void laihost_panic(const char *msg) {
 	memset(buf, 0, strlen(msg));
 	strncpy(buf, msg, strlen(msg) - 1);
 
-	panic(NULL, "lai: %s", buf);
+	kmesg("lai", "%s", buf);
+	arch_cpu_halt_forever();
 	__builtin_unreachable();
 }
 
@@ -73,11 +74,11 @@ uint32_t laihost_ind(uint16_t port) {
 	return inl(port);
 }
 
-void laihost_pci_write(uint8_t bus, uint8_t fn, uint8_t dev, uint16_t off, uint32_t val) {
+void laihost_pci_write(uint8_t bus, uint8_t dev, uint8_t fn, uint16_t off, uint32_t val) {
 	pci_write_word(bus, dev, fn, off, val);
 }
 
-uint32_t laihost_pci_read(uint8_t bus, uint8_t fn, uint8_t dev, uint16_t off) {
+uint32_t laihost_pci_read(uint8_t bus, uint8_t dev, uint8_t fn, uint16_t off) {
 	return pci_read_word(bus, dev, fn, off);
 }
 
