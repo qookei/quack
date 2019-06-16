@@ -21,7 +21,9 @@ c_srcs = files(
   'mm/liballoc_funcs.c',
 
   'lib/panic.c',
-  'util/cmdline.c')
+  'util/cmdline.c',
+  
+  'kobj.c')
 
 inc_dirs = include_directories(
   '.',
