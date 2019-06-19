@@ -95,5 +95,5 @@ void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 		info->flags |= ARCH_INFO_HAS_INITRAMFS;
 	}
 
-	kernel_main(&info);
+	kernel_main(info);
 }

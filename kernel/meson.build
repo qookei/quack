@@ -12,6 +12,7 @@ c_srcs = files(
   'lib/vsnprintf.c',
   'lib/kmesg.c',
   'util/util.c',
+  'util/initrd.c',
 
   'lib/ctype.c',
   'lib/string.c',
@@ -24,6 +25,8 @@ c_srcs = files(
   'util/cmdline.c',
   
   'kobj.c',
+  'devmgr.c',
+
   'kernel.c')
 
 inc_dirs = include_directories(

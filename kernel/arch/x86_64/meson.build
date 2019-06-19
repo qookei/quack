@@ -22,6 +22,7 @@ arch_srcs += files(
   'io/debug.c',
   'io/vga.c',
   'io/pci.c',
+  'io/dev.c',
 
   'irq/idt.c',
   'irq/isr.c',

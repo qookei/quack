@@ -34,5 +34,8 @@ typedef struct {
 	pci_bar_t bar[6];
 } pci_dev_t;
 
+void pci_init(void);
+size_t pci_get_n_devices(void);
+pci_dev_t *pci_get_devices(void);
 
 #endif

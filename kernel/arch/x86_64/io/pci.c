@@ -194,3 +194,11 @@ void pci_init(void) {
 		}
 	}
 }
+
+size_t pci_get_n_devices(void) {
+	return n_devices;
+}
+
+pci_dev_t *pci_get_devices(void) {
+	return devices;
+}

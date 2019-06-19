@@ -3,9 +3,39 @@
 #include <kmesg.h>
 #include <initrd.h>
 #include <arch/info.h>
+#include <devmgr.h>
 
 void kernel_main(arch_boot_info_t *info) {
-	kmesg("kernel", "reached arch independent stage, halting for now");
+	kmesg("kernel", "reached arch independent stage");
+
+	kmesg("kernel", "info:");
+	kmesg("kernel", "\tflags:");
+	if (info->flags & ARCH_INFO_HAS_INITRAMFS) kmesg("kernel", "\t- initramfs");
+	if (info->flags & ARCH_INFO_HAS_VIDEO_MODE) kmesg("kernel", "\t- video mode");
+
+	if (info->flags & ARCH_INFO_HAS_INITRAMFS) {
+		kmesg("kernel", "");
+		kmesg("kernel", "\tinitramfs:");
+		kmesg("kernel", "\t\taddr: %016p", info->initramfs);
+		kmesg("kernel", "\t\tcmdline: %s", info->initramfs_cmd);
+		kmesg("kernel", "\t\tsize: %lu bytes", info->initramfs_size);
+		initrd_init(info->initramfs, info->initramfs_size);
+	}
+
+	if (info->flags & ARCH_INFO_HAS_VIDEO_MODE) {
+		kmesg("kernel", "");
+		kmesg("kernel", "\tvideo mode:");
+		kmesg("kernel", "\t\tfb addr: %016lx", info->vid_mode->addr);
+		kmesg("kernel", "\t\twidth: %u", info->vid_mode->width);
+		kmesg("kernel", "\t\theight: %u", info->vid_mode->height);
+		kmesg("kernel", "\t\tbpp: %u", info->vid_mode->bpp);
+	}
+
+	devmgr_init();
+	arch_devmgr_fill_devices();
+	devmgr_dump_devices();
+
+	kmesg("kernel", "halting for now");
 
 	/*void *init_file;
 	void *exec_file;
