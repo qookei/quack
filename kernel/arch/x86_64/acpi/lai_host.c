@@ -10,12 +10,18 @@
 #include <panic.h>
 
 void *laihost_malloc(size_t len) {
-	return kmalloc(len);
+	void *mem = kmalloc(len);
+	memset(mem, 0, len);
+	return mem;
 }
 
 void *laihost_realloc(void *ptr, size_t len) {
-	return krealloc(ptr, len);
+	void *mem = krealloc(ptr, len);
+	memset(mem, 0, len);
+	return mem;
 }
+
+extern uintptr_t top;
 
 void laihost_free(void *ptr) {
 	kfree(ptr);
@@ -24,19 +30,12 @@ void laihost_free(void *ptr) {
 void laihost_log(int level, const char *msg) {
 	(void)level;
 
-	char *buf = kmalloc(strlen(msg));
-	memset(buf, 0, strlen(msg));
-	strncpy(buf, msg, strlen(msg) - 1);
-	kmesg("lai", "%s", buf);
-	kfree(buf);
+	kmesg("lai", "%s", msg);
 }
 
 __attribute__((noreturn)) void laihost_panic(const char *msg) {
-	char *buf = kmalloc(strlen(msg));
-	memset(buf, 0, strlen(msg));
-	strncpy(buf, msg, strlen(msg) - 1);
-
-	kmesg("lai", "%s", buf);
+	kmesg("lai", "%s", msg);
+	arch_cpu_trace_stack();
 	arch_cpu_halt_forever();
 	__builtin_unreachable();
 }

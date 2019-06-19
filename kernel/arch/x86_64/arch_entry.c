@@ -13,11 +13,14 @@
 #include <cpu/lapic.h>
 #include <cpu/ioapic.h>
 #include <cpu/cpu_data.h>
+#include <io/pci.h>
 
 #include <kmesg.h>
 #include <util.h>
 #include <mm/heap.h>
 #include <cmdline.h>
+
+#include <arch/info.h>
 
 void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 	vga_init();
@@ -55,7 +58,42 @@ void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 
 	kmesg("kernel", "done initializing");
 
-	asm volatile ("sti");
 
-	while(1);
+	arch_boot_info_t *info = kcalloc(sizeof(arch_boot_info_t), 1);
+
+	if (mboot->flags & MULTIBOOT_INFO_FRAMEBUFFER_INFO) {
+		if (mboot->framebuffer_type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB) {
+
+			arch_video_mode_t *v = kcalloc(sizeof(arch_video_mode_t), 1);
+			v->addr = mboot->framebuffer_addr;
+			v->pitch = mboot->framebuffer_pitch;
+
+			v->width = mboot->framebuffer_width;
+			v->height = mboot->framebuffer_height;
+			v->bpp = mboot->framebuffer_bpp;
+
+
+			v->red_off = mboot->framebuffer_red_field_position;
+			v->green_off = mboot->framebuffer_green_field_position;
+			v->blue_off = mboot->framebuffer_blue_field_position;
+
+			v->red_size = mboot->framebuffer_red_mask_size;
+			v->green_size = mboot->framebuffer_green_mask_size;
+			v->blue_size = mboot->framebuffer_blue_mask_size;
+
+			info->vid_mode = v;
+			info->flags |= ARCH_INFO_HAS_VIDEO_MODE;
+		}
+	}
+
+	if (mboot->mods_count) {
+		// only first module is taken into account
+		multiboot_module_t *mod = (multiboot_module_t *)(mboot->mods_addr + VIRT_PHYS_BASE);
+		info->initramfs = (void *)(mod->mod_start + VIRT_PHYS_BASE);
+		info->initramfs_cmd = (const char *)(mod->cmdline + VIRT_PHYS_BASE);
+		info->initramfs_size = (mod->mod_end - mod->mod_start);
+		info->flags |= ARCH_INFO_HAS_INITRAMFS;
+	}
+
+	kernel_main(&info);
 }

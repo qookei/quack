@@ -23,7 +23,8 @@ c_srcs = files(
   'lib/panic.c',
   'util/cmdline.c',
   
-  'kobj.c')
+  'kobj.c',
+  'kernel.c')
 
 inc_dirs = include_directories(
   '.',
@@ -39,5 +40,5 @@ out = executable(
   include_directories : [inc_dirs, arch_inc_dirs],
   dependencies: arch_dependencies,
   c_args: ['-Wall', '-Wextra', c_args],
-  link_args: ['-T', arch_linker_file, link_args],
+  link_args: ['-T', arch_linker_file, link_args, '-flto'],
 )

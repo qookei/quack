@@ -15,5 +15,5 @@ void arch_debug_write(char c) {
 	#else
 	(void)c;
 	#endif
-	vga_putch(c);
+	//vga_putch(c);
 }

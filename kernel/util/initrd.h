@@ -1,23 +1,12 @@
 #ifndef INITRD_H
 #define INITRD_H
 
-#include <stdint.h>
 #include <stddef.h>
-#include <string.h>
-#include <kheap/heap.h>
-#include <multiboot.h>
-#include <paging/paging.h>
 
-typedef struct {
-	void *data;
-	size_t size;
-} initrd_t;
-
-void initrd_init(multiboot_module_t *mod);
+void initrd_init(void *_initrd_buf, size_t _initrd_size);
 size_t initrd_read_file(const char *path, void **data);
-initrd_t initrd_get_info();
 
-#define USTAR_BLOCK_SIZE		512
+#define USTAR_BLOCK_SIZE 512
 
 typedef struct {
 	char name[100];

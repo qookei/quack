@@ -1,19 +1,10 @@
 #include <stddef.h>
 #include <stdint.h>
-/*#include <io/ports.h>
-#include <pic/pic.h>
-*/
-#include <multiboot.h>
-/*
-#include <kheap/heap.h>
-#include <sched/sched.h>
-#include <sched/elf.h>*/
 #include <kmesg.h>
-/*#include <initrd.h>
-#include <syscall/syscall.h>*/
+#include <initrd.h>
+#include <arch/info.h>
 
-void kernel_main(multiboot_info_t *mboot) {
-
+void kernel_main(arch_boot_info_t *info) {
 	kmesg("kernel", "reached arch independent stage, halting for now");
 
 	/*void *init_file;

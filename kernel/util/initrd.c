@@ -1,5 +1,9 @@
 #include "initrd.h"
 
+#include <string.h>
+#include <string.h>
+#include <mm/heap.h>
+
 static void *initrd_buf;
 static size_t initrd_size;
 
@@ -58,11 +62,4 @@ size_t initrd_read_file(const char *path, void **dst) {
 	memcpy(*dst, data, file_size);
 
 	return file_size;
-}
-
-initrd_t initrd_get_info() {
-	initrd_t i = {.data = initrd_buf,
-				.size = initrd_size};
-
-	return i;
 }

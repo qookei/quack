@@ -16,9 +16,12 @@ void *liballoc_alloc(int pages) {
 
 	for (int i = 0; i < pages; i++) {
 		void *p = arch_mm_alloc_phys(1);
+		if (!p) return NULL;
 		arch_mm_map_kernel(-1, (void *)top, p, 1, ARCH_MM_FLAGS_READ | ARCH_MM_FLAGS_WRITE);
 		top += ARCH_MM_PAGE_SIZE;
 	}
+
+	memset((void *)alloc_addr, 0, pages * 4096);
 
 	return (void *)alloc_addr;
 }

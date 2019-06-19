@@ -18,11 +18,11 @@ kobj_t *kobj_get(handle_t hnd) {
 
 static handle_t kobj_alloc_new(void) {
 	if (!objects) {
-		n_objects = 1;
-		objects = kcalloc(sizeof (kobj_t *), 1);
+		n_objects = 2;
+		objects = kcalloc(sizeof (kobj_t *), 2);
 	}
 
-	handle_t hnd = 0;
+	handle_t hnd = 1;
 	while (hnd < n_objects && objects[hnd])
 		hnd++;
 
