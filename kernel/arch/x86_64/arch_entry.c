@@ -10,6 +10,7 @@
 #include <mm/mm.h>
 #include <acpi/acpi.h>
 #include <io/vga.h>
+#include <io/debug.h>
 #include <cpu/lapic.h>
 #include <cpu/ioapic.h>
 #include <cpu/cpu_data.h>
@@ -43,6 +44,7 @@ void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 	vmm_init();
 
 	cmdline_init((void *)(VIRT_PHYS_BASE + mboot->cmdline));
+	debugcon_init();
 
 	acpi_init();
 	cpu_data_init();
