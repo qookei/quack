@@ -171,7 +171,7 @@ void devmgr_dump_devices(void) {
 		kmesg("devmgr", "'%s' (%lu devices):", bus->name, bus->n_devices);
 		for (size_t j = 0; j < bus->n_devices; j++) {
 			kmesg("devmgr", "\tdev has handle %lu", bus->devices[j]);
-			kobj_t *obj = kobj_get(devices[bus->devices[j]]);
+			kobj_t *obj = kobj_get(bus->devices[j]);
 			kmesg("devmgr", "\tobject for handle %lu is at %016p", bus->devices[j], obj);
 			assert(obj && "handle doesn't exist while it should");
 			devmgr_dev_t *dev = obj->data;
