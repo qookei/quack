@@ -4,6 +4,7 @@
 #include <initrd.h>
 #include <arch/info.h>
 #include <devmgr.h>
+#include <kobj.h>
 
 void kernel_main(arch_boot_info_t *info) {
 	kmesg("kernel", "reached arch independent stage");
