@@ -7,6 +7,11 @@
 #include <mm/heap.h>
 #include <string.h>
 #include <kmesg.h>
+#include <lai/core.h>
+#include <cpu/ioapic.h>
+#include <arch/cpu.h>
+
+#include <cmdline.h>
 
 uint32_t pci_read_word(uint8_t bus, uint8_t slot, uint8_t func, uint16_t offset) {
 	uint32_t address;
@@ -70,6 +75,7 @@ static inline uint8_t get_sec_bus(uint8_t bus, uint8_t dev, uint8_t fun) {
 }
 
 static void pci_bus_enum(uint8_t bus);
+static int halt_on_irq_route_fail = 1;
 
 static void pci_fun_check(uint8_t bus, uint8_t dev, uint8_t fun) {
 	if (get_vendor(bus, dev, fun) == 0xFFFF)
@@ -90,6 +96,34 @@ static void pci_fun_check(uint8_t bus, uint8_t dev, uint8_t fun) {
 	d->device = get_device(bus, dev, fun);
 	d->base_class = get_base_class(bus, dev, fun);
 	d->sub_class = get_sub_class(bus, dev, fun);
+
+	uint8_t irq_pin;
+	irq_pin = pci_read_word(bus, dev, fun, 0x3C) >> 8;
+
+	kmesg("pci", "routing irq for device "
+			"%02x.%02x.%01x", bus, dev, fun);
+
+	if(irq_pin) {
+		kmesg("pci", "\tdevice appears to have an irq");
+		acpi_resource_t res;
+		if (lai_pci_route(&res, bus, dev, fun)) {
+			kmesg("pci", "\tirq routing failed for device");
+			d->irq = 0;
+			if (halt_on_irq_route_fail)
+				arch_cpu_halt_forever();
+			else
+				kmesg("pci", "\trouting failure ignored");
+		} else {
+			kmesg("pci",
+				"\tdevice is routed to gsi %u",
+				bus, dev, fun, res.base);
+			d->irq = ioapic_get_vector_by_gsi(res.base);
+		}
+	} else {
+		kmesg("pci", "\tdevice doesn't appear to have an irq");
+	}
+
+	kmesg("pci", "");
 
 	if (get_header_type(bus, dev, fun))
 		return; // bridges dont have bars
@@ -177,6 +211,9 @@ static void pci_bus_enum_all(void) {
 }
 
 void pci_init(void) {
+	if (cmdline_has_value("pci", "no-halt"))
+		halt_on_irq_route_fail = 0;
+
 	pci_bus_enum_all();
 
 	for (size_t i = 0; i < n_devices; i++) {
