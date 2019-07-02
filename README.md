@@ -27,7 +27,7 @@ quack currently supports 2 architectures: i386 and x86\_64. Below is a list of a
 The whole process looks like this:
 
 ```
-$ git clone https://gitlab.com/qookei/quack.git
+$ git clone https://gitlab.com/qookei/quack.git --recurse-submodules
 $ cd quack
 $ mkdir build
 $ cd build
@@ -41,7 +41,7 @@ For explanations, refer to the next section.
 
 First, clone the repo and enter the directory:
 ```
-$ git clone https://gitlab.com/qookei/quack.git
+$ git clone https://gitlab.com/qookei/quack.git --recurse-submodules
 $ cd quack
 ```
 
