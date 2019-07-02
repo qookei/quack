@@ -32,10 +32,7 @@ static handle_t kobj_alloc_new(void) {
 		n_objects *= 2;
 		objects = krealloc(objects, sizeof (kobj_t *) * n_objects);
 		memset(&objects[old_n_objects], 0, old_n_objects * sizeof(kobj_t *));
-		kmesg("kobj", "expanded object list from %lu entries to %lu entries, new handle %lu", old_n_objects, n_objects, hnd);
 	}
-
-	kmesg("kobj", "found free handle %lu", hnd);
 
 	objects[hnd] = kcalloc(sizeof(kobj_t), 1);
 
@@ -67,14 +64,10 @@ handle_t kobj_create_new(int32_t owner, char *name, int perms, size_t len) {
 	obj->len = len;
 	obj->data = kcalloc(len, 1);
 
-	kmesg("kobj", "object with handle %lu has %lu byte(s) of data at %016p", hnd, len, obj->data);
-
 	return hnd;
 }
 
 int kobj_destroy(handle_t hnd) {
-	kmesg("kobj", "destroying object with handle %lu", hnd);
-
 	kobj_t *obj = kobj_get(hnd);
 
 	assert(obj);

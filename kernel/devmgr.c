@@ -23,8 +23,6 @@ static void append_to_bus(handle_t hnd, handle_t dev) {
 	bus->n_devices++;
 	bus->devices = krealloc(bus->devices, bus->n_devices * sizeof(handle_t));
 	bus->devices[bus->n_devices - 1] = dev;
-	kmesg("devmgr", "appended device with handle %lu to bus '%s'(%lu)", dev, bus->name, hnd);
-	kmesg("devmgr", "bus '%s'(%lu) now has %lu devices", bus->name, hnd, bus->n_devices);
 }
 
 handle_t devmgr_create_bus(char *name) {
@@ -170,13 +168,10 @@ void devmgr_dump_devices(void) {
 		devmgr_bus_t *bus = kobj_get(busses[i])->data;
 		kmesg("devmgr", "'%s' (%lu devices):", bus->name, bus->n_devices);
 		for (size_t j = 0; j < bus->n_devices; j++) {
-			kmesg("devmgr", "\tdev has handle %lu", bus->devices[j]);
 			kobj_t *obj = kobj_get(bus->devices[j]);
-			kmesg("devmgr", "\tobject for handle %lu is at %016p", bus->devices[j], obj);
 			assert(obj && "handle doesn't exist while it should");
 			devmgr_dev_t *dev = obj->data;
-			kmesg("devmgr", "\t'%s': %s owned by %d%s, has %lu io regions", dev->name, dev->ident, obj->owner_pid, obj->owner_pid ? "" : "(no one)", dev->n_io_regions);
-			kmesg("devmgr", "");
+			kmesg("devmgr", "\t'%s': %04x:%04x owned by %d%s, has %lu io regions", dev->name, dev->bus_vendor, dev->bus_device, obj->owner_pid, obj->owner_pid ? "" : "(no one)", dev->n_io_regions);
 		}
 	}
 }
