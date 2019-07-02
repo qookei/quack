@@ -23,7 +23,9 @@ c_srcs = files(
 
   'lib/panic.c',
   'util/cmdline.c',
-  
+
+  'genfb/genfb.c',
+
   'kobj.c',
   'devmgr.c',
 

@@ -12,10 +12,28 @@ fi
 mkdir -p isodir/boot/grub
 
 cat >isodir/boot/grub/grub.cfg << EOL
-menuentry "quack - default" {
-	multiboot /boot/quack.elf
+menuentry "quack - fb debug out" {
+	multiboot /boot/quack.elf debugcon=fb
+	set gfxpayload=auto
+}
+
+menuentry "quack - e9 debug out" {
+	multiboot /boot/quack.elf debugcon=e9
+}
+
+menuentry "quack - vga text debug out" {
+	multiboot /boot/quack.elf debugcon=vga
 	set gfxpayload=text
-	boot
+}
+
+menuentry "quack - e9 and fb debug out" {
+	multiboot /boot/quack.elf debugcon=e9,fb
+	set gfxpayload=auto
+}
+
+menuentry "quack - e9 and vga text debug out" {
+	multiboot /boot/quack.elf debugcon=e9,vga
+	set gfxpayload=text
 }
 EOL
 

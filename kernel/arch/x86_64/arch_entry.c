@@ -44,7 +44,29 @@ void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 	vmm_init();
 
 	cmdline_init((void *)(VIRT_PHYS_BASE + mboot->cmdline));
-	debugcon_init();
+
+	arch_video_mode_t *vid = NULL;
+	if (mboot->flags & MULTIBOOT_INFO_FRAMEBUFFER_INFO
+	&& mboot->framebuffer_type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB) {
+
+		vid = kcalloc(sizeof(arch_video_mode_t), 1);
+		vid->addr = mboot->framebuffer_addr;
+		vid->pitch = mboot->framebuffer_pitch;
+
+		vid->width = mboot->framebuffer_width;
+		vid->height = mboot->framebuffer_height;
+		vid->bpp = mboot->framebuffer_bpp;
+
+		vid->red_off = mboot->framebuffer_red_field_position;
+		vid->green_off = mboot->framebuffer_green_field_position;
+		vid->blue_off = mboot->framebuffer_blue_field_position;
+
+		vid->red_size = mboot->framebuffer_red_mask_size;
+		vid->green_size = mboot->framebuffer_green_mask_size;
+		vid->blue_size = mboot->framebuffer_blue_mask_size;
+	}
+
+	debugcon_init(vid);
 
 	acpi_init();
 	cpu_data_init();
@@ -60,30 +82,11 @@ void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 
 	kmesg("kernel", "done initializing");
 
-
 	arch_boot_info_t *info = kcalloc(sizeof(arch_boot_info_t), 1);
 
 	if (mboot->flags & MULTIBOOT_INFO_FRAMEBUFFER_INFO) {
 		if (mboot->framebuffer_type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB) {
-
-			arch_video_mode_t *v = kcalloc(sizeof(arch_video_mode_t), 1);
-			v->addr = mboot->framebuffer_addr;
-			v->pitch = mboot->framebuffer_pitch;
-
-			v->width = mboot->framebuffer_width;
-			v->height = mboot->framebuffer_height;
-			v->bpp = mboot->framebuffer_bpp;
-
-
-			v->red_off = mboot->framebuffer_red_field_position;
-			v->green_off = mboot->framebuffer_green_field_position;
-			v->blue_off = mboot->framebuffer_blue_field_position;
-
-			v->red_size = mboot->framebuffer_red_mask_size;
-			v->green_size = mboot->framebuffer_green_mask_size;
-			v->blue_size = mboot->framebuffer_blue_mask_size;
-
-			info->vid_mode = v;
+			info->vid_mode = vid;
 			info->flags |= ARCH_INFO_HAS_VIDEO_MODE;
 		}
 	}

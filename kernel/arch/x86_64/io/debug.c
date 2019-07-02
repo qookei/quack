@@ -3,27 +3,21 @@
 #include <arch/io.h>
 #include <io/vga.h>
 #include <cmdline.h>
+#include <genfb/genfb.h>
 
 static int debug_port_exists = -1;
 
 static int use_debug_port = 0;
 static int use_vga_con = 0;
+static int use_fb_con = 0;
 
-#define FORCE_DEBUG_E9
-#define FORCE_DEBUG_VGA
-
-void debugcon_init(void) {
-	#ifndef FORCE_DEBUG_E9
+void debugcon_init(arch_video_mode_t *v) {
 	use_debug_port = cmdline_has_value("debugcon", "e9");
-	#else
-	use_debug_port = 1;
-	#endif
-
-	#ifndef FORCE_DEBUG_VGA
 	use_vga_con = cmdline_has_value("debugcon", "vga");
-	#else
-	use_vga_con = 1;
-	#endif
+	use_fb_con = cmdline_has_value("debugcon", "fb");
+
+	if (use_fb_con)
+		genfb_init(v);
 }
 
 void arch_debug_write(char c) {
@@ -37,4 +31,7 @@ void arch_debug_write(char c) {
 
 	if (use_vga_con)
 		vga_putch(c);
+
+	if (use_fb_con)
+		genfb_putch(c);
 }
