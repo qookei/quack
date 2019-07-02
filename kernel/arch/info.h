@@ -2,6 +2,7 @@
 #define ARCH_INFO_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 typedef struct {
 	uint64_t addr;
