@@ -9,7 +9,8 @@ int liballoc_unlock() {
 	return 0;
 }
 
-uintptr_t top = 0x1000;
+// TODO: use the address determined by the arch
+uintptr_t top = 0xA0000000;
 
 void *liballoc_alloc(int pages) {
 	uintptr_t alloc_addr = top;

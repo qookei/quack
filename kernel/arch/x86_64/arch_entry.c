@@ -80,6 +80,13 @@ void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 
 	pci_init();
 
+	madt_lapic_t *l = madt_get_lapics();
+	for (size_t i = 1; i < madt_get_lapic_count(); i++) {
+		if (!(l[i].flags & 1))
+			continue;
+		smp_init_single(l[i].apic_id, l[i].proc_id);
+	}
+
 	kmesg("kernel", "done initializing");
 
 	arch_boot_info_t *info = kcalloc(sizeof(arch_boot_info_t), 1);
