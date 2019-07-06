@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <kmesg.h>
+#include <util.h>
 
 #include <cpu/lapic.h>
 
@@ -20,17 +21,23 @@ void lapic_write(uint32_t offset, uint32_t val);
 void smp_init_single(uint32_t apic_id, uint32_t core_id) {
 	ptrdiff_t len = (uintptr_t)&_trampoline_end - (uintptr_t)&_trampoline_start;
 
-	kmesg("smp", "trampoline is %ld bytes long", len);
-	kmesg("smp", "trampoline start: %016p", &_trampoline_start);
-	kmesg("smp", "smp entry: %016p", &smp_entry);
-
-	arch_mm_map_kernel(-1, &_trampoline_start, &_trampoline_start, (len + PAGE_SIZE - 1) / PAGE_SIZE, ARCH_MM_FLAGS_READ | ARCH_MM_FLAGS_WRITE);
+	arch_mm_map_kernel(-1, &_trampoline_start, &_trampoline_start,
+			(len + PAGE_SIZE - 1) / PAGE_SIZE,
+			ARCH_MM_FLAGS_READ | ARCH_MM_FLAGS_WRITE);
 
 	memcpy(&_trampoline_start, (void *)(KERNEL_SMP + VIRT_PHYS_BASE), len);
 
-	for(size_t i = 0; i < len; i++) {
-		kmesg("smp", "@ %u = %02x", i, ((uint8_t *)(&_trampoline_start))[i]);
-	}
+	uintptr_t pml4 = (uintptr_t)arch_mm_get_ctx_kernel(-1);
+
+	assert(!(pml4 & 0xFFFFFFFF00000000));
+
+	kmesg("smp", "pml4 = %016lx", pml4);
+
+	uint64_t *data = (uint64_t *)(0x500 + VIRT_PHYS_BASE);
+	data[0] = pml4;
+
+	uint32_t *data32 = (uint32_t *)(0x500 + VIRT_PHYS_BASE);
+	kmesg("smp", "pml4 = %08x %08x", data32[0], data32[1]);
 
 	asm volatile("sti");
 
@@ -41,8 +48,8 @@ void smp_init_single(uint32_t apic_id, uint32_t core_id) {
 	lapic_sleep_ms(10);
 
 	lapic_write(0x310, apic_id << 24);
-	lapic_write(0x300, 0x1600);
-	lapic_sleep_ms(100000);
-	//kmesg("smp", "core supposedly started!");
-	while(1);
+	lapic_write(0x300,
+		0x600 | (uint32_t)((uintptr_t)&smp_entry / PAGE_SIZE));
+	lapic_sleep_ms(10000);
+	kmesg("smp", "core supposedly started!");
 }
