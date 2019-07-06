@@ -3,7 +3,8 @@ bits 16
 
 global smp_entry
 
-kern_data equ 0x500
+KERN_DATA equ 0x500
+KERN_DATA_HI equ 0xFFFF800000000500
 
 KERNEL_VIRTUAL_BASE equ 0xFFFFFFFF80000000
 
@@ -43,7 +44,7 @@ bits 32
 	or eax, 0x00000020
 	mov cr4, eax
 
-	mov eax, [kern_data]
+	mov eax, [KERN_DATA]
 	mov cr3, eax
 
 	mov ecx, 0xC0000080
@@ -56,7 +57,6 @@ bits 32
 	mov cr0, eax
 
 	jmp 0x08:.long_mode
-
 .long_mode:
 bits 64
 	mov ax, 0x10
@@ -66,12 +66,17 @@ bits 64
 	mov gs, ax
 	mov ss, ax
 
-	mov rdi, 0xffff8000fd000000
-	mov rax, 0xcafebabe
-	mov rcx, 0x1000
-	rep stosd
+	mov rcx, KERN_DATA_HI
 
+	mov rsp, qword [rcx + 8]
+	xor rbp, rbp
+	mov rax, qword [rcx + 16]
+
+	jmp rax
+
+.l:
 	hlt
+	jmp .l
 
 
 

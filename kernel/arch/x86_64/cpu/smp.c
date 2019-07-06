@@ -18,6 +18,21 @@ extern void *smp_entry;
 
 void lapic_write(uint32_t offset, uint32_t val);
 
+volatile static int has_started = 0;
+
+static void smp_c_entry(void) {
+	kmesg("smp", "core started and entered C code");
+
+	has_started = 1;
+
+	while(1);
+}
+
+static uintptr_t alloc_stack(void) {
+	uintptr_t ptr = (uintptr_t)pmm_alloc(0x10);
+	return ptr + VIRT_PHYS_BASE;
+}
+
 void smp_init_single(uint32_t apic_id, uint32_t core_id) {
 	ptrdiff_t len = (uintptr_t)&_trampoline_end - (uintptr_t)&_trampoline_start;
 
@@ -31,13 +46,12 @@ void smp_init_single(uint32_t apic_id, uint32_t core_id) {
 
 	assert(!(pml4 & 0xFFFFFFFF00000000));
 
-	kmesg("smp", "pml4 = %016lx", pml4);
-
 	uint64_t *data = (uint64_t *)(0x500 + VIRT_PHYS_BASE);
 	data[0] = pml4;
+	data[1] = alloc_stack();
+	data[2] = (uintptr_t)(&smp_c_entry);
 
-	uint32_t *data32 = (uint32_t *)(0x500 + VIRT_PHYS_BASE);
-	kmesg("smp", "pml4 = %08x %08x", data32[0], data32[1]);
+	has_started = 0;
 
 	asm volatile("sti");
 
@@ -50,6 +64,18 @@ void smp_init_single(uint32_t apic_id, uint32_t core_id) {
 	lapic_write(0x310, apic_id << 24);
 	lapic_write(0x300,
 		0x600 | (uint32_t)((uintptr_t)&smp_entry / PAGE_SIZE));
-	lapic_sleep_ms(10000);
-	kmesg("smp", "core supposedly started!");
+
+	size_t i = 0;
+	while(i < 1000 && !has_started) {
+		lapic_sleep_ms(100);
+		i++;
+	}
+
+	if (!has_started) {
+		kmesg("smp", "failed to start core %u!", core_id);
+	} else {
+		kmesg("smp", "successfully started core %u", core_id);
+	}
+
+	asm volatile("cli");
 }
