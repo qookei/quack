@@ -100,30 +100,22 @@ static void pci_fun_check(uint8_t bus, uint8_t dev, uint8_t fun) {
 	uint8_t irq_pin;
 	irq_pin = pci_read_word(bus, dev, fun, 0x3C) >> 8;
 
-	kmesg("pci", "routing irq for device "
-			"%02x.%02x.%01x", bus, dev, fun);
-
 	if(irq_pin) {
-		kmesg("pci", "\tdevice appears to have an irq");
 		acpi_resource_t res;
 		if (lai_pci_route(&res, bus, dev, fun)) {
-			kmesg("pci", "\tirq routing failed for device");
+			kmesg("pci", "routing irq for device "
+				"%02x.%02x.%01x failed. %s", bus, dev, fun,
+				halt_on_irq_route_fail ? "halting!" : "ignoring!");
+
 			d->irq = 0;
 			if (halt_on_irq_route_fail)
 				arch_cpu_halt_forever();
-			else
-				kmesg("pci", "\trouting failure ignored");
 		} else {
-			kmesg("pci",
-				"\tdevice is routed to gsi %u",
-				bus, dev, fun, res.base);
+			kmesg("pci", "routing irq for device "
+				"%02x.%02x.%01x succeeded. routed to gsi %u", bus, dev, fun, res.base);
 			d->irq = ioapic_get_vector_by_gsi(res.base);
 		}
-	} else {
-		kmesg("pci", "\tdevice doesn't appear to have an irq");
 	}
-
-	kmesg("pci", "");
 
 	if (get_header_type(bus, dev, fun))
 		return; // bridges dont have bars
