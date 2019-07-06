@@ -83,9 +83,14 @@ static void genfb_scroll_up(void) {
 	memcpy(vid_front, vid_back, mode_info->height * mode_info->pitch);
 }
 
+static volatile int lock;
+
 void genfb_putch(char c) {
 	if (!is_working)
 		return;
+
+	while(lock);
+	lock = 1;
 
 	if (c == '\n') {
 		disp_x = 0;
@@ -94,18 +99,19 @@ void genfb_putch(char c) {
 			genfb_scroll_up();
 			disp_y = disp_h - 1;
 		}
-		return;
+		goto unlock;
 	}
 
 	if (c == '\t') {
-		for (int i = 0; i < 8; i++) genfb_putch(' ');
-		return;
+		disp_x += 8;
+		goto scroll_screen;
 	}
 
 	genfb_putch_internal(c, disp_x * char_width, disp_y * char_height,
 			0xFFFFFFFF, 0x00000000);
-
 	disp_x++;
+
+scroll_screen:
 	if (disp_x >= disp_w) {
 		disp_x = 0;
 		disp_y++;
@@ -114,4 +120,7 @@ void genfb_putch(char c) {
 			disp_y = disp_h - 1;
 		}
 	}
+
+unlock:
+	lock = 0;
 }
