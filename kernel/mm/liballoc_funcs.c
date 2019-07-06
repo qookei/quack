@@ -1,11 +1,16 @@
 #include <stdlib.h>
 #include <arch/mm.h>
+#include <spinlock.h>
+
+static spinlock_t spin = {0};
 
 int liballoc_lock() {
+	spinlock_lock(&spin);
 	return 0;
 }
 
 int liballoc_unlock() {
+	spinlock_release(&spin);
 	return 0;
 }
 

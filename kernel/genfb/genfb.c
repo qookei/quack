@@ -4,6 +4,7 @@
 #include <arch/mm.h>
 #include <mm/heap.h>
 #include <string.h>
+#include <spinlock.h>
 
 #include "font.h"
 
@@ -83,14 +84,13 @@ static void genfb_scroll_up(void) {
 	memcpy(vid_front, vid_back, mode_info->height * mode_info->pitch);
 }
 
-static volatile int lock;
+static spinlock_t lock = {0};
 
 void genfb_putch(char c) {
 	if (!is_working)
 		return;
 
-	while(lock);
-	lock = 1;
+	spinlock_lock(&lock);
 
 	if (c == '\n') {
 		disp_x = 0;
@@ -99,7 +99,9 @@ void genfb_putch(char c) {
 			genfb_scroll_up();
 			disp_y = disp_h - 1;
 		}
-		goto unlock;
+
+		spinlock_release(&lock);
+		return;
 	}
 
 	if (c == '\t') {
@@ -121,6 +123,6 @@ scroll_screen:
 		}
 	}
 
-unlock:
-	lock = 0;
+	spinlock_release(&lock);
+	return;
 }
