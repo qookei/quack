@@ -65,3 +65,7 @@ void idt_init(void) {
 
 	idt_lidt(&idtp);
 }
+
+void idt_just_load(void) {
+	idt_lidt(&idtp);
+}

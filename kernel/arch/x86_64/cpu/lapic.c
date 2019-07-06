@@ -2,7 +2,7 @@
 #include <kmesg.h>
 #include <panic.h>
 #include <acpi/acpi.h>
-#include <mm/mm.h>
+#include <arch/mm.h>
 #include <string.h>
 #include <irq/isr.h>
 #include <io/port.h>
@@ -59,8 +59,10 @@ void lapic_enable(void) {
 }
 
 void lapic_init(void) {
-	// XXX: this might need changing to disable caching
-	lapic_base = madt_get_lapic_base() + VIRT_PHYS_BASE;
+	lapic_base = madt_get_lapic_base();
+
+	arch_mm_map_kernel(-1, (void *)lapic_base, (void *)lapic_base, 4,
+			ARCH_MM_FLAGS_READ | ARCH_MM_FLAGS_WRITE | ARCH_MM_FLAGS_NO_CACHE);
 
 	kmesg("lapic", "setting up the lapic");
 	lapic_nmi_setup();
@@ -120,11 +122,10 @@ void lapic_timer_set_frequency(uint64_t freq) {
 	kmesg("lapic-timer", "setting frequency to %luHz, period %lu", freq, period);
 }
 
-static volatile uint64_t ticks = 0;
+volatile uint64_t lapic_ticks = 0;
 
 static int lapic_timer_int(irq_cpu_state_t *s) {
-	// TODO: get cpu and store the count in a per-cpu variable
-	ticks++;
+	lapic_ticks++;
 
 	return 1;
 }
@@ -139,4 +140,9 @@ void lapic_timer_init(void) {
 	lapic_timer_set_frequency(INITIAL_FREQ);
 
 	isr_register_handler(0x31, lapic_timer_int);
+}
+
+void lapic_sleep_ms(uint64_t ms) {
+	volatile uint64_t end_tick = lapic_ticks + ms;
+	while (end_tick > lapic_ticks);
 }

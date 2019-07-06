@@ -24,6 +24,7 @@ typedef struct {
 } __attribute__((packed)) idt_ptr_t;
 
 void idt_init(void);
+void idt_just_load(void);
 
 /* meh */
 extern void isr0(void);

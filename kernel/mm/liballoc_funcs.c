@@ -1,15 +1,21 @@
 #include <stdlib.h>
 #include <arch/mm.h>
+#include <spinlock.h>
+
+static spinlock_t spin = {0};
 
 int liballoc_lock() {
+	spinlock_lock(&spin);
 	return 0;
 }
 
 int liballoc_unlock() {
+	spinlock_release(&spin);
 	return 0;
 }
 
-uintptr_t top = 0x1000;
+// TODO: use the address determined by the arch
+uintptr_t top = 0xA0000000;
 
 void *liballoc_alloc(int pages) {
 	uintptr_t alloc_addr = top;

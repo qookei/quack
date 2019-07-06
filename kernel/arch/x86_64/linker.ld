@@ -2,6 +2,7 @@ ENTRY(_loader)
 OUTPUT_FORMAT(elf64-x86-64)
 
 KERNEL_LMA = 0x0000000000200000;
+KERNEL_SMP = 0x0000000000400000;
 KERNEL_VMA = 0xFFFFFFFF80000000;
 
 SECTIONS {
@@ -23,5 +24,14 @@ SECTIONS {
 		*(COMMON)
 		*(.bss)
 		_ebss = .;
+	}
+
+	_trampoline_start_virt = .;
+	. = 0x1000;
+
+	.trampoline : AT(KERNEL_SMP) {
+		_trampoline_start = .;
+		*(.trampoline)
+		_trampoline_end = .;
 	}
 }

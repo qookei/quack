@@ -13,6 +13,7 @@ c_srcs = files(
   'lib/kmesg.c',
   'util/util.c',
   'util/initrd.c',
+  'util/spinlock.c',
 
   'lib/ctype.c',
   'lib/string.c',
