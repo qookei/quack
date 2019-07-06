@@ -6,7 +6,10 @@
 
 #include <cpu/lapic.h>
 
+#include <irq/idt.h>
+
 #include <arch/mm.h>
+#include <mm/pmm.h>
 #include <mm/mm.h>
 
 #define KERNEL_SMP 0x400000
@@ -16,14 +19,20 @@ extern void *_trampoline_end;
 
 extern void *smp_entry;
 
-void lapic_write(uint32_t offset, uint32_t val);
 
-volatile static int has_started = 0;
+static volatile int has_started = 0;
 
-static void smp_c_entry(void) {
-	kmesg("smp", "core started and entered C code");
+static void smp_c_entry(uint64_t core_id, uint64_t apic_id) {
+	kmesg("smp", "core %lu started", core_id);
+	kmesg("smp", "core %lu has lapic id %lu", core_id, apic_id);
 
 	has_started = 1;
+
+	idt_just_load();
+
+	lapic_sleep_ms(10000);
+
+	*(uint32_t *)0xDEADBEEF = 0xCAFEBABE;
 
 	while(1);
 }
@@ -50,6 +59,8 @@ void smp_init_single(uint32_t apic_id, uint32_t core_id) {
 	data[0] = pml4;
 	data[1] = alloc_stack();
 	data[2] = (uintptr_t)(&smp_c_entry);
+	data[3] = core_id;
+	data[4] = apic_id;
 
 	has_started = 0;
 
@@ -77,5 +88,5 @@ void smp_init_single(uint32_t apic_id, uint32_t core_id) {
 		kmesg("smp", "successfully started core %u", core_id);
 	}
 
-	asm volatile("cli");
+	//asm volatile("cli");
 }

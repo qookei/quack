@@ -68,10 +68,11 @@ bits 64
 
 	mov rcx, KERN_DATA_HI
 
-	mov rsp, qword [rcx + 8]
 	xor rbp, rbp
+	mov rsp, qword [rcx + 8]
 	mov rax, qword [rcx + 16]
-
+	mov rdi, qword [rcx + 24]
+	mov rsi, qword [rcx + 32]
 	jmp rax
 
 .l:
