@@ -4,14 +4,15 @@
 #include <stdarg.h>
 #include <string.h>
 #include <vsnprintf.h>
+#include <spinlock.h>
 
 void panic(void *state, const char *message, ...) {
+	char buf[128 + 16];
 	va_list va;
-	static char buf[512 + 16];
-	memset(buf, 0, 512 + 16);
+	memset(buf, 0, 128 + 16);
 
 	va_start(va, message);
-	vsnprintf(buf, 512, message, va);
+	vsnprintf(buf, 128, message, va);
 	va_end(va);
 
 	kmesg("kernel", "Kernel panic!");
