@@ -19,11 +19,17 @@ typedef struct {
 } pci_bar_t;
 
 typedef struct {
-	uint8_t irq;
-
 	uint8_t bus;
 	uint8_t dev;
 	uint8_t fun;
+} pci_desc_t;
+
+typedef struct {
+	pci_desc_t parent;
+
+	uint8_t irq;
+
+	pci_desc_t desc;
 
 	uint16_t vendor;
 	uint16_t device;

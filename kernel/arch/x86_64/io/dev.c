@@ -17,7 +17,8 @@ static void fill_pci_devices(void) {
 		dev.bus = hnd;
 		char buf[16];
 		snprintf(buf, 12, "pci%01x.%02x.%02x", 
-				devs[i].bus, devs[i].dev, devs[i].fun);
+				devs[i].desc.bus, devs[i].desc.dev, 
+				devs[i].desc.fun);
 		dev.name = buf;
 		dev.ident = buf;
 		dev.bus_vendor = devs[i].vendor;
