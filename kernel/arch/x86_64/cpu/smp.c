@@ -1,8 +1,11 @@
+#include "smp.h"
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
 #include <kmesg.h>
 #include <util.h>
+
+#include <acpi/acpi.h>
 
 #include <cpu/lapic.h>
 
@@ -14,9 +17,9 @@
 
 #define KERNEL_SMP 0x400000
 
+// trampoline data
 extern void *_trampoline_start;
 extern void *_trampoline_end;
-
 extern void *smp_entry;
 
 
@@ -30,9 +33,7 @@ static void smp_c_entry(uint64_t core_id, uint64_t apic_id) {
 
 	idt_just_load();
 
-	lapic_sleep_ms(10000);
-
-	*(uint32_t *)0xDEADBEEF = 0xCAFEBABE;
+	lapic_init();
 
 	while(1);
 }
@@ -42,7 +43,7 @@ static uintptr_t alloc_stack(void) {
 	return ptr + VIRT_PHYS_BASE;
 }
 
-void smp_init_single(uint32_t apic_id, uint32_t core_id) {
+static int smp_init_single(uint32_t apic_id, uint32_t core_id) {
 	ptrdiff_t len = (uintptr_t)&_trampoline_end - (uintptr_t)&_trampoline_start;
 
 	arch_mm_map_kernel(-1, &_trampoline_start, &_trampoline_start,
@@ -64,8 +65,6 @@ void smp_init_single(uint32_t apic_id, uint32_t core_id) {
 
 	has_started = 0;
 
-	asm volatile("sti");
-
 	kmesg("smp", "starting core %u (apic %u)!", core_id, apic_id);
 	lapic_write(0x310, apic_id << 24);
 	lapic_write(0x300, 0x500);
@@ -84,9 +83,33 @@ void smp_init_single(uint32_t apic_id, uint32_t core_id) {
 
 	if (!has_started) {
 		kmesg("smp", "failed to start core %u!", core_id);
+		return 0;
 	} else {
 		kmesg("smp", "successfully started core %u", core_id);
+		return 1;
 	}
+}
+
+static int smp_core_count;
+
+void smp_init(void) {
+	asm volatile("sti");
+
+	madt_lapic_t *l = madt_get_lapics();
+	for (size_t i = 0; i < madt_get_lapic_count(); i++) {
+		if (!(l[i].flags & 1))
+			continue;
+
+		if (!l[i].apic_id)
+			continue;
+
+		if (!smp_init_single(l[i].apic_id, smp_core_count + 1))
+			continue;
+
+		smp_core_count++;
+	}
+
+	kmesg("smp", "init done, %u working cores found", smp_core_count);
 
 	//asm volatile("cli");
 }

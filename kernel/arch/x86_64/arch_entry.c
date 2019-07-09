@@ -14,6 +14,7 @@
 #include <cpu/lapic.h>
 #include <cpu/ioapic.h>
 #include <cpu/cpu_data.h>
+#include <cpu/smp.h>
 #include <io/pci.h>
 
 #include <kmesg.h>
@@ -80,12 +81,7 @@ void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 
 	pci_init();
 
-	madt_lapic_t *l = madt_get_lapics();
-	for (size_t i = 1; i < madt_get_lapic_count(); i++) {
-		if (!(l[i].flags & 1))
-			continue;
-		smp_init_single(l[i].apic_id, l[i].proc_id);
-	}
+	smp_init();
 
 	kmesg("kernel", "done initializing");
 
