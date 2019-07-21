@@ -99,7 +99,6 @@ void acpi_init(void) {
 
 	uint16_t sci_irq;
 	if ((sci_irq = acpi_get_sci_vector())) {
-		isr_register_handler(0x20 + sci_irq, acpi_sci_handler);
 		kmesg("acpi", "sci interrupt vector: %u", sci_irq);
 	} else
 		kmesg("acpi", "there is no defined sci interrupt vector");
@@ -109,6 +108,15 @@ void acpi_init(void) {
 	madt_init();
 
 	kmesg("acpi", "init done");
+}
+
+
+void acpi_late_init(void) {
+	uint16_t sci_irq;
+	if ((sci_irq = acpi_get_sci_vector())) {
+		isr_register_handler(ioapic_get_vector_by_irq(sci_irq),
+				acpi_sci_handler);
+	}
 }
 
 static void *acpi_find_dsdt(void) {

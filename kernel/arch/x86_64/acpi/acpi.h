@@ -59,6 +59,7 @@ void acpi_init(void);
 void *acpi_find_table(const char *, size_t);
 
 void madt_init(void);
+void acpi_late_init(void);
 uintptr_t madt_get_lapic_base(void);
 
 size_t madt_get_nmi_count(void);

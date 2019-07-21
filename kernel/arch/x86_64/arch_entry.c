@@ -83,6 +83,8 @@ void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 
 	smp_init();
 
+	acpi_late_init();
+
 	kmesg("kernel", "done initializing");
 
 	arch_boot_info_t *info = kcalloc(sizeof(arch_boot_info_t), 1);
@@ -102,6 +104,8 @@ void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 		info->initramfs_size = (mod->mod_end - mod->mod_start);
 		info->flags |= ARCH_INFO_HAS_INITRAMFS;
 	}
+
+	asm volatile("cli");
 
 	kernel_main(info);
 }
