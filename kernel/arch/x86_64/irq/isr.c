@@ -48,7 +48,7 @@ void dispatch_interrupt(irq_cpu_state_t *state) {
 		if (irq < 0x20) {
 			// cpu exception
 			if (state->cs == 0x08) {
-				panic(state, "unhandled exception %s (%u)", exc_names[irq], irq);
+				panic(state, "unhandled exception %s (%u) error %02x", exc_names[irq], irq, state->err);
 			} else {
 				// user mode
 				kmesg("irq", "user mode panic!");
