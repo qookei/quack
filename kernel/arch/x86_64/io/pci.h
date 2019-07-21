@@ -3,12 +3,19 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <lai/core.h>
 
 #define BAR_IO 1
 #define BAR_MEM 2
 
-uint32_t pci_read_word(uint8_t, uint8_t, uint8_t, uint16_t);
-void pci_write_word(uint8_t, uint8_t, uint8_t, uint16_t, uint32_t);
+uint8_t pci_read_byte(uint32_t, uint32_t, uint32_t, uint16_t);
+void pci_write_byte(uint32_t, uint32_t, uint32_t, uint16_t, uint8_t);
+
+uint16_t pci_read_word(uint32_t, uint32_t, uint32_t, uint16_t);
+void pci_write_word(uint32_t, uint32_t, uint32_t, uint16_t, uint16_t);
+
+uint32_t pci_read_dword(uint32_t, uint32_t, uint32_t, uint16_t);
+void pci_write_dword(uint32_t, uint32_t, uint32_t, uint16_t, uint32_t);
 
 typedef struct {
 	int enabled;
@@ -24,8 +31,9 @@ typedef struct {
 	uint8_t fun;
 } pci_desc_t;
 
-typedef struct {
-	pci_desc_t parent;
+typedef struct pci_dev {
+	struct pci_dev *parent;
+	size_t parent_id;
 
 	uint8_t irq;
 
@@ -38,6 +46,9 @@ typedef struct {
 	uint8_t sub_class;
 
 	pci_bar_t bar[6];
+
+	lai_nsnode_t *acpi_node;
+	lai_variable_t acpi_prt;
 } pci_dev_t;
 
 void pci_init(void);

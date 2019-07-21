@@ -7,185 +7,195 @@
 #include <mm/heap.h>
 #include <string.h>
 #include <kmesg.h>
-#include <lai/core.h>
+#include <lai/helpers/pci.h>
 #include <cpu/ioapic.h>
 #include <arch/cpu.h>
+#include <panic.h>
 
 #include <cmdline.h>
 
-uint32_t pci_read_word(uint8_t bus, uint8_t slot, uint8_t func, uint16_t offset) {
-	uint32_t address;
-	uint32_t lbus  = (uint32_t)bus;
-	uint32_t lslot = (uint32_t)slot;
-	uint32_t lfunc = (uint32_t)func;
-	uint32_t tmp = 0;
+// TODO: HACK: remove this from here (preferably into cpu/debug.c)
 
-	address = (uint32_t)((lbus << 16) | (lslot << 11) |
-				(lfunc << 8) | (offset & 0xfc) | ((uint32_t)0x80000000));
+#define DEBUG_WATCH_EXEC 0
+#define DEBUG_WATCH_WRITE 1
+#define DEBUG_WATCH_IO 2
+#define DEBUG_WATCH_READWRITE 3
 
-	outl(0xCF8, address);
-	tmp = inl(0xCFC);
-	return tmp;
+#define DEBUG_WATCH_SIZE_1 0
+#define DEBUG_WATCH_SIZE_2 1
+#define DEBUG_WATCH_SIZE_8 2
+#define DEBUG_WATCH_SIZE_4 3
+
+static void debug_set_watchpoint(void *addr, size_t mode, size_t size) {
+	asm volatile ("mov %0, %%db0" : : "r"(addr) : "memory");
+
+	uint64_t trigger = (size << 18) | (mode << 16) | (1 << 1);
+	asm volatile ("mov %0, %%db7" : : "r"(trigger) : "memory");
 }
 
-void pci_write_word(uint8_t bus, uint8_t slot, uint8_t func, uint16_t offset, uint32_t value) {
-	uint32_t address;
-	uint32_t lbus  = (uint32_t)bus;
-	uint32_t lslot = (uint32_t)slot;
-	uint32_t lfunc = (uint32_t)func;
+// </HACK></TODO>
 
-	address = (uint32_t)((lbus << 16) | (lslot << 11) |
-				(lfunc << 8) | (offset & 0xfc) | ((uint32_t)0x80000000));
+uint8_t pci_read_byte(uint32_t bus, uint32_t slot, uint32_t func, uint16_t offset) {
+	outd(0xCF8, (bus << 16) | (slot << 11) | (func << 8) | (offset & 0xFFFF) | 0x80000000);
+	uint8_t v = inb(0xCFC + (offset % 4));
+	return v;
+}
 
-	outl(0xCF8, address);
-	outl(0xCFC, value);
+void pci_write_byte(uint32_t bus, uint32_t slot, uint32_t func, uint16_t offset, uint8_t value) {
+	outd(0xCF8, (bus << 16) | (slot << 11) | (func << 8) | (offset & 0xFFFF) | 0x80000000);
+	outb(0xCFC + (offset % 4), value);
+}
+
+uint16_t pci_read_word(uint32_t bus, uint32_t slot, uint32_t func, uint16_t offset) {
+	outd(0xCF8, (bus << 16) | (slot << 11) | (func << 8) | (offset & 0xFFFE) | 0x80000000);
+	uint16_t v = inw(0xCFC + (offset % 4));
+	return v;
+}
+
+void pci_write_word(uint32_t bus, uint32_t slot, uint32_t func, uint16_t offset, uint16_t value) {
+	outd(0xCF8, (bus << 16) | (slot << 11) | (func << 8) | (offset & 0xFFFE) | 0x80000000);
+	outw(0xCFC + (offset % 4), value);
+}
+
+uint32_t pci_read_dword(uint32_t bus, uint32_t slot, uint32_t func, uint16_t offset) {
+	outd(0xCF8, (bus << 16) | (slot << 11) | (func << 8) | (offset & 0xFFFC) | 0x80000000);
+	uint32_t v = ind(0xCFC + (offset % 4));
+	return v;
+}
+
+void pci_write_dword(uint32_t bus, uint32_t slot, uint32_t func, uint16_t offset, uint32_t value) {
+	outd(0xCF8, (bus << 16) | (slot << 11) | (func << 8) | (offset & 0xFFFC) | 0x80000000);
+	outd(0xCFC + (offset % 4), value);
 }
 
 static pci_dev_t *devices = NULL;
 static size_t n_devices = 0;
 
-static pci_dev_t *add_device_to_list(void) {
+static size_t add_device_to_list(void) {
 	n_devices++;
 	devices = krealloc(devices, n_devices * sizeof(pci_dev_t));
-	return &devices[n_devices - 1];
+	return n_devices - 1;
 }
 
-static inline uint16_t get_vendor(uint8_t bus, uint8_t dev, uint8_t fun) {
-	return pci_read_word(bus, dev, fun, 0) & 0xFFFF;
-}
+#define VENDOR_OFF 0
+#define DEVICE_OFF 2
+#define HEADER_TYPE_OFF 0xE
+#define BASE_CLASS_OFF 0xB
+#define SUB_CLASS_OFF 0xA
+#define SUB_CLASS_OFF 0xA
+#define SEC_BUS_OFF 0x19
+#define BAR_OFF 0x10
 
-static inline uint16_t get_device(uint8_t bus, uint8_t dev, uint8_t fun) {
-	return (pci_read_word(bus, dev, fun, 0) >> 16) & 0xFFFF;
-}
-
-static inline uint8_t get_header_type(uint8_t bus, uint8_t dev, uint8_t fun) {
-	return (pci_read_word(bus, dev, fun, 0xC) & 0x00FF0000) >> 16;
-}
-
-static inline uint8_t get_base_class(uint8_t bus, uint8_t dev, uint8_t fun) {
-	return (pci_read_word(bus, dev, fun, 0x8) & 0xFF000000) >> 24;
-}
-
-static inline uint8_t get_sub_class(uint8_t bus, uint8_t dev, uint8_t fun) {
-	return (pci_read_word(bus, dev, fun, 0x8) & 0x00FF0000) >> 16;
-}
-
-static inline uint8_t get_sec_bus(uint8_t bus, uint8_t dev, uint8_t fun) {
-	return (pci_read_word(bus, dev, fun, 0x18) & 0x0000FF00) >> 8;
-}
-
-static void pci_bus_enum(uint8_t bus, pci_desc_t parent);
+static void pci_bus_enum(uint8_t bus, size_t parent_id);
 static int halt_on_irq_route_fail = 1;
 
 static void pci_fun_check(uint8_t bus, uint8_t dev, uint8_t fun,
-				pci_desc_t parent) {
-	if (get_vendor(bus, dev, fun) == 0xFFFF)
+				size_t parent_id) {
+	if (pci_read_word(bus, dev, fun, VENDOR_OFF) == 0xFFFF)
 		return; // not present
 
-	if (get_base_class(bus, dev, fun) == 0x6 && get_sub_class(bus, dev, fun) == 0x4) {
-		// bridge
-		pci_desc_t d;
-		d.bus = bus;
-		d.dev = dev;
-		d.fun = fun;
-		pci_bus_enum(get_sec_bus(bus, dev, fun), d);
-	}
-
-	pci_dev_t *d = add_device_to_list();
+	size_t dev_id = add_device_to_list();
+	pci_dev_t *d = &devices[dev_id];
 	memset(d, 0, sizeof(pci_dev_t));
 
-	d->parent = parent;
+	d->parent = NULL;
+	d->parent_id = parent_id;
 	d->desc.bus = bus;
 	d->desc.dev = dev;
 	d->desc.fun = fun;
-	d->vendor = get_vendor(bus, dev, fun);
-	d->device = get_device(bus, dev, fun);
-	d->base_class = get_base_class(bus, dev, fun);
-	d->sub_class = get_sub_class(bus, dev, fun);
+	d->vendor = pci_read_word(bus, dev, fun, VENDOR_OFF);
+	d->device = pci_read_word(bus, dev, fun, DEVICE_OFF);
+	d->base_class = pci_read_byte(bus, dev, fun, BASE_CLASS_OFF);
+	d->sub_class = pci_read_byte(bus, dev, fun, SUB_CLASS_OFF);
+	d->acpi_node = NULL;
+	d->acpi_prt = (lai_variable_t)LAI_VAR_INITIALIZER;
 
-	if (get_header_type(bus, dev, fun))
-		return; // bridges dont have bars
+	if (pci_read_byte(bus, dev, fun, HEADER_TYPE_OFF) & 0x7F) {
+		for (int i = 0; i < 6; i++) {
+			uint16_t idx = BAR_OFF + i * 4;
+			size_t len = 0;
 
-	for (int i = 0; i < 6; i++) {
-		uint16_t idx = 0x10 + i * 4;
-		size_t len = 0;
+			uint32_t bar_val = pci_read_dword(bus, dev, fun, idx);
 
-		uint32_t bar_val = pci_read_word(bus, dev, fun, idx);
+			pci_write_dword(bus, dev, fun, idx, 0xFFFFFFFF);
+			uint32_t raw_len = pci_read_dword(bus, dev, fun, idx);
+			pci_write_dword(bus, dev, fun, idx, bar_val);
 
-		pci_write_word(bus, dev, fun, idx, 0xFFFFFFFF);
-		uint32_t raw_len = pci_read_word(bus, dev, fun, idx);
-		pci_write_word(bus, dev, fun, idx, bar_val);
+			int io = bar_val & 1;
 
-		int io = bar_val & 1;
+			if (io)
+				len = ~(raw_len & (~0x3)) + 1;
+			else
+				len = ~(raw_len & (~0xF)) + 1;
 
-		if (io)
-			len = ~(raw_len & (~0x3)) + 1;
-		else
-			len = ~(raw_len & (~0xF)) + 1;
+			if (!bar_val)
+				continue;
 
-		if (!bar_val)
-			continue;
+			if (io) {
+				d->bar[i].enabled = 1;
+				d->bar[i].addr = (bar_val & (~0x3)) & 0xFFFF;
+				d->bar[i].type = BAR_IO;
+				d->bar[i].length = len & 0xFFFF;
+			} else {
+				uint8_t type = (bar_val >> 1) & 3;
+				uint32_t top_bar = 0;
 
-		if (io) {
-			d->bar[i].enabled = 1;
-			d->bar[i].addr = (bar_val & (~0x3)) & 0xFFFF;
-			d->bar[i].type = BAR_IO;
-			d->bar[i].length = len & 0xFFFF;
-		} else {
-			uint8_t type = (bar_val >> 1) & 3;
-			uint32_t top_bar = 0;
+				if (type == 0x2) {
+					// read next bar
+					top_bar = pci_read_dword(bus, dev, fun, idx + 4);
+				}
 
-			if (type == 0x2) {
-				// read next bar
-				top_bar = pci_read_word(bus, dev, fun, idx + 4);
+				d->bar[i].enabled = 1;
+				d->bar[i].addr = ((uintptr_t)top_bar << 32) | (bar_val & (~0xF));
+				d->bar[i].type = BAR_MEM;
+				d->bar[i].length = len;
+				d->bar[i].prefetch = (bar_val >> 3) & 1;
+
+				if (top_bar)
+					i++;
 			}
-
-			d->bar[i].enabled = 1;
-			d->bar[i].addr = ((uintptr_t)top_bar << 32) | (bar_val & (~0xF));
-			d->bar[i].type = BAR_MEM;
-			d->bar[i].length = len;
-			d->bar[i].prefetch = (bar_val >> 3) & 1;
-
-			if (top_bar)
-				i++;
 		}
+	}
+
+	if (pci_read_byte(bus, dev, fun, BASE_CLASS_OFF) == 0x6 &&
+			pci_read_byte(bus, dev, fun, SUB_CLASS_OFF) == 0x4) {
+		// bridge
+		pci_bus_enum(pci_read_byte(bus, dev, fun, SEC_BUS_OFF), dev_id);
 	}
 }
 
-static void pci_dev_check(uint8_t bus, uint8_t dev, pci_desc_t parent) {
+static void pci_dev_check(uint8_t bus, uint8_t dev, size_t parent_id) {
 	assert(dev < 32);
 
 	uint8_t fun = 0;
 
-	if (get_vendor(bus, dev, fun) == 0xFFFF)
+	if (pci_read_word(bus, dev, fun, VENDOR_OFF) == 0xFFFF)
 		return; // not present
 
-	pci_fun_check(bus, dev, fun, parent);
+	pci_fun_check(bus, dev, fun, parent_id);
 
-	if (get_header_type(bus, dev, fun) & 0x80) {
+	if (pci_read_byte(bus, dev, fun, HEADER_TYPE_OFF) & 0x80) {
 		for (fun = 1; fun < 8; fun++) {
-			pci_fun_check(bus, dev, fun, parent);
+			pci_fun_check(bus, dev, fun, parent_id);
 		}
 	}
 }
 
-static void pci_bus_enum(uint8_t bus, pci_desc_t parent) {
+static void pci_bus_enum(uint8_t bus, size_t parent_id) {
 	for (uint8_t dev = 0; dev < 32; dev++) {
-		pci_dev_check(bus, dev, parent);
+		pci_dev_check(bus, dev, parent_id);
 	}
 }
 
 static void pci_bus_enum_all(void) {
-	pci_desc_t desc = {0, 0, 0};
-	if (!(get_header_type(0, 0, 0) & 0x80)) {
-		pci_bus_enum(0, desc);
+	if (!(pci_read_byte(0, 0, 0, HEADER_TYPE_OFF) & 0x80)) {
+		pci_bus_enum(0, 0xFFFFFFFFFFFFFFFF);
 	} else {
 		for (uint8_t fun = 0; fun < 8; fun++) {
-			if (get_vendor(0, 0, fun) != 0xFFFF)
+			if (pci_read_word(0, 0, fun, VENDOR_OFF) != 0xFFFF)
 				break;
 
-			desc.fun = fun;
-			pci_bus_enum(fun, desc);
+			pci_bus_enum(fun, 0xFFFFFFFFFFFFFFFF);
 		}
 	}
 }
@@ -194,102 +204,240 @@ static inline int pci_dev2bridge_pin(int pin, int dev) {
 	return (((pin - 1) + (dev % 4)) % 4) + 1;
 }
 
-static inline const char *pin_to_name(int pin) {
-	static const char *names[] = {
-		"none",
-		"INTA#",
-		"INTB#",
-		"INTC#",
-		"INTD#"
-	};
+#define PCI_PNP_ID		"PNP0A03"
+#define PCIE_PNP_ID		"PNP0A08"
 
-	return names[pin];
+typedef struct {
+	lai_nsnode_t *node;
+	uint8_t bus;
+	lai_variable_t prt;
+} pci_root_bus_t;
+
+static pci_root_bus_t *pci_bus_cache;
+static size_t n_pci_bus_cache;
+
+static pci_root_bus_t *pci_add_bus_to_cache() {
+	n_pci_bus_cache++;
+	pci_bus_cache = krealloc(pci_bus_cache, n_pci_bus_cache * sizeof(pci_root_bus_t));
+	return &pci_bus_cache[n_pci_bus_cache - 1];
 }
 
-static pci_dev_t *get_dev_by_desc(pci_desc_t desc) {
-	for (size_t i = 0; i < n_devices; i++) {
-		pci_dev_t *dev = &devices[i];
-		if (dev->desc.bus == desc.bus &&
-			dev->desc.dev == desc.dev &&
-			dev->desc.fun == desc.fun)
-			return dev;
-	}
-
+static pci_root_bus_t *pci_get_root_bus_node(uint8_t bus) {
+	for (size_t i = 0; i < n_pci_bus_cache; i++)
+		if (pci_bus_cache[i].bus == bus)
+			return &pci_bus_cache[i];
 	return NULL;
 }
 
+// This function iterates over the ACPI namespace to find all PCI(e)
+// root busses, and sets their pci_root_bus_t->node fields to the corresponding node.
+static void pci_find_root_busses(lai_state_t *state) {
+	LAI_CLEANUP_VAR lai_variable_t pci_pnp_id = LAI_VAR_INITIALIZER;
+	LAI_CLEANUP_VAR lai_variable_t pcie_pnp_id = LAI_VAR_INITIALIZER;
+	lai_eisaid(&pci_pnp_id, PCI_PNP_ID);
+	lai_eisaid(&pcie_pnp_id, PCIE_PNP_ID);
+
+	lai_nsnode_t *sb_handle = lai_resolve_path(NULL, "\\_SB_");
+	assert(sb_handle);
+	struct lai_ns_child_iterator iter = LAI_NS_CHILD_ITERATOR_INITIALIZER(sb_handle);
+	lai_nsnode_t *node;
+	while ((node = lai_ns_child_iterate(&iter))) {
+		if (lai_check_device_pnp_id(node, &pci_pnp_id, state) &&
+			lai_check_device_pnp_id(node, &pcie_pnp_id, state)) {
+				continue;
+		}
+
+		pci_root_bus_t *b = pci_add_bus_to_cache();
+		memset(b, 0, sizeof(pci_root_bus_t));
+		b->prt = (lai_variable_t)LAI_VAR_INITIALIZER;
+		b->node = node;
+
+		// this is a root bus
+		LAI_CLEANUP_VAR lai_variable_t bus_number = LAI_VAR_INITIALIZER;
+		uint64_t bbn_result = 0;
+		lai_nsnode_t *bbn_handle = lai_resolve_path(node, "_BBN");
+		if (bbn_handle) {
+			if (lai_eval(&bus_number, bbn_handle, state)) {
+				continue;
+			}
+			lai_obj_get_integer(&bus_number, &bbn_result);
+		}
+
+		b->bus = bbn_result;
+
+		lai_nsnode_t *prt_handle = lai_resolve_path(node, "_PRT");
+		if (!prt_handle) {
+			kmesg("pci", "root bus %02x has no prt...", bbn_result);
+		} else {
+			if (lai_eval(&b->prt, prt_handle, state)) {
+				kmesg("pci", "failed to eval prt for root bus %02x...", bbn_result);
+			} else {
+				kmesg("pci", "found a prt for root bus %02x", bbn_result);
+			}
+		}
+	}
+}
+
+static void pci_find_node(pci_dev_t *dev, lai_state_t *state) {
+	if (dev->acpi_node) {
+		return;
+	}
+	if (dev->parent) {
+		pci_find_node(dev->parent, state);
+	}
+
+	lai_nsnode_t *bus;
+	pci_root_bus_t *r;
+	if (!(r = pci_get_root_bus_node(dev->desc.bus))) {
+		// this device is not on a root bus
+		if (!dev->parent)
+			panic(NULL, "device %02x.%02x.%01x not on root bus does not have a parent node!",
+					dev->desc.bus, dev->desc.dev, dev->desc.fun);
+		bus = dev->parent->acpi_node;
+	} else {
+		// this device is on a root bus
+		bus = r->node;
+	}
+
+	dev->acpi_node = lai_pci_find_device(bus, dev->desc.dev, dev->desc.fun, state);
+}
+
 static void pci_route_irqs_all(void) {
+	LAI_CLEANUP_STATE lai_state_t state;
+	lai_init_state(&state);
+
+	// find parents for devices (done now to avoid resetting pointers
+	// after krealloc)
+	for (size_t i = 0; i < n_devices; i++) {
+		pci_dev_t *dev = &devices[i];
+		if (dev->parent_id == 0xFFFFFFFFFFFFFFFF)
+			continue;
+		pci_dev_t *parent = &devices[dev->parent_id];
+		dev->parent = parent;
+	}
+
+	pci_find_root_busses(&state);
+
+	// find nodes for child devices
+	for (size_t i = 0; i < n_devices; i++) {
+		pci_dev_t *dev = &devices[i];
+		pci_find_node(dev, &state);
+
+		if (dev->acpi_node) {
+			// attempt to get the prt
+			if (!lai_obj_get_type(&dev->acpi_prt)) {
+				lai_nsnode_t *prt_handle = lai_resolve_path(dev->acpi_node, "_PRT");
+				if (prt_handle) {
+					if (lai_eval(&dev->acpi_prt, prt_handle, &state)) {
+						kmesg("pci", "failed to eval "
+							"prt for %02x.%02x.%01x...",
+							dev->desc.bus,
+							dev->desc.dev,
+							dev->desc.fun);
+					} else {
+						kmesg("pci", "found a prt "
+							"for %02x.%02x.%01x...",
+							dev->desc.bus,
+							dev->desc.dev,
+							dev->desc.fun);
+					}
+				}
+			} else {
+				kmesg("pci", "%02x.%02x.%01x already has a prt...",
+					dev->desc.bus,
+					dev->desc.dev,
+					dev->desc.fun);
+			}
+		}
+	}
+
+	// finally route interrupts
 	for (size_t i = 0; i < n_devices; i++) {
 		pci_dev_t *dev = &devices[i];
 
 		uint8_t irq_pin;
-		irq_pin = pci_read_word(dev->desc.bus, dev->desc.dev, dev->desc.fun, 0x3C) >> 8;
+		irq_pin = pci_read_byte(dev->desc.bus, dev->desc.dev, dev->desc.fun, 0x3D);
 
 		if (!irq_pin)
 			continue;
 
-		if (dev->desc.bus) {
-			// behind a bus
-			kmesg("pci", "device %02x.%02x.%01x is behind a bus", dev->desc.bus, dev->desc.dev, dev->desc.fun);
-			kmesg("pci", "it's interrupt line is %s", pin_to_name(irq_pin));
-			kmesg("pci", "it's connected to line %s on the bridge", pin_to_name(pci_dev2bridge_pin(irq_pin, dev->desc.dev)));
+		pci_dev_t *tmp = dev;
+		lai_variable_t *prt = NULL;
 
-			pci_desc_t bridge = dev->parent;
-			uint8_t bridge_dev = dev->desc.dev;
-
-			uint8_t pin = irq_pin;
-			while(bridge.bus) {
-				pin = pci_dev2bridge_pin(pin, bridge_dev);
-				bridge_dev = bridge.dev;
-				pci_dev_t *d = get_dev_by_desc(bridge);
-				if (d->parent.bus)
-					bridge = get_dev_by_desc(bridge)->parent;
-				else
+		while(1) {
+			if (tmp->parent) {
+				// not on a root hub
+				// does the parent have a prt?
+				if (!lai_obj_get_type(&tmp->parent->acpi_prt)) {
+					// no
+					// translate irq
+					irq_pin = pci_dev2bridge_pin(irq_pin, tmp->desc.dev);
+				} else {
+					// yes, we're done
+					prt = &tmp->parent->acpi_prt;
 					break;
-			}
-
-			// bridge points to the pci-to-pci bridge connected to the pci root
-			acpi_resource_t res;
-			if (lai_pci_route_pin(&res, bridge.bus, bridge.dev, bridge.fun, pin)) {
-				kmesg("pci", "routing irq for bridge "
-					"%02x.%02x.%01x failed. %s", bridge.bus, bridge.dev, bridge.fun,
-					halt_on_irq_route_fail ? "halting!" : "ignoring!");
-
-				dev->irq = 0;
-				if (halt_on_irq_route_fail)
-					arch_cpu_halt_forever();
+				}
+				tmp = tmp->parent;
 			} else {
-				kmesg("pci", "routing irq for bridge "
-					"%02x.%02x.%01x succeeded. "
-					"device %02x.%02x.%01x routed to gsi %u",
-					bridge.bus, bridge.dev, bridge.fun,
-					dev->desc.bus, dev->desc.dev, dev->desc.fun, res.base);
-				dev->irq = ioapic_get_vector_by_gsi(res.base);
+				// on one of the root hubs
+				pci_root_bus_t *bus = pci_get_root_bus_node(tmp->desc.bus);
+				prt = &bus->prt;
+				break;
 			}
-		} else {
-			acpi_resource_t res;
-			if (lai_pci_route_pin(&res, dev->desc.bus, dev->desc.dev, dev->desc.fun, irq_pin)) {
-				kmesg("pci", "routing irq for device "
-					"%02x.%02x.%01x failed. %s", dev->desc.bus, dev->desc.dev, dev->desc.fun,
-					halt_on_irq_route_fail ? "halting!" : "ignoring!");
+		}
 
-				dev->irq = 0;
-				if (halt_on_irq_route_fail)
-					arch_cpu_halt_forever();
-			} else {
-				kmesg("pci", "routing irq for device "
-					"%02x.%02x.%01x succeeded. routed to gsi %u", dev->desc.bus, dev->desc.dev, dev->desc.fun, res.base);
-				dev->irq = ioapic_get_vector_by_gsi(res.base);
+		assert(prt && "failed to find prt");
+
+		struct lai_prt_iterator iter = LAI_PRT_ITERATOR_INITIALIZER(prt);
+		lai_api_error_t err;
+
+		int found = 0;
+
+		while (!(err = lai_pci_parse_prt(&iter))) {
+			if (iter.slot == tmp->desc.dev &&
+				(iter.function == tmp->desc.fun || iter.function == -1) &&
+				iter.pin == (irq_pin - 1)) { // pin - 1 since acpi starts from 0 and pci from 1
+				// TODO: care about flags for the IRQ
+
+				dev->irq = ioapic_get_vector_by_gsi(iter.gsi);
+				kmesg("pci", "device %02x.%02x.%01x successfully routed to gsi %u (irq %u)",
+						dev->desc.bus, dev->desc.dev, dev->desc.fun, iter.gsi, dev->irq);
+				found = 1;
+				break;
+			}
+		}
+
+		if (!found) {
+			kmesg("pci", "routing failed for device %02x.%02x.%01x",
+					dev->desc.bus, dev->desc.dev, dev->desc.fun);
+			if (!dev->parent)
+				kmesg("pci", "\tdevice is on a root bus");
+			else {
+				pci_dev_t *tmp = dev->parent;
+				size_t i = 1;
+				while (tmp) {
+					kmesg("pci", "\tparent bridge #%u:");
+					kmesg("pci", "\t\t%02x.%02x.%01x",
+							tmp->desc.bus, tmp->desc.dev, tmp->desc.fun);
+					if (lai_obj_get_type(&tmp->acpi_prt)) {
+						kmesg("pci", "\t\thas a prt, not looking further");
+						kmesg("pci", "\t\tprt type = %u", lai_obj_get_type(&tmp->acpi_prt));
+						break;
+					} else {
+						kmesg("pci", "\t\tdoes not have a prt");
+					}
+					tmp = tmp->parent;
+					i++;
+				}
+				kmesg("pci", "\tthere were %u bridges between the device and the root hub", i);
 			}
 		}
 	}
+
 	arch_cpu_halt_forever();
 }
 
 void pci_init(void) {
-	if (cmdline_has_value("pci", "no-halt"))
-		halt_on_irq_route_fail = 0;
-
 	pci_bus_enum_all();
 	pci_route_irqs_all();
 
