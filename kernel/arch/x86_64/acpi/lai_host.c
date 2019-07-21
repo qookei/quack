@@ -8,6 +8,7 @@
 #include <string.h>
 #include <io/pci.h>
 #include <panic.h>
+#include <util.h>
 
 void *laihost_malloc(size_t len) {
 	void *mem = kmalloc(len);
@@ -58,7 +59,7 @@ void laihost_outw(uint16_t port, uint16_t val) {
 }
 
 void laihost_outd(uint16_t port, uint32_t val) {
-	outl(port, val);
+	outd(port, val);
 }
 
 uint8_t laihost_inb(uint16_t port) {
@@ -70,15 +71,37 @@ uint16_t laihost_inw(uint16_t port) {
 }
 
 uint32_t laihost_ind(uint16_t port) {
-	return inl(port);
+	return ind(port);
 }
 
-void laihost_pci_write(uint8_t bus, uint8_t dev, uint8_t fn, uint16_t off, uint32_t val) {
-	pci_write_word(bus, dev, fn, off, val);
+void laihost_pci_writeb(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t fun, uint16_t off, uint8_t val) {
+	assert(!seg && "TODO");
+	pci_write_byte(bus, dev, fun, off, val);
 }
 
-uint32_t laihost_pci_read(uint8_t bus, uint8_t dev, uint8_t fn, uint16_t off) {
-	return pci_read_word(bus, dev, fn, off);
+uint8_t laihost_pci_readb(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t fun, uint16_t off) {
+	assert(!seg && "TODO");
+	return pci_read_byte(bus, dev, fun, off);
+}
+
+void laihost_pci_writew(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t fun, uint16_t off, uint16_t val) {
+	assert(!seg && "TODO");
+	pci_write_word(bus, dev, fun, off, val);
+}
+
+uint16_t laihost_pci_readw(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t fun, uint16_t off) {
+	assert(!seg && "TODO");
+	return pci_read_word(bus, dev, fun, off);
+}
+
+void laihost_pci_writed(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t fun, uint16_t off, uint32_t val) {
+	assert(!seg && "TODO");
+	pci_write_dword(bus, dev, fun, off, val);
+}
+
+uint32_t laihost_pci_readd(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t fun, uint16_t off) {
+	assert(!seg && "TODO");
+	return pci_read_dword(bus, dev, fun, off);
 }
 
 void laihost_sleep(uint64_t time) {}
