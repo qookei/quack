@@ -9,4 +9,7 @@ void arch_cpu_dump_state(void *state);
 void arch_cpu_trace_stack(void);
 void arch_cpu_halt_forever(void);
 
+void arch_cpu_atomic_loop_test_and_set(volatile int *var);
+void arch_cpu_atomic_unset(volatile int *var);
+
 #endif

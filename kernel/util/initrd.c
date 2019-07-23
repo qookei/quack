@@ -3,6 +3,7 @@
 #include <string.h>
 #include <string.h>
 #include <mm/heap.h>
+#include <stdint.h>
 
 static void *initrd_buf;
 static size_t initrd_size;

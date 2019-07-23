@@ -433,8 +433,6 @@ static void pci_route_irqs_all(void) {
 			}
 		}
 	}
-
-	arch_cpu_halt_forever();
 }
 
 void pci_init(void) {

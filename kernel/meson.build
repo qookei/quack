@@ -19,8 +19,7 @@ c_srcs = files(
   'lib/string.c',
   'lib/stdlib.c',
 
-  'mm/liballoc.c',
-  'mm/liballoc_funcs.c',
+  'mm/heap.c',
 
   'lib/panic.c',
   'util/cmdline.c',
