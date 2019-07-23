@@ -3,6 +3,7 @@ nasm = find_program('nasm')
 asm_sources = files(
   'boot/boot.asm',
   'irq/irq_handler.asm',
+  'cpu/ctx_switch.asm',
   'cpu/smp_trampoline.asm')
 
 gen = generator(nasm,
@@ -19,6 +20,7 @@ arch_srcs += files(
   'cpu/ioapic.c',
   'cpu/cpu_data.c',
   'cpu/smp.c',
+  'cpu/lock.c',
 
   'io/port.c',
   'io/debug.c',
