@@ -82,7 +82,6 @@ align 0x10
 init_gdt:
 	dq 0
 	dq 0x00209A0000000000
-	dq 0x0000920000000000
 init_gdt_end:
 
 init_gdt_ptr:
@@ -137,7 +136,7 @@ higher_half_entry:
 higher_half:
 	lgdt [init_gdt_ptr_high]
 
-	mov ax, 0x10
+	mov ax, 0x0
 	mov ds, ax
 	mov es, ax
 	mov ss, ax

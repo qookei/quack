@@ -59,7 +59,7 @@ bits 32
 	jmp 0x08:.long_mode
 .long_mode:
 bits 64
-	mov ax, 0x10
+	mov ax, 0x0
 	mov ds, ax
 	mov es, ax
 	mov fs, ax
@@ -107,7 +107,6 @@ gdt32_ptr:
 gdt64_start:
 	dq 0
 	dq 0x00209A0000000000
-	dq 0x0000920000000000
 gdt64_end:
 
 gdt64_ptr:

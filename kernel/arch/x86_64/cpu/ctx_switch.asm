@@ -33,8 +33,8 @@ ctx_switch:
 	mov r15, [rdi + 16]
 
 	; set up iret frame
-	;push qword [rdi]	; ss
-	;push qword [rdi + 144]	; rsp
+	push qword [rdi]	; ss
+	push qword [rdi + 144]	; rsp
 	push qword [rdi + 152]	; rflags
 	push qword [rdi + 8]	; cs
 	push qword [rdi + 136]	; rip

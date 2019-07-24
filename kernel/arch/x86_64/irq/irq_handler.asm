@@ -79,7 +79,7 @@ service_interrupt:
 	mov ax, ds
 	push rax
 
-	mov ax, 0x10
+	mov ax, 0x0
 	mov ds, ax
 	mov es, ax
 	mov fs, ax
