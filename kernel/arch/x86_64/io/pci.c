@@ -14,27 +14,6 @@
 
 #include <cmdline.h>
 
-// TODO: HACK: remove this from here (preferably into cpu/debug.c)
-
-#define DEBUG_WATCH_EXEC 0
-#define DEBUG_WATCH_WRITE 1
-#define DEBUG_WATCH_IO 2
-#define DEBUG_WATCH_READWRITE 3
-
-#define DEBUG_WATCH_SIZE_1 0
-#define DEBUG_WATCH_SIZE_2 1
-#define DEBUG_WATCH_SIZE_8 2
-#define DEBUG_WATCH_SIZE_4 3
-
-static void debug_set_watchpoint(void *addr, size_t mode, size_t size) {
-	asm volatile ("mov %0, %%db0" : : "r"(addr) : "memory");
-
-	uint64_t trigger = (size << 18) | (mode << 16) | (1 << 1);
-	asm volatile ("mov %0, %%db7" : : "r"(trigger) : "memory");
-}
-
-// </HACK></TODO>
-
 uint8_t pci_read_byte(uint32_t bus, uint32_t slot, uint32_t func, uint16_t offset) {
 	outd(0xCF8, (bus << 16) | (slot << 11) | (func << 8) | (offset & 0xFFFF) | 0x80000000);
 	uint8_t v = inb(0xCFC + (offset % 4));

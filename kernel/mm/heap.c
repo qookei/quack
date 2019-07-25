@@ -6,7 +6,7 @@
 
 static spinlock_t mm_lock = {0};
 
-static uintptr_t top = 0x100000000;
+static uintptr_t top = ARCH_MM_HEAP_BASE;
 
 void *kmalloc(size_t bytes) {
 	spinlock_lock(&mm_lock);

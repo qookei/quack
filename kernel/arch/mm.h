@@ -14,6 +14,12 @@
 #define ARCH_MM_PAGE_SIZE 0x1000
 #endif
 
+#if ARCH == x86_64
+#define ARCH_MM_HEAP_BASE 0x200000000
+#endif
+
+
+
 int arch_mm_map_kernel(int cpu, void *dst, void *src, size_t size, int flags);
 int arch_mm_unmap_kernel(int cpu, void *dst, size_t size);
 uintptr_t arch_mm_get_phys_kernel(int cpu, void *dst);

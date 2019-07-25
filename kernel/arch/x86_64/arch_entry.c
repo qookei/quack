@@ -16,6 +16,7 @@
 #include <cpu/cpu_data.h>
 #include <cpu/smp.h>
 #include <io/pci.h>
+#include <cpu/ctx.h>
 
 #include <kmesg.h>
 #include <util.h>
@@ -106,6 +107,8 @@ void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 	}
 
 	asm volatile("cli");
+
+	test_foo_bar();
 
 	kernel_main(info);
 }

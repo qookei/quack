@@ -238,9 +238,9 @@ void vmm_update_mapping(void *ptr) {
 int arch_mm_map_kernel(int cpu, void *dst, void *src, size_t size, int flags) {
 	(void)cpu; // TODO: ??
 
-	int arch_flags = (flags & ARCH_MM_FLAGS_WRITE ? VMM_FLAG_WRITE : 0)
-				| (flags & ARCH_MM_FLAGS_USER ? VMM_FLAG_USER : 0)
-				| (flags & ARCH_MM_FLAGS_NO_CACHE ? (VMM_FLAG_NO_CACHE | VMM_FLAG_WT) : 0);
+	int arch_flags = ((flags & ARCH_MM_FLAGS_WRITE) ? VMM_FLAG_WRITE : 0)
+				| ((flags & ARCH_MM_FLAGS_USER) ? VMM_FLAG_USER : 0)
+				| ((flags & ARCH_MM_FLAGS_NO_CACHE) ? (VMM_FLAG_NO_CACHE | VMM_FLAG_WT) : 0);
 
 	// TODO: add EXECTUE permission bit support
 

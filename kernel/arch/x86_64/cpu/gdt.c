@@ -1,6 +1,7 @@
 #include "gdt.h"
 
-#include <mm/heap.h>
+#include <mm/pmm.h>
+#include <mm/mm.h>
 #include <string.h>
 #include <stddef.h>
 
@@ -18,7 +19,8 @@ struct tss {
 } __attribute__((packed));
 
 void *tss_create_new(void) {
-	struct tss *t = kmalloc(sizeof(struct tss));
+	uintptr_t phys = (uintptr_t)pmm_alloc((sizeof(struct tss) + PAGE_SIZE - 1) / PAGE_SIZE);
+	struct tss *t = (struct tss *)(phys + VIRT_PHYS_BASE);
 	memset(t, 0, sizeof(struct tss));
 	return t;
 }
@@ -70,7 +72,10 @@ static void create_user_tss_seg(uint32_t *gdt, uintptr_t tss, int idx) {
 }
 
 void *gdt_create_new(void *tss) {
-	void *gdt = kcalloc(sizeof(uint64_t), SEGMENT_COUNT);
+
+	uintptr_t phys = (uintptr_t)pmm_alloc((sizeof(uint64_t) * SEGMENT_COUNT
+				+ PAGE_SIZE - 1) / PAGE_SIZE);
+	void *gdt = (void *)(phys + VIRT_PHYS_BASE);
 
 	int i = 0;
 	create_null_seg(gdt, i++);

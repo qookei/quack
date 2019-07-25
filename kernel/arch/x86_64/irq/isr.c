@@ -5,6 +5,8 @@
 #include <panic.h>
 #include <cpu/cpu.h>
 #include <cpu/cpu_data.h>
+#include <mm/vmm.h>
+#include <arch/mm.h>
 
 irq_handler_t irq_handlers[IDT_ENTRIES];
 
@@ -27,7 +29,12 @@ static const char *exc_names[] = {
 		"-",   "-",   "-",   "-",   "-",   "-",   "#SX", "-", "-"
 };
 
+void exit_interrupt(uint8_t irq, int restore_ctx);
+
 void dispatch_interrupt(irq_cpu_state_t *state) {
+	vmm_save_context();
+	vmm_set_context(arch_mm_get_ctx_kernel(-1));
+
 	uint32_t irq = state->int_no;
 
 	uint32_t cpu = 0; // TODO: get cpu id
@@ -53,11 +60,18 @@ void dispatch_interrupt(irq_cpu_state_t *state) {
 				// user mode
 				kmesg("irq", "user mode panic!");
 				kmesg("irq", "how did we get here at this point!");
+				panic(state, "unhandled exception %s (%u) error %02x", exc_names[irq], irq, state->err);
 			}
 		}
 	}
 
+	exit_interrupt(irq, 1);
+}
+
+void exit_interrupt(uint8_t irq, int restore_ctx) {
 	irq_eoi(irq);
+	if (restore_ctx)
+		vmm_restore_context();
 }
 
 int isr_register_handler(uint8_t irq, irq_handler_t handler) {

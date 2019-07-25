@@ -41,7 +41,7 @@ bits 32
 	lgdt [gdt64_ptr]
 
 	mov eax, cr4
-	or eax, 0x00000020
+	or eax, 0x000000A0
 	mov cr4, eax
 
 	mov eax, [KERN_DATA]
