@@ -108,7 +108,7 @@ void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 
 	asm volatile("cli");
 
-	test_foo_bar();
+	//test_foo_bar();
 
 	kernel_main(info);
 }

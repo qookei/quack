@@ -7,6 +7,8 @@
 #include <spinlock.h>
 
 void panic(void *state, const char *message, ...) {
+	int cpu = arch_cpu_get_this_id();
+
 	char buf[128 + 16];
 	va_list va;
 	memset(buf, 0, 128 + 16);
@@ -15,7 +17,7 @@ void panic(void *state, const char *message, ...) {
 	vsnprintf(buf, 128, message, va);
 	va_end(va);
 
-	kmesg("kernel", "Kernel panic!");
+	kmesg("kernel", "Kernel panic on cpu %d!", cpu);
 	kmesg("kernel", "Message: '%s'", buf);
 
 	if (state)

@@ -89,7 +89,6 @@ void *gdt_create_new(void *tss) {
 }
 
 void gdt_load(void *gdt) {
-
 	struct gdtr {
 		uint16_t len;
 		uint64_t ptr;
@@ -103,4 +102,24 @@ void gdt_load(void *gdt) {
 
 void gdt_load_tss(uint16_t sel) {
 	asm volatile ("mov %0, %%ax; ltr %%ax" : : "r"(sel) : "%ax");
+}
+
+void gdt_load_gs_base(uintptr_t base) {
+	asm volatile ("wrmsr" : : "a"((uint32_t)base), "d"((uint32_t)(base >> 32)), "c"(0xC0000101));
+}
+
+uintptr_t gdt_get_gs_base(void) {
+	uint32_t hi, lo;
+	asm volatile ("rdmsr" : "=a"(lo), "=d"(hi) : "c"(0xC0000101));
+	return ((uintptr_t)hi << 32) | (uintptr_t)lo;
+}
+
+void gdt_load_fs_base(uintptr_t base) {
+	asm volatile ("wrmsr" : : "a"((uint32_t)base), "d"((uint32_t)(base >> 32)), "c"(0xC0000100));
+}
+
+uintptr_t gdt_get_fs_base(void) {
+	uint32_t hi, lo;
+	asm volatile ("rdmsr" : "=a"(lo), "=d"(hi) : "c"(0xC0000100));
+	return ((uintptr_t)hi << 32) | (uintptr_t)lo;
 }

@@ -32,6 +32,7 @@ void *vmm_offs_to_virt(pt_off_t offs) {
 
 // TODO: multicore?
 static pt_t *kernel_pml4;
+static pt_t *vmm_saved_context = NULL;
 
 void vmm_init(void) {
 	kmesg("vmm", "started up!");
@@ -43,6 +44,8 @@ void vmm_init(void) {
 	vmm_set_context(kernel_pml4);
 
 	kmesg("vmm", "done setting up!");
+
+	vmm_saved_context = NULL;
 }
 
 static inline pt_t *vmm_get_or_alloc_ent(pt_t *tab, size_t off, int flags) {
@@ -198,11 +201,9 @@ pt_t *vmm_new_address_space(void) {
 pt_t *vmm_clone_address_space(pt_t *addr) {
 }
 
-static pt_t *vmm_saved_context = NULL;
-
 void vmm_save_context(void) {
 	if (vmm_saved_context)
-		kmesg("vmm", "vmm_save_context will overwrite the already saved context in this instance!");
+		kmesg("vmm", "vmm_save_context will overwrite the already saved context in this instance! saved context: %016p", vmm_saved_context);
 	vmm_saved_context = vmm_get_current_context();
 }
 

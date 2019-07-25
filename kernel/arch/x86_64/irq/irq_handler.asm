@@ -82,8 +82,8 @@ service_interrupt:
 	mov ax, 0x0
 	mov ds, ax
 	mov es, ax
-	mov fs, ax
-	mov gs, ax
+	;mov fs, ax
+	;mov gs, ax
 
 	mov rdi, rsp
 	call dispatch_interrupt
@@ -92,8 +92,8 @@ service_interrupt:
 
 	mov ds, ax
 	mov es, ax
-	mov fs, ax
-	mov gs, ax
+	;mov fs, ax
+	;mov gs, ax
 
 	pop r15
 	pop r14

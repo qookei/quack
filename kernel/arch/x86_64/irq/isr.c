@@ -37,7 +37,7 @@ void dispatch_interrupt(irq_cpu_state_t *state) {
 
 	uint32_t irq = state->int_no;
 
-	uint32_t cpu = 0; // TODO: get cpu id
+	uint32_t cpu = cpu_get_id();
 	cpu_data_t *cpu_data = cpu_data_get(cpu);
 
 	if (irq >= 0x20 && irq < 0x30) {

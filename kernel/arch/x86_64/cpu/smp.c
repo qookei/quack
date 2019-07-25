@@ -16,6 +16,8 @@
 #include <mm/mm.h>
 #include <cpu/gdt.h>
 #include <cpu/cpu_data.h>
+#include <cpu/cpu.h>
+#include <cpu/ctx.h>
 
 #define KERNEL_SMP 0x400000
 
@@ -31,15 +33,17 @@ static void smp_c_entry(uint64_t core_id, uint64_t apic_id) {
 	kmesg("smp", "core %lu started", core_id);
 	kmesg("smp", "core %lu has lapic id %lu", core_id, apic_id);
 
-	has_started = 1;
-
-	idt_just_load();
-
-	lapic_init();
-
 	cpu_data_t *d = cpu_data_get(core_id);
 	gdt_load(d->gdt);
 	gdt_load_tss(GDT_TSS_SEL);
+	gdt_load_gs_base((uintptr_t)d);
+
+	idt_just_load();
+	lapic_init();
+
+	has_started = 1;
+
+	test_foo_bar();
 
 	while(1);
 }
@@ -122,13 +126,15 @@ static void setup_bsp(void) {
 	cpu_data_t *d = cpu_data_get(0);
 	gdt_load(d->gdt);
 	gdt_load_tss(GDT_TSS_SEL);
+	gdt_load_gs_base((uintptr_t)d);
 }
 
 static int smp_core_count;
 
 void smp_init(void) {
-
 	setup_bsp();
+
+	kmesg("smp", "bsp's id is %d", cpu_get_id());
 
 	madt_lapic_t *l = madt_get_lapics();
 	for (size_t i = 0; i < madt_get_lapic_count(); i++) {

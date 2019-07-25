@@ -2,6 +2,8 @@
 #include <irq/isr.h>
 #include <kmesg.h>
 #include <arch/cpu.h>
+#include <cpu/cpu_data.h>
+#include <cpu/gdt.h>
 
 void cpu_dump_regs_irq(irq_cpu_state_t *state) {
 	kmesg("cpu", "rax: %016lx rbx: %016lx", state->rax, state->rbx);
@@ -38,6 +40,17 @@ void cpu_trace_stack(void) {
 		kmesg("cpu", "#%lu: [%016lx]", idx++, ip);
 }
 
+// only works in the kernel address space
+int cpu_get_id(void) {
+	if (!gdt_get_gs_base()) {
+		return 0; // bsp by default
+	}
+
+	int id;
+	asm volatile ("mov %%gs:(%1), %0" : "=r"(id) : "r"(offsetof(cpu_data_t, cpu_id)));
+	return id;
+}
+
 // -----
 
 void arch_cpu_dump_state(void *state) {
@@ -53,4 +66,8 @@ void arch_cpu_halt_forever(void) {
 					"1:\n"
 						"hlt\n"
 						"jmp 1b" : : : "memory");
+}
+
+int arch_cpu_get_this_id(void) {
+	return cpu_get_id();
 }
