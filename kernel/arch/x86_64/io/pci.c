@@ -89,7 +89,7 @@ static void pci_fun_check(uint8_t bus, uint8_t dev, uint8_t fun,
 	d->acpi_node = NULL;
 	d->acpi_prt = (lai_variable_t)LAI_VAR_INITIALIZER;
 
-	if (pci_read_byte(bus, dev, fun, HEADER_TYPE_OFF) & 0x7F) {
+	if (!(pci_read_byte(bus, dev, fun, HEADER_TYPE_OFF) & 0x7F)) {
 		for (int i = 0; i < 6; i++) {
 			uint16_t idx = BAR_OFF + i * 4;
 			size_t len = 0;
