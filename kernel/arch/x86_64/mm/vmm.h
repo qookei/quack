@@ -49,4 +49,8 @@ void vmm_restore_context(void);
 void vmm_set_context(pt_t *);
 pt_t *vmm_get_current_context(void);
 
+int vmm_arch_to_vmm_flags(int);
+
+void vmm_ctx_memcpy(pt_t *, void *, pt_t *, void *, size_t);
+
 #endif

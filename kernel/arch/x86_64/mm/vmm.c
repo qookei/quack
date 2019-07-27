@@ -176,8 +176,16 @@ int vmm_update_huge_perms(pt_t *pml4, void *virt, size_t count, int perms) {
 }
 
 uintptr_t vmm_get_entry(pt_t *pml4, void *virt) {
+	// hack, handle kernel mappings
+	if ((uintptr_t)virt >= 0xFFFFFFFF80000000)
+		return (uintptr_t)virt - 0xFFFFFFFF80000000; 
+
+	// hack, handle physical memory mapping
+	if ((uintptr_t)virt >= 0xFFFF800000000000)
+		return (uintptr_t)virt - 0xFFFF800000000000;
+
 	pt_off_t offs = vmm_virt_to_offs(virt);
-	
+
 	pt_t *pml4_virt = (pt_t *)((uint64_t)pml4 + VIRT_PHYS_BASE);
 	pt_t *pdp_virt = vmm_get_or_null_ent(pml4_virt, offs.pml4_off);
 	if (!pdp_virt) return 0;
@@ -233,19 +241,64 @@ void vmm_update_mapping(void *ptr) {
 	asm volatile ("invlpg (%0)" : : "r"(ptr) : "memory");
 }
 
+void vmm_ctx_memcpy(pt_t *dst_ctx, void *dst_addr, pt_t *src_ctx, void *src_addr, size_t size) {
+	// map dst to 0x700000000000
+	// map src to 0x780000000000
+	// memcpy from mapped src to mapped dst
+	// unmap
+
+	// max amount of data you can copy is 8TB if aligned to a page
+
+	uintptr_t src_virt = 0x780000000000;
+	uintptr_t dst_virt = 0x700000000000;
+	uintptr_t dst = (uintptr_t)dst_addr & (~0xFFF);
+	uintptr_t src = (uintptr_t)src_addr & (~0xFFF);
+	for (size_t i = 0; i < size;
+		i += 0x1000, src_virt += 0x1000, src += 0x1000,
+			dst_virt += 0x1000, dst += 0x1000) {
+		uintptr_t dst_phys = vmm_get_entry(dst_ctx, (void *)dst)
+				& VMM_ADDR_MASK;
+		uintptr_t src_phys = vmm_get_entry(src_ctx, (void *)src)
+				& VMM_ADDR_MASK;
+
+		vmm_map_pages(kernel_pml4, (void *)dst_virt, (void *)dst_phys,
+					1, VMM_FLAG_WRITE);
+		vmm_map_pages(kernel_pml4, (void *)src_virt, (void *)src_phys,
+					1, VMM_FLAG_WRITE);
+		vmm_update_mapping((void *)dst_virt);
+		vmm_update_mapping((void *)src_virt);
+	}
+
+	memcpy((void *)(0x700000000000 + ((uintptr_t)dst_addr & 0xFFF)),
+		(void *)(0x780000000000 + ((uintptr_t)src_addr & 0xFFF)), size);
+
+	src_virt = 0x780000000000;
+	dst_virt = 0x700000000000;
+	for (size_t i = 0; i < size;
+		i += 0x1000, src_virt += 0x1000, dst_virt += 0x1000) {
+		vmm_unmap_pages(kernel_pml4, (void *)dst_virt, 1);
+		vmm_unmap_pages(kernel_pml4, (void *)src_virt, 1);
+		vmm_update_mapping((void *)dst_virt);
+		vmm_update_mapping((void *)src_virt);
+	}
+}
+
+int vmm_arch_to_vmm_flags(int flags) {
+	return ((flags & ARCH_MM_FLAGS_WRITE) ? VMM_FLAG_WRITE : 0)
+		| ((flags & ARCH_MM_FLAGS_USER) ? VMM_FLAG_USER : 0)
+		| ((flags & ARCH_MM_FLAGS_NO_CACHE) ?
+			(VMM_FLAG_NO_CACHE | VMM_FLAG_WT) : 0);
+
+	// TODO: add EXECUTE permission bit support
+}
+
 // arch functions
 // TODO: add locking
 
 int arch_mm_map_kernel(int cpu, void *dst, void *src, size_t size, int flags) {
 	(void)cpu; // TODO: ??
 
-	int arch_flags = ((flags & ARCH_MM_FLAGS_WRITE) ? VMM_FLAG_WRITE : 0)
-				| ((flags & ARCH_MM_FLAGS_USER) ? VMM_FLAG_USER : 0)
-				| ((flags & ARCH_MM_FLAGS_NO_CACHE) ? (VMM_FLAG_NO_CACHE | VMM_FLAG_WT) : 0);
-
-	// TODO: add EXECTUE permission bit support
-
-	return vmm_map_pages(kernel_pml4, dst, src, size, arch_flags);
+	return vmm_map_pages(kernel_pml4, dst, src, size, vmm_arch_to_vmm_flags(flags));
 }
 
 int arch_mm_unmap_kernel(int cpu, void *dst, size_t size) {

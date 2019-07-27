@@ -5,6 +5,8 @@
 #include <arch/info.h>
 #include <devmgr.h>
 #include <kobj.h>
+#include <arch/task.h>
+#include <arch/mm.h>
 
 void kernel_main(arch_boot_info_t *info) {
 	kmesg("kernel", "reached arch independent stage");
@@ -35,6 +37,30 @@ void kernel_main(arch_boot_info_t *info) {
 	devmgr_init();
 	arch_devmgr_fill_devices();
 	devmgr_dump_devices();
+
+	uint8_t bin_code[] = {
+		0xB0, 0x41, 0x66, 0xBA, 0xF8, 0x03, 0xEE, 0xEB, 0xFE
+	};
+	// above bytes represent:
+	// mov al, 'A'
+	// mov dx, 0x3F8
+	// out dx, al
+	// jmp $ ; effectively halts
+
+	arch_task_t *task = arch_task_create_new(NULL);
+
+	struct mem_region code = {.dest = 0, .start = 0x3000, .end = 0x4000};
+
+	arch_task_alloc_mem_region(task, &code,
+		ARCH_MM_FLAGS_READ | ARCH_MM_FLAGS_WRITE
+		| ARCH_MM_FLAGS_EXECUTE | ARCH_MM_FLAGS_USER);
+
+	arch_task_copy_to_mem_region(task, &code, bin_code, sizeof(bin_code));
+
+	arch_task_load_entry_point(task, 0x3000);
+	arch_task_allow_port_access(task, 0x3F8, 2);
+
+	arch_task_switch_to(task);
 
 	kmesg("kernel", "halting for now");
 

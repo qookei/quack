@@ -43,8 +43,6 @@ static void smp_c_entry(uint64_t core_id, uint64_t apic_id) {
 
 	has_started = 1;
 
-	test_foo_bar();
-
 	while(1);
 }
 

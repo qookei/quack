@@ -33,6 +33,8 @@ arch_srcs += files(
   'irq/isr.c',
   'irq/pic/pic.c',
 
+  'task/task.c',
+
   'mm/pmm.c',
   'mm/vmm.c',
   'acpi/lai_host.c',
