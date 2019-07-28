@@ -29,6 +29,8 @@ c_srcs = files(
   'kobj.c',
   'devmgr.c',
 
+  'loader/elf64.c',
+
   'kernel.c')
 
 inc_dirs = include_directories(

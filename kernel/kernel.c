@@ -7,6 +7,17 @@
 #include <kobj.h>
 #include <arch/task.h>
 #include <arch/mm.h>
+#include <panic.h>
+#include <loader/elf64.h>
+
+// TODO: use elf64_xxx and elf32_xxx depending on arch
+static arch_task_t *load_elf_task(void *file) {
+	int err;
+	if ((err = elf64_check(file)))
+		panic(NULL, "not a valid elf file: %d", err);
+
+	return elf64_create_arch_task(file);
+}
 
 void kernel_main(arch_boot_info_t *info) {
 	kmesg("kernel", "reached arch independent stage");
@@ -38,27 +49,25 @@ void kernel_main(arch_boot_info_t *info) {
 	arch_devmgr_fill_devices();
 	devmgr_dump_devices();
 
-	uint8_t bin_code[] = {
-		0xB0, 0x41, 0x66, 0xBA, 0xF8, 0x03, 0xEE, 0xEB, 0xFE
+	if (!(info->flags & ARCH_INFO_HAS_INITRAMFS))
+		panic(NULL, "missing initramfs");
+
+	void *init_file;
+
+	if (!initrd_read_file("init", &init_file))
+		panic(NULL, "failed to load init");
+
+	arch_task_t *task = load_elf_task(init_file);
+
+	struct mem_region stack = {
+		.start = 0x7fffffffc000,
+		.end   = 0x800000000000
 	};
-	// above bytes represent:
-	// mov al, 'A'
-	// mov dx, 0x3F8
-	// out dx, al
-	// jmp $ ; effectively halts
 
-	arch_task_t *task = arch_task_create_new(NULL);
+	arch_task_alloc_mem_region(task, &stack,
+		ARCH_MM_FLAGS_READ | ARCH_MM_FLAGS_WRITE | ARCH_MM_FLAGS_USER);
 
-	struct mem_region code = {.dest = 0, .start = 0x3000, .end = 0x4000};
-
-	arch_task_alloc_mem_region(task, &code,
-		ARCH_MM_FLAGS_READ | ARCH_MM_FLAGS_WRITE
-		| ARCH_MM_FLAGS_EXECUTE | ARCH_MM_FLAGS_USER);
-
-	arch_task_copy_to_mem_region(task, &code, bin_code, sizeof(bin_code));
-
-	arch_task_load_entry_point(task, 0x3000);
-	arch_task_allow_port_access(task, 0x3F8, 2);
+	arch_task_load_stack_ptr(task, 0x800000000000);
 
 	arch_task_switch_to(task);
 
