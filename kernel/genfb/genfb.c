@@ -21,6 +21,12 @@ static int disp_y;
 
 static int is_working = 0;
 
+#define BG_BYTE_COLOR 0x00
+#define FG_BYTE_COLOR 0xA8
+
+#define BG_COLOR 0x00000000
+#define FG_COLOR 0xA8A8A8A8
+
 void genfb_init(arch_video_mode_t *mode) {
 	if (!mode) {
 		kmesg("genfb", "genfb_init called with NULL");
@@ -40,12 +46,21 @@ void genfb_init(arch_video_mode_t *mode) {
 	size_t bytes = mode->height * mode->pitch;
 	vid_back = kmalloc(bytes);
 
-	memset(vid_back, 0, mode->height * mode->pitch);
+	if (!arch_mem_fast_memset)
+		memset(vid_back, BG_BYTE_COLOR, mode->height * mode->pitch);
+	else
+		arch_mem_fast_memset(vid_back, BG_BYTE_COLOR, mode->height * mode->pitch);
 
 	size_t pages = (bytes + ARCH_MM_PAGE_SIZE - 1) / ARCH_MM_PAGE_SIZE;
 	arch_mm_map_kernel(-1, (void *)mode->addr, (void *)mode->addr, 
 				pages, ARCH_MM_FLAGS_WRITE);
 	vid_front = (uint32_t *)mode->addr;
+
+	if (!arch_mem_fast_memset)
+		memset(vid_front, BG_BYTE_COLOR, mode->height * mode->pitch);
+	else
+		arch_mem_fast_memset(vid_front, BG_BYTE_COLOR, mode->height * mode->pitch);
+
 
 	is_working = 1;
 }
@@ -80,10 +95,10 @@ static void genfb_scroll_up(void) {
 
 	if (!arch_mem_fast_memset)
 		memset((void *)((uintptr_t)vid_back + (mode_info->height - char_height)
-			* mode_info->pitch), 0, char_height * mode_info->pitch);
+			* mode_info->pitch), BG_BYTE_COLOR, char_height * mode_info->pitch);
 	else
 		arch_mem_fast_memset((void *)((uintptr_t)vid_back + (mode_info->height - char_height)
-			* mode_info->pitch), 0, char_height * mode_info->pitch);
+			* mode_info->pitch), BG_BYTE_COLOR, char_height * mode_info->pitch);
 
 	if (!arch_mem_fast_memcpy)
 		memcpy(vid_front, vid_back, mode_info->height * mode_info->pitch);
@@ -117,7 +132,7 @@ void genfb_putch(char c) {
 	}
 
 	genfb_putch_internal(c, disp_x * char_width, disp_y * char_height,
-			0xFFFFFFFF, 0x00000000);
+			FG_COLOR, BG_COLOR);
 	disp_x++;
 
 scroll_screen:
