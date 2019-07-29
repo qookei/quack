@@ -5,6 +5,7 @@
 #include <mm/heap.h>
 #include <string.h>
 #include <spinlock.h>
+#include <arch/io.h>
 
 #include "font.h"
 
@@ -39,6 +40,8 @@ void genfb_init(arch_video_mode_t *mode) {
 	size_t bytes = mode->height * mode->pitch;
 	vid_back = kmalloc(bytes);
 
+	memset(vid_back, 0, mode->height * mode->pitch);
+
 	size_t pages = (bytes + ARCH_MM_PAGE_SIZE - 1) / ARCH_MM_PAGE_SIZE;
 	arch_mm_map_kernel(-1, (void *)mode->addr, (void *)mode->addr, 
 				pages, ARCH_MM_FLAGS_WRITE);
@@ -66,22 +69,26 @@ static void genfb_putch_internal(char c, int x, int y, uint32_t fg, uint32_t bg)
 }
 
 static void genfb_scroll_up(void) {
-	for (int y = mode_info->pitch * char_height / 4;
-			y < mode_info->height * mode_info->pitch / 4;
-			y += mode_info->pitch * char_height / 4) {
-		memcpy(vid_back + y - mode_info->pitch * char_height / 4,
-			vid_back + y, mode_info->pitch * char_height);
-	}
+	if (!arch_mem_fast_memcpy)
+		memcpy(vid_back,
+			(void *)((uintptr_t)vid_back + (mode_info->pitch * char_height)),
+			mode_info->pitch * (mode_info->height - char_height));
+	else
+		arch_mem_fast_memcpy(vid_back,
+			(void *)((uintptr_t)vid_back + (mode_info->pitch * char_height)),
+			mode_info->pitch * (mode_info->height - char_height));
 
-	for (int y = ((mode_info->height - char_height) * mode_info->pitch) / 4; 
-			y < mode_info->height * mode_info->pitch / 4; 
-			y += mode_info->pitch / 4) {
-		for (int x = 0; x < mode_info->width; x++) {
-			vid_back[y + x] = 0x00000000;
-		}
-	}
+	if (!arch_mem_fast_memset)
+		memset((void *)((uintptr_t)vid_back + (mode_info->height - char_height)
+			* mode_info->pitch), 0, char_height * mode_info->pitch);
+	else
+		arch_mem_fast_memset((void *)((uintptr_t)vid_back + (mode_info->height - char_height)
+			* mode_info->pitch), 0, char_height * mode_info->pitch);
 
-	memcpy(vid_front, vid_back, mode_info->height * mode_info->pitch);
+	if (!arch_mem_fast_memcpy)
+		memcpy(vid_front, vid_back, mode_info->height * mode_info->pitch);
+	else
+		arch_mem_fast_memcpy(vid_front, vid_back, mode_info->height * mode_info->pitch);
 }
 
 static spinlock_t lock = {0};
