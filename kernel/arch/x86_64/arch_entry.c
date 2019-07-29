@@ -25,6 +25,13 @@
 
 #include <arch/info.h>
 
+int syscall_irq_handler(irq_cpu_state_t *state) {
+	state->rax = syscall_invoke(&state->rax, &state->rbx, &state->rcx,
+				&state->rdx, &state->rsi, &state->rdi,
+				state);
+	return 1;
+}
+
 void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 	vga_init();
 
@@ -109,6 +116,8 @@ void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 	asm volatile("cli");
 
 	//test_foo_bar();
+
+	isr_register_handler(0x30, syscall_irq_handler);
 
 	kernel_main(info);
 }

@@ -57,7 +57,7 @@ idt_ptr_t idtp;
 
 void idt_init(void) {
 	for (size_t i = 0; i < IDT_ENTRIES; i++) {
-		idt_set_gate(i, (uintptr_t)handlers[i], 0x08, 0x8E);
+		idt_set_gate(i, (uintptr_t)handlers[i], 0x08, 0x8E | (i == 0x30 ? 0b01100000 : 0));
 	}
 
 	idtp.limit = IDT_ENTRIES * sizeof(idt_entry_t) - 1;

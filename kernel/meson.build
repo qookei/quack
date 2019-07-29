@@ -31,6 +31,8 @@ c_srcs = files(
 
   'loader/elf64.c',
 
+  'syscall.c',
+
   'kernel.c')
 
 inc_dirs = include_directories(
