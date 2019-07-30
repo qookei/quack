@@ -1,0 +1,26 @@
+[binaries]
+c		= 'x86_64-elf-gcc'
+cpp		= 'x86_64-elf-g++'
+as		= 'x86_64-elf-as'
+strip		= 'x86_64-elf-strip'
+
+[properties]
+c_args		= [
+			'-ffreestanding',
+			'-mno-sse',
+			'-mno-sse2',
+			'-mno-mmx',
+			'-mno-avx',
+			'-mno-3dnow',
+		]
+
+link_args	= [
+			'-ffreestanding',
+			'-nostdlib',
+		]
+
+[host_machine]
+system		= 'none'
+cpu_family	= 'x86_64'
+cpu		= 'x86_64'
+endian		= 'little'

@@ -1,0 +1,1 @@
+option('initramfs-root', type: 'boolean', value: false)

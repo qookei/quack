@@ -54,8 +54,8 @@ void kernel_main(arch_boot_info_t *info) {
 
 	void *init_file;
 
-	if (!initrd_read_file("init", &init_file))
-		panic(NULL, "failed to load init");
+	if (!initrd_read_file("startup", &init_file))
+		panic(NULL, "failed to load startup");
 
 	arch_task_t *task = load_elf_task(init_file);
 

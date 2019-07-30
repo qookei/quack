@@ -14,6 +14,7 @@ mkdir -p isodir/boot/grub
 cat >isodir/boot/grub/grub.cfg << EOL
 menuentry "quack - fb debug out" {
 	multiboot /boot/quack.elf debugcon=fb
+	module /boot/initramfs.tar
 	set gfxpayload=auto
 }
 
@@ -28,6 +29,7 @@ menuentry "quack - vga text debug out" {
 
 menuentry "quack - e9 and fb debug out" {
 	multiboot /boot/quack.elf debugcon=e9,fb
+	module /boot/initramfs.tar
 	set gfxpayload=auto
 }
 
@@ -38,6 +40,7 @@ menuentry "quack - e9 and vga text debug out" {
 EOL
 
 cp quack.elf isodir/boot/quack.elf
+cp ../initrd-root/initramfs.tar isodir/boot/initramfs.tar
 
 compress=0
 if [[ $1 == "tiny" ]];
