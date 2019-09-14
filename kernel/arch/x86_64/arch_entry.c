@@ -82,8 +82,8 @@ void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 	lapic_init();
 	ioapic_init();
 
-	lapic_timer_calc_freq();
-	lapic_timer_init();
+	lapic_timer_calc_freq_bsp();
+	lapic_timer_init_bsp();
 
 	ioapic_mask_gsi(ioapic_get_gsi_by_irq(0x0), 1);
 
