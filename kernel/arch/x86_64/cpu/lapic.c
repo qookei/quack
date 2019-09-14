@@ -7,6 +7,7 @@
 #include <irq/isr.h>
 #include <io/port.h>
 #include <cpu/ioapic.h>
+#include <stdatomic.h>
 
 static uintptr_t lapic_base;
 
@@ -69,12 +70,12 @@ void lapic_init(void) {
 	lapic_enable();
 }
 
-static uint64_t lapic_speed_hz;
+static uint64_t lapic_bsp_speed_hz;
 
-static volatile uint64_t pit_ticks = 0;
+static _Atomic uint64_t pit_ticks = 0;
 static int pit_irq(irq_cpu_state_t *s) {
 	(void)s;
-	pit_ticks ++;
+	pit_ticks++;
 	return 1;
 }
 
@@ -89,8 +90,8 @@ static void pit_set_freq(uint32_t frequency) {
 	io_wait();
 }
 
-void lapic_timer_calc_freq(void) {
-	if (lapic_speed_hz)
+void lapic_timer_calc_freq_bsp(void) {
+	if (lapic_bsp_speed_hz)
 		return; // already calculated
 
 	uint8_t pit_vec = ioapic_get_vector_by_irq(0x0);
@@ -107,42 +108,71 @@ void lapic_timer_calc_freq(void) {
 	while(pit_ticks < 1000);
 	asm volatile ("cli");
 
-	lapic_speed_hz = 0xFFFFFFFF - lapic_read(0x390);
+	lapic_bsp_speed_hz = 0xFFFFFFFF - lapic_read(0x390);
 
 	isr_unregister_handler(pit_vec);
 
-	kmesg("lapic-timer", "timer speed is %luHz", lapic_speed_hz);
+	kmesg("lapic-timer", "bsp timer speed is %luHz", lapic_bsp_speed_hz);
 }
 
-void lapic_timer_set_frequency(uint64_t freq) {
-	uint64_t period = lapic_speed_hz / freq;
+void lapic_timer_set_frequency(uint64_t timer_freq, uint64_t desired_freq) {
+	uint64_t period = timer_freq / desired_freq;
 
 	lapic_write(0x380, period);
 
-	kmesg("lapic-timer", "setting frequency to %luHz, period %lu", freq, period);
+	kmesg("lapic-timer", "setting frequency to %luHz, period %lu", desired_freq, period);
 }
 
-volatile uint64_t lapic_ticks = 0;
+_Atomic uint64_t lapic_bsp_ticks = 0;
 
 static int lapic_timer_int(irq_cpu_state_t *s) {
-	lapic_ticks++;
+	lapic_bsp_ticks++;
 
 	return 1;
 }
 
 #define INITIAL_FREQ 1000 // Hz
 
-void lapic_timer_init(void) {
+void lapic_timer_init_bsp(void) {
 	uint32_t vec = 0x31 | (1 << 17);
 	lapic_write(0x320, vec);
-	lapic_write(0x3E0, 0xB);
+	lapic_write(0x3E0, 0x7);
 
-	lapic_timer_set_frequency(INITIAL_FREQ);
+	lapic_timer_set_frequency(lapic_bsp_speed_hz, INITIAL_FREQ);
 
 	isr_register_handler(0x31, lapic_timer_int);
 }
 
-void lapic_sleep_ms(uint64_t ms) {
-	volatile uint64_t end_tick = lapic_ticks + ms;
-	while (end_tick > lapic_ticks);
+void lapic_sleep_ms_bsp(uint64_t ms) {
+	_Atomic uint64_t end_tick = lapic_bsp_ticks + ms;
+	while (end_tick > lapic_bsp_ticks);
+}
+
+static uint32_t lapic_timer_calc_freq_ap(void) {
+	if (!lapic_bsp_speed_hz)
+		panic(NULL, "lapic_..._ap called before lapic_..._bsp");
+
+	lapic_write(0x320, 0);	// vector 0, non periodic, fixed delivery mode
+	lapic_write(0x3E0, 0x7); // 1x divider
+
+	lapic_write(0x380, 0xFFFFFFFF);
+
+	lapic_sleep_ms_bsp(1000);
+
+	uint32_t lapic_speed_hz = 0xFFFFFFFF - lapic_read(0x390);
+
+	kmesg("lapic-timer", "ap timer speed is %luHz", lapic_speed_hz);
+
+	return lapic_speed_hz;
+}
+
+
+void lapic_timer_init_ap(void) {
+	uint32_t speed = lapic_timer_calc_freq_ap();
+
+	uint32_t vec = 0x31 | (1 << 17);
+	lapic_write(0x320, vec);
+	lapic_write(0x3E0, 0x7);
+
+	lapic_timer_set_frequency(speed, INITIAL_FREQ);
 }

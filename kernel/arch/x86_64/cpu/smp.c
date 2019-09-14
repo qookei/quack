@@ -41,6 +41,8 @@ static void smp_c_entry(uint64_t core_id, uint64_t apic_id) {
 	idt_just_load();
 	lapic_init();
 
+	lapic_timer_init_ap();
+
 	has_started = 1;
 
 	while(1);
@@ -96,7 +98,7 @@ static int smp_init_single(uint32_t apic_id, uint32_t core_id) {
 	lapic_write(0x310, apic_id << 24);
 	lapic_write(0x300, 0x500);
 
-	lapic_sleep_ms(10);
+	lapic_sleep_ms_bsp(10);
 
 	lapic_write(0x310, apic_id << 24);
 	lapic_write(0x300,
@@ -104,7 +106,7 @@ static int smp_init_single(uint32_t apic_id, uint32_t core_id) {
 
 	size_t i = 0;
 	while(i < 1000 && !has_started) {
-		lapic_sleep_ms(100);
+		lapic_sleep_ms_bsp(100);
 		i++;
 	}
 
