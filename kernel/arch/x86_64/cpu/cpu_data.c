@@ -21,7 +21,8 @@ void cpu_data_init(void) {
 	else
 		max_cpus = atoi(cpu_args[0]);
 
-	cpu_data = (cpu_data_t *)(VIRT_PHYS_BASE + (uintptr_t)pmm_alloc(((max_cpus * sizeof(cpu_data_t)) + 0xFFF / 0x1000)));
+	cpu_data = (cpu_data_t *)(VIRT_PHYS_BASE + (uintptr_t)pmm_alloc(
+				(max_cpus * sizeof(cpu_data_t) + 0xFFF) / 0x1000));
 }
 
 cpu_data_t *cpu_data_get(int cpu) {
