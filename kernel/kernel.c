@@ -9,6 +9,7 @@
 #include <arch/mm.h>
 #include <panic.h>
 #include <loader/elf64.h>
+#include <proc/scheduler.h>
 
 // TODO: use elf64_xxx and elf32_xxx depending on arch
 static arch_task_t *load_elf_task(void *file) {
@@ -52,70 +53,47 @@ void kernel_main(arch_boot_info_t *info) {
 	if (!(info->flags & ARCH_INFO_HAS_INITRAMFS))
 		panic(NULL, "missing initramfs");
 
+	// TODO: parse a config file to see what to load
+
 	void *init_file;
 
 	if (!initrd_read_file("startup", &init_file))
 		panic(NULL, "failed to load startup");
 
-	arch_task_t *task = load_elf_task(init_file);
+	void *test_file;
+
+	if (!initrd_read_file("test1", &test_file))
+		panic(NULL, "failed to load test1");
+
+	sched_init(arch_cpu_get_count());
+
+	arch_task_t *task1 = load_elf_task(init_file);
 
 	struct mem_region stack = {
 		.start = 0x7fffffffc000,
 		.end   = 0x800000000000
 	};
 
-	arch_task_alloc_mem_region(task, &stack,
+	arch_task_alloc_mem_region(task1, &stack,
 		ARCH_MM_FLAGS_READ | ARCH_MM_FLAGS_WRITE | ARCH_MM_FLAGS_USER);
 
-	arch_task_load_stack_ptr(task, 0x800000000000);
+	arch_task_load_stack_ptr(task1, 0x800000000000);
 
-	arch_task_switch_to(task);
+	arch_task_t *task2 = load_elf_task(test_file);
 
-	kmesg("kernel", "halting for now");
+	arch_task_alloc_mem_region(task2, &stack,
+		ARCH_MM_FLAGS_READ | ARCH_MM_FLAGS_WRITE | ARCH_MM_FLAGS_USER);
 
-	/*void *init_file;
-	void *exec_file;
-	void *initfs_file;
+	arch_task_load_stack_ptr(task2, 0x800000000000);
 
-	if (!mboot->mods_count) {
-		kmesg("kernel", "no initrd present... halting");
-		while(1);
-	}
+	int32_t id = sched_start_from_task(task1);
 
-	initrd_init((multiboot_module_t*)(0xC0000000 + mboot->mods_addr));
+	sched_set_state(id, THREAD_RUNNING);
 
-	if (!initrd_read_file("init", &init_file)) {
-		kmesg("kernel", "failed to load init... halting");
-		while(1);
-	}
+	id = sched_start_from_task(task2);
 
-	if (!initrd_read_file("exec", &exec_file)) {
-		kmesg("kernel", "failed to load exec... halting");
-		while(1);
-	}
+	sched_set_state(id, THREAD_RUNNING);
 
-	if (!initrd_read_file("initfs", &initfs_file)) {
-		kmesg("kernel", "failed to load initfs... halting");
-		while(1);
-	}*/
-
-	//global_data_setup();
-
-	//syscall_init();
-	//sched_init();
-
-	// TODO: perhaps parse a config file to see what to load
-
-	//elf_create_proc(init_file, 1);
-	//elf_create_proc(exec_file, 1);
-	//elf_create_proc(initfs_file, 1);
-
-	//initrd_t i = initrd_get_info();
-	//task_ipcsend(sched_get_task(3), sched_get_task(3), i.size, i.data);
-
-	//task_ipcsend(sched_get_task(1), sched_get_task(1), sizeof(multiboot_info_t), mboot);
-
-	//asm volatile ("sti");
-
+	asm volatile ("sti");
 	while(1);
 }

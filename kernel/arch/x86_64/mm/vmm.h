@@ -46,6 +46,7 @@ pt_t *vmm_clone_address_space(pt_t *);
 void vmm_save_context(void);
 pt_t *vmm_get_saved_context(void);
 void vmm_restore_context(void);
+void vmm_drop_context(void);
 void vmm_set_context(pt_t *);
 pt_t *vmm_get_current_context(void);
 

@@ -1,0 +1,187 @@
+#include "scheduler.h"
+#include <spinlock.h>
+#include <mm/heap.h>
+#include <string.h>
+#include <panic.h>
+
+// process and pid allocation
+
+static spinlock_t process_table_lock = {0};
+static struct process **processes = NULL;
+static size_t n_processes = 0;
+static pid_t next_pid = 1;
+
+static struct process *pid_to_process(pid_t pid) {
+	for (size_t i = 0; i < n_processes; i++)
+		if (processes[i] && processes[i]->pid == pid)
+			return processes[i];
+	return NULL;
+}
+
+static size_t pid_to_process_index(pid_t pid) {
+	for (size_t i = 0; i < n_processes; i++)
+		if (processes[i] && processes[i]->pid == pid)
+			return i;
+	return -1;
+}
+
+#define DEFAULT_TABLE_SIZE 16
+
+static size_t enlarge_process_table(void) {
+	size_t old_n_processes = n_processes;
+	n_processes *= 2;
+
+	if (!n_processes)
+		n_processes = DEFAULT_TABLE_SIZE;
+
+	processes = krealloc(processes, sizeof(*processes) * n_processes);
+	memset(processes + old_n_processes, 0, sizeof(*processes) * (old_n_processes ? : DEFAULT_TABLE_SIZE));
+
+	return old_n_processes;
+}
+
+pid_t alloc_new_process(void) {
+	spinlock_lock(&process_table_lock);
+
+	size_t i = 0;
+	while(i < n_processes && processes[i]) i++;
+	if (i >= n_processes)
+		i = enlarge_process_table();
+
+	processes[i] = kcalloc(sizeof(struct process), 1);
+	pid_t p = next_pid;
+	processes[i]->pid = p;
+	next_pid ++;
+
+	spinlock_release(&process_table_lock);
+	return p;
+}
+
+// running thread list
+
+struct run_list_elem {
+	pid_t pid;
+	size_t process_index;
+	pid_t tid;
+};
+
+static spinlock_t run_list_lock;
+static struct run_list_elem **run_list;
+static size_t n_run_list;
+static size_t run_list_idx;
+
+static struct run_list_elem *get_one_run_list_elem(void) {
+	struct run_list_elem *elem = NULL;
+	// this is to make sure we dont get stuck in
+	// an infinite loop on an empty run list
+	size_t traversed = 0;
+	while (!elem) {
+		traversed++;
+		elem = run_list[run_list_idx];
+		if (++run_list_idx >= n_run_list)
+			run_list_idx = 0; // loop around
+		if (traversed > n_run_list)
+			return NULL;
+	}
+
+	return elem;
+}
+
+static void insert_into_run_list(pid_t pid, pid_t tid) {
+	spinlock_lock(&run_list_lock);
+
+	if (!run_list) {
+		n_run_list = 16;
+		run_list = kcalloc(sizeof(*run_list), n_run_list);
+	}
+
+	size_t i = 0;
+	while (i < n_run_list && run_list[i])
+		i++;
+
+	if (i == n_run_list) {
+		size_t old_n = n_run_list;
+		n_run_list *= 2;
+		run_list = krealloc(run_list, n_run_list * sizeof(*run_list));
+		memset(run_list + old_n, 0, old_n * sizeof(*run_list));
+	}
+
+	run_list[i] = kcalloc(sizeof(**run_list), 1);
+	run_list[i]->pid = pid;
+	run_list[i]->tid = tid;
+	run_list[i]->process_index = pid_to_process_index(pid);
+
+	spinlock_release(&run_list_lock);
+}
+
+static void remove_from_run_list(pid_t pid, pid_t tid) {
+	spinlock_lock(&run_list_lock);
+
+	size_t i = 0;
+	while (i < n_run_list) {
+		if (run_list[i]) {
+			if (run_list[i]->pid == pid &&
+				run_list[i]->tid == tid) {
+				kfree(run_list[i]);
+				run_list[i] = NULL;
+				break;
+			}
+		}
+		i++;
+	}
+
+	spinlock_release(&run_list_lock);
+}
+
+// main scheduler code
+
+static size_t n_procs;
+
+void sched_init(int n_cpu) {
+	if (!n_cpu)
+		panic(NULL, "sched_init called with no processors");
+
+	n_procs = n_cpu;
+}
+
+__attribute__((noreturn))
+void sched_kick(void) {
+	if (!n_run_list)
+		panic(NULL, "sched_kick called but run list is empty");
+
+	for (size_t i = 0; i < n_procs; i++) {
+		struct run_list_elem *elem = get_one_run_list_elem();
+	}
+}
+
+void sched_timer_tick(void) {
+}
+
+void sched_reschedule(void) {
+	
+}
+
+void sched_save_current_state_irq(, void *irq_state) {
+}
+
+arch_task_t *sched_get_next(int cpu) {
+}
+
+pid_t sched_spawn_process(void) {
+}
+
+pid_t sched_spawn_thread(pid_t process) {
+}
+
+pid_t sched_spawn_thread_from_task(pid_t process, arch_task_t *task) {
+}
+
+void sched_destroy_process(pid_t process) {
+}
+
+void sched_destroy_thread(pid_t process, pid_t thread) {
+}
+
+void sched_start_process_from_elf(void *file) {
+}
+

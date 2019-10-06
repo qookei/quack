@@ -5,6 +5,8 @@
 #include <kmesg.h>
 
 #include <arch/mm.h>
+#include <cpu/cpu.h>
+#include <cpu/cpu_data.h>
 
 pt_off_t vmm_virt_to_offs(void *virt) {
 	uintptr_t addr = (uintptr_t)virt;
@@ -32,7 +34,6 @@ void *vmm_offs_to_virt(pt_off_t offs) {
 
 // TODO: multicore?
 static pt_t *kernel_pml4;
-static pt_t *vmm_saved_context = NULL;
 
 void vmm_init(void) {
 	kmesg("vmm", "started up!");
@@ -44,8 +45,6 @@ void vmm_init(void) {
 	vmm_set_context(kernel_pml4);
 
 	kmesg("vmm", "done setting up!");
-
-	vmm_saved_context = NULL;
 }
 
 static inline pt_t *vmm_get_or_alloc_ent(pt_t *tab, size_t off, int flags) {
@@ -209,22 +208,35 @@ pt_t *vmm_new_address_space(void) {
 pt_t *vmm_clone_address_space(pt_t *addr) {
 }
 
+pt_t **get_ctx_ptr(void) {
+	return (pt_t **)&cpu_data_get(cpu_get_id())->saved_vmm_ctx;
+}
+
 void vmm_save_context(void) {
-	if (vmm_saved_context)
-		kmesg("vmm", "vmm_save_context will overwrite the already saved context in this instance! saved context: %016p", vmm_saved_context);
-	vmm_saved_context = vmm_get_current_context();
+	pt_t **ctx = get_ctx_ptr();
+	if (*ctx)
+		kmesg("vmm", "vmm_save_context will overwrite the saved context! saved context: %016p", *ctx);
+	*ctx = vmm_get_current_context();
 }
 
 pt_t *vmm_get_saved_context(void) {
-	return vmm_saved_context;
+	pt_t **ctx = get_ctx_ptr();
+	return *ctx;
 }
 
 void vmm_restore_context(void) {
-	if (!vmm_saved_context)
+	pt_t **ctx = get_ctx_ptr();
+
+	if (!*ctx)
 		kmesg("vmm", "no context to restore in vmm_restore_context");
 
-	vmm_set_context(vmm_saved_context);
-	vmm_saved_context = NULL;
+	vmm_set_context(*ctx);
+	*ctx = NULL;
+}
+
+void vmm_drop_context(void) {
+	pt_t **ctx = get_ctx_ptr();
+	*ctx = NULL;
 }
 
 void vmm_set_context(pt_t *ctx) {
@@ -339,6 +351,11 @@ int arch_mm_switch_context(void *ctx) {
 
 int arch_mm_restore_context(void) {
 	vmm_restore_context();
+	return 1;
+}
+
+int arch_mm_drop_context(void) {
+	vmm_drop_context();
 	return 1;
 }
 

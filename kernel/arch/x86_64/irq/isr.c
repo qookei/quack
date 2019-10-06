@@ -7,6 +7,9 @@
 #include <cpu/cpu_data.h>
 #include <mm/vmm.h>
 #include <arch/mm.h>
+#include <arch/cpu.h>
+
+#include <generic_irq.h>
 
 irq_handler_t irq_handlers[IDT_ENTRIES];
 
@@ -51,6 +54,12 @@ void dispatch_interrupt(irq_cpu_state_t *state) {
 	if (irq_handlers[irq])
 		success = irq_handlers[irq](state);
 
+	// FIXME: this is kinda sorta a hack
+	if (irq == 0x31) {
+		success = 1;
+		timer_irq_sink(irq, state);
+	}
+
 	if (!success) {
 		if (irq < 0x20) {
 			// cpu exception
@@ -72,6 +81,10 @@ void exit_interrupt(uint8_t irq, int restore_ctx) {
 	irq_eoi(irq);
 	if (restore_ctx)
 		vmm_restore_context();
+}
+
+void arch_cpu_ack_interrupt(uint8_t irq) {
+	irq_eoi(irq);
 }
 
 int isr_register_handler(uint8_t irq, irq_handler_t handler) {

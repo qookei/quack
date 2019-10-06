@@ -43,4 +43,8 @@ int arch_task_alloc_mem_region(arch_task_t *task, struct mem_region *region, int
 int arch_task_copy_to_mem_region(arch_task_t *task, struct mem_region *region, void *src, size_t count);
 int arch_task_free_mem_region(arch_task_t *task, struct mem_region *region);
 
+
+// misc.
+void arch_task_idle_cpu(void);
+
 #endif

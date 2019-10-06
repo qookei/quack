@@ -15,6 +15,8 @@ typedef struct {
 	void *tss;
 
 	size_t spurious_pic;
+
+	void *saved_vmm_ctx;
 } cpu_data_t;
 
 

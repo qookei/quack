@@ -45,6 +45,8 @@ static void smp_c_entry(uint64_t core_id, uint64_t apic_id) {
 
 	has_started = 1;
 
+	asm volatile("sti");
+
 	while(1);
 }
 
@@ -152,5 +154,9 @@ void smp_init(void) {
 
 	kmesg("smp", "init done, %u working cores found", smp_core_count);
 
-	//asm volatile("cli");
+	asm volatile("cli");
+}
+
+int smp_get_working_count(void) {
+	return smp_core_count;
 }

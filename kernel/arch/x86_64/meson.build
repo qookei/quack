@@ -5,6 +5,7 @@ asm_sources = files(
   'irq/irq_handler.asm',
   'cpu/ctx_switch.asm',
   'io/mem.asm',
+  'task/task.asm',
   'cpu/smp_trampoline.asm')
 
 gen = generator(nasm,

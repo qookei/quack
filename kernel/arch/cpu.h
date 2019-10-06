@@ -1,6 +1,8 @@
 #ifndef ARCH_CPU_H
 #define ARCH_CPU_H
 
+#include <stdint.h>
+
 #if ARCH == x86_64 || ARCH == i386
 #define ARCH_CPU_SPIN_PAUSE asm volatile ("pause")
 #endif
@@ -13,5 +15,8 @@ void arch_cpu_atomic_loop_test_and_set(volatile int *var);
 void arch_cpu_atomic_unset(volatile int *var);
 
 int arch_cpu_get_this_id(void);
+int arch_cpu_get_count(void);
+
+void arch_cpu_ack_interrupt(uint8_t irq);
 
 #endif

@@ -1,6 +1,6 @@
 project('quack', 'c')
 
-c_args = meson.get_cross_property('c_args')
+c_args = [meson.get_cross_property('c_args'), '-Wall', '-Wextra', '-Wpedantic']
 link_args = meson.get_cross_property('link_args')
 
 arch_srcs = []
@@ -29,8 +29,10 @@ c_srcs = files(
   'kobj.c',
   'devmgr.c',
 
+  'proc/scheduler.c',
   'loader/elf64.c',
 
+  'generic_irq.c',
   'syscall.c',
 
   'kernel.c')

@@ -40,6 +40,7 @@ void *arch_mm_get_ctx_kernel(int cpu);
 int arch_mm_store_context(void);
 int arch_mm_switch_context(void *ctx);
 int arch_mm_restore_context(void);
+int arch_mm_drop_context(void);
 
 // -1 for this CPU
 // -2 for all CPUs

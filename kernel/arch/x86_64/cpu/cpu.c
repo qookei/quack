@@ -4,6 +4,7 @@
 #include <arch/cpu.h>
 #include <cpu/cpu_data.h>
 #include <cpu/gdt.h>
+#include <cpu/smp.h>
 
 void cpu_dump_regs_irq(irq_cpu_state_t *state) {
 	kmesg("cpu", "rax: %016lx rbx: %016lx", state->rax, state->rbx);
@@ -70,4 +71,9 @@ void arch_cpu_halt_forever(void) {
 
 int arch_cpu_get_this_id(void) {
 	return cpu_get_id();
+}
+
+int arch_cpu_get_count(void) {
+	// smp only counts APs and not the BSP
+	return smp_get_working_count() + 1;
 }

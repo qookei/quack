@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 if [[ $1 == "help" ]];
 then
@@ -20,10 +20,12 @@ menuentry "quack - fb debug out" {
 
 menuentry "quack - e9 debug out" {
 	multiboot /boot/quack.elf debugcon=e9
+	module /boot/initramfs.tar
 }
 
 menuentry "quack - vga text debug out" {
 	multiboot /boot/quack.elf debugcon=vga
+	module /boot/initramfs.tar
 	set gfxpayload=text
 }
 
@@ -35,12 +37,13 @@ menuentry "quack - e9 and fb debug out" {
 
 menuentry "quack - e9 and vga text debug out" {
 	multiboot /boot/quack.elf debugcon=e9,vga
+	module /boot/initramfs.tar
 	set gfxpayload=text
 }
 EOL
 
 cp quack.elf isodir/boot/quack.elf
-cp ../initrd-root/initramfs.tar isodir/boot/initramfs.tar
+cp initramfs.tar isodir/boot/initramfs.tar
 
 compress=0
 if [[ $1 == "tiny" ]];

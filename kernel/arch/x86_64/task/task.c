@@ -157,3 +157,9 @@ int arch_task_free_mem_region(arch_task_t *task, struct mem_region *region) {
 	}
 	return 1;
 }
+
+void arch_task_idle_cpu(void) {
+	uintptr_t stack_ptr = cpu_data_get(cpu_get_id())->stack_ptr;
+
+	internal_task_idle(stack_ptr);
+}
