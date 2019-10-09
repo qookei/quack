@@ -97,11 +97,11 @@ void gdt_load(void *gdt) {
 	gdtr.len = SEGMENT_COUNT * 8 - 1;
 	gdtr.ptr = (uint64_t)gdt;
 
-	asm volatile ("lgdt (%0)" : : "r"(&gdtr));
+	asm volatile ("lgdt %0" : : "m"(gdtr));
 }
 
 void gdt_load_tss(uint16_t sel) {
-	asm volatile ("mov %0, %%ax; ltr %%ax" : : "r"(sel) : "%ax");
+	asm volatile ("ltr %0" : : "r"(sel));
 }
 
 void gdt_load_gs_base(uintptr_t base) {
