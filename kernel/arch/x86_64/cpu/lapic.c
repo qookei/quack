@@ -89,7 +89,7 @@ void lapic_init(void) {
 static uint64_t lapic_bsp_speed_hz;
 
 static _Atomic uint64_t pit_ticks = 0;
-static int pit_irq(irq_cpu_state_t *s) {
+static int __attribute__ ((noinline)) pit_irq(irq_cpu_state_t *s) {
 	(void)s;
 
 	pit_ticks++;

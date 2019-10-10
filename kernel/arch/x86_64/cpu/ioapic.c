@@ -8,7 +8,7 @@
 uint32_t ioapic_read(size_t ioapic, uint32_t reg) {
 	if (ioapic >= madt_get_ioapic_count())
 		panic(NULL, "Access to invalid ioapic %lu", ioapic);
-	uint32_t *addr = (uint32_t *)(madt_get_ioapics()[ioapic].ioapic_addr + VIRT_PHYS_BASE);
+	volatile uint32_t *addr = (volatile uint32_t *)(madt_get_ioapics()[ioapic].ioapic_addr + VIRT_PHYS_BASE);
 	*addr = reg;
 	return *(addr + 4);
 }
@@ -16,7 +16,7 @@ uint32_t ioapic_read(size_t ioapic, uint32_t reg) {
 void ioapic_write(size_t ioapic, uint32_t reg, uint32_t val) {
 	if (ioapic >= madt_get_ioapic_count())
 		panic(NULL, "Access to invalid ioapic %lu", ioapic);
-	uint32_t *addr = (uint32_t *)(madt_get_ioapics()[ioapic].ioapic_addr + VIRT_PHYS_BASE);
+	volatile uint32_t *addr = (volatile uint32_t *)(madt_get_ioapics()[ioapic].ioapic_addr + VIRT_PHYS_BASE);
 	*addr = reg;
 	*(addr + 4) = val;
 }
