@@ -35,6 +35,8 @@ c_srcs = files(
   'generic_irq.c',
   'syscall.c',
 
+  'ubsan.c',
+
   'kernel.c')
 
 inc_dirs = include_directories(

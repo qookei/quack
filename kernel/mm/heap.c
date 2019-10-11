@@ -11,6 +11,8 @@ static uintptr_t top = ARCH_MM_HEAP_BASE;
 void *kmalloc(size_t bytes) {
 	spinlock_lock(&mm_lock);
 
+	bytes = ((bytes + 7) / 8) * 8; // round up to nearest multiple of 8
+
 	bytes += 16; // 8 bytes for size, another 8 for amount of pages
 	size_t pages = (bytes + ARCH_MM_PAGE_SIZE - 1) / ARCH_MM_PAGE_SIZE + 1;
 	void *out = (void *)top;
