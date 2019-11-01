@@ -54,4 +54,6 @@ out = executable(
   dependencies: arch_dependencies,
   c_args: ['-Wall', '-Wextra', c_args],
   link_args: ['-T', arch_linker_file, link_args, '-flto'],
+  install: true,
+  install_dir: '.'
 )

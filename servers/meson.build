@@ -6,10 +6,4 @@ add_project_arguments(meson.get_cross_property('c_args'),
 add_project_link_arguments(meson.get_cross_property('link_args'),
 			language: ['cpp', 'c'])
 
-install_path = 'bin'
-
-if get_option('initramfs-root')
-	install_path = '/'
-endif
-
 subdir('startup')
