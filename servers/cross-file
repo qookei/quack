@@ -1,8 +1,8 @@
 [binaries]
-c		= 'x86_64-elf-gcc'
-cpp		= 'x86_64-elf-g++'
-as		= 'x86_64-elf-as'
-strip		= 'x86_64-elf-strip'
+c		= 'x86_64-quack-kernel-gcc'
+cpp		= 'x86_64-quack-kernel-g++'
+as		= 'x86_64-quack-kernel-as'
+strip		= 'x86_64-quack-kernel-strip'
 
 [properties]
 c_args		= [
