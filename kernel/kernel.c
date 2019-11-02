@@ -55,40 +55,26 @@ void kernel_main(arch_boot_info_t *info) {
 
 	// TODO: parse a config file to see what to load
 
-	void *init_file;
+	void *startup_file;
 
-	if (!initrd_read_file("startup", &init_file))
+	if (!initrd_read_file("startup", &startup_file))
 		panic(NULL, "failed to load startup");
-
-	void *test_file;
-
-	if (!initrd_read_file("test1", &test_file))
-		panic(NULL, "failed to load test1");
 
 	sched_init(arch_cpu_get_count());
 
-	arch_task_t *task1 = load_elf_task(init_file);
+	arch_task_t *task = load_elf_task(startup_file);
 
 	struct mem_region stack = {
 		.start = 0x7fffffffc000,
 		.end   = 0x800000000000
 	};
 
-	arch_task_alloc_mem_region(task1, &stack,
+	arch_task_alloc_mem_region(task, &stack,
 		ARCH_MM_FLAGS_READ | ARCH_MM_FLAGS_WRITE | ARCH_MM_FLAGS_USER);
 
-	arch_task_load_stack_ptr(task1, 0x800000000000);
+	arch_task_load_stack_ptr(task, 0x800000000000);
 
-	arch_task_t *task2 = load_elf_task(test_file);
-
-	arch_task_alloc_mem_region(task2, &stack,
-		ARCH_MM_FLAGS_READ | ARCH_MM_FLAGS_WRITE | ARCH_MM_FLAGS_USER);
-
-	arch_task_load_stack_ptr(task2, 0x800000000000);
-
-	int32_t id = sched_start_from_task(task1);
-
-	sched_set_state(id, THREAD_RUNNING);
+	int32_t id = sched_start_from_task(task);
 
 	id = sched_start_from_task(task2);
 
