@@ -17,7 +17,7 @@ size_t pmm_bitmap_len = 64;
 
 static int pmm_bit_read(size_t idx) {
 	size_t off = idx / 64;
-	size_t mask = (1 << (idx % 64));
+	size_t mask = (1UL << (idx % 64UL));
 
 	return (pmm_bitmap[off] & mask) == mask;
 }
@@ -25,7 +25,7 @@ static int pmm_bit_read(size_t idx) {
 static void pmm_bit_write(size_t idx, int bit, size_t count) {
 	for (; count; count--, idx++) {
 		size_t off = idx / 64;
-		size_t mask = (1 << (idx % 64));
+		size_t mask = (1UL << (idx % 64UL));
 
 		if (bit)
 			pmm_bitmap[off] |= mask;
