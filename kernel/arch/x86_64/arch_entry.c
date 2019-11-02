@@ -32,6 +32,8 @@ int syscall_irq_handler(irq_cpu_state_t *state) {
 	return 1;
 }
 
+void arch_symtab_parse(multiboot_info_t *mboot);
+
 void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 	vga_init();
 
@@ -75,6 +77,8 @@ void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 		vid->blue_size = mboot->framebuffer_blue_mask_size;
 	}
 
+	arch_symtab_parse(mboot);
+
 	debugcon_init(vid);
 
 	acpi_init();
@@ -114,8 +118,6 @@ void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 	}
 
 	asm volatile("cli");
-
-	//test_foo_bar();
 
 	isr_register_handler(0x30, syscall_irq_handler);
 

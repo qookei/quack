@@ -37,6 +37,8 @@ c_srcs = files(
 
   'ubsan.c',
 
+  'symtab/symtab.c',
+
   'kernel.c')
 
 inc_dirs = include_directories(

@@ -6,12 +6,19 @@
 #include <cpu/gdt.h>
 #include <cpu/smp.h>
 
+#include <symtab/symtab.h>
+
 void cpu_dump_regs_irq(irq_cpu_state_t *state) {
+	char buf[256 + 4];
+
+	symtab_format_from_addr(buf, 256, state->rip);
+
 	kmesg("cpu", "rax: %016lx rbx: %016lx", state->rax, state->rbx);
 	kmesg("cpu", "rcx: %016lx rdx: %016lx", state->rcx, state->rdx);
 	kmesg("cpu", "rsi: %016lx rdi: %016lx", state->rsi, state->rdi);
 	kmesg("cpu", "rsp: %016lx rbp: %016lx", state->rsp, state->rbp);
 	kmesg("cpu", "rip: %016lx rfl: %016lx", state->rip, state->rflags);
+	kmesg("cpu", "rip -> %s", buf);
 	kmesg("cpu", "r15: %016lx r14: %016lx", state->r15, state->r14);
 	kmesg("cpu", "r13: %016lx r12: %016lx", state->r13, state->r12);
 	kmesg("cpu", "r11: %016lx r10: %016lx", state->r11, state->r10);
@@ -30,15 +37,13 @@ void cpu_trace_stack(void) {
 
 	size_t idx = 0;
 
-	//if (!bp[0]) {
-	//	kmesg("cpu", "no traces on stack :thonk:");
-	//	return;
-	//}
+	for (uintptr_t ip = bp[1]; bp; ip = bp[1], bp = (uintptr_t *)bp[0]) {
+		char buf[256 + 4];
 
-	//bp = (uintptr_t *)bp[0];
+		symtab_format_from_addr(buf, 256, ip);
 
-	for (uintptr_t ip = bp[1]; bp; ip = bp[1], bp = (uintptr_t *)bp[0])
-		kmesg("cpu", "#%lu: [%016lx]", idx++, ip);
+		kmesg("cpu", "#%lu: [%016lx] -> %s", idx++, ip, buf);
+	}
 }
 
 // only works in the kernel address space

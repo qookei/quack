@@ -37,6 +37,8 @@ arch_srcs += files(
 
   'task/task.c',
 
+  'symtab.c',
+
   'mm/pmm.c',
   'mm/vmm.c',
   'acpi/lai_host.c',
