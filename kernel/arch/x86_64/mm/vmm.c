@@ -8,6 +8,8 @@
 #include <cpu/cpu.h>
 #include <cpu/cpu_data.h>
 
+#include <util/spinlock.h>
+
 pt_off_t vmm_virt_to_offs(void *virt) {
 	uintptr_t addr = (uintptr_t)virt;
 
@@ -253,6 +255,10 @@ void vmm_update_mapping(void *ptr) {
 	asm volatile ("invlpg (%0)" : : "r"(ptr) : "memory");
 }
 
+spinlock_t copy_lock;
+
+#define MAX(x, y) ((x) > (y) ? (x) : (y))
+
 void vmm_ctx_memcpy(pt_t *dst_ctx, void *dst_addr, pt_t *src_ctx, void *src_addr, size_t size) {
 	// map dst to 0x700000000000
 	// map src to 0x780000000000
@@ -261,11 +267,18 @@ void vmm_ctx_memcpy(pt_t *dst_ctx, void *dst_addr, pt_t *src_ctx, void *src_addr
 
 	// max amount of data you can copy is 8TB if aligned to a page
 
+	spinlock_lock(&copy_lock);
+
 	uintptr_t src_virt = 0x780000000000;
 	uintptr_t dst_virt = 0x700000000000;
 	uintptr_t dst = (uintptr_t)dst_addr & (~0xFFF);
 	uintptr_t src = (uintptr_t)src_addr & (~0xFFF);
-	for (size_t i = 0; i < size;
+
+	size_t map_size = size + MAX(
+			(uintptr_t)dst_addr & 0xFFF,
+			(uintptr_t)src_addr & 0xFFF);
+
+	for (size_t i = 0; i < map_size;
 		i += 0x1000, src_virt += 0x1000, src += 0x1000,
 			dst_virt += 0x1000, dst += 0x1000) {
 		uintptr_t dst_phys = vmm_get_entry(dst_ctx, (void *)dst)
@@ -286,13 +299,15 @@ void vmm_ctx_memcpy(pt_t *dst_ctx, void *dst_addr, pt_t *src_ctx, void *src_addr
 
 	src_virt = 0x780000000000;
 	dst_virt = 0x700000000000;
-	for (size_t i = 0; i < size;
+	for (size_t i = 0; i < map_size;
 		i += 0x1000, src_virt += 0x1000, dst_virt += 0x1000) {
 		vmm_unmap_pages(kernel_pml4, (void *)dst_virt, 1);
 		vmm_unmap_pages(kernel_pml4, (void *)src_virt, 1);
 		vmm_update_mapping((void *)dst_virt);
 		vmm_update_mapping((void *)src_virt);
 	}
+
+	spinlock_release(&copy_lock);
 }
 
 int vmm_arch_to_vmm_flags(int flags) {
