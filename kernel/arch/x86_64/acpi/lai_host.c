@@ -41,12 +41,14 @@ __attribute__((noreturn)) void laihost_panic(const char *msg) {
 	__builtin_unreachable();
 }
 
-void *laihost_scan(char *sig, size_t idx) {
+void *laihost_scan(const char *sig, size_t idx) {
 	return acpi_find_table(sig, idx);
 }
 
 void *laihost_map(size_t addr, size_t count) {
 	(void)count;
+	if ((addr + count) > 0xFFFFFFFF)
+		panic(NULL, "laihost_map called with address,count pair which goes out of bounds");
 	return (void *)(addr + VIRT_PHYS_BASE);
 }
 

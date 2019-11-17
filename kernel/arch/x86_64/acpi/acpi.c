@@ -5,6 +5,7 @@
 #include <mm/mm.h>
 #include <string.h>
 #include <lai/core.h>
+#include <lai/helpers/sci.h>
 #include <irq/isr.h>
 #include <cmdline.h>
 
@@ -92,7 +93,7 @@ void acpi_init(void) {
 
 	if (cmdline_has_value("acpi", "debug")) {
 		kmesg("acpi", "debugging enabled by user");
-		lai_enable_tracing(1);
+		lai_enable_tracing(LAI_TRACE_IO);
 	}
 
 	lai_create_namespace();

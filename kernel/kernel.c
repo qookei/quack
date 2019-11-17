@@ -76,7 +76,7 @@ void kernel_main(arch_boot_info_t *info) {
 
 	int32_t id = sched_start_from_task(task);
 
-	id = sched_start_from_task(task2);
+	id = sched_start_from_task(task);
 
 	sched_set_state(id, THREAD_RUNNING);
 
