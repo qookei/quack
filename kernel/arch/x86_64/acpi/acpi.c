@@ -93,7 +93,7 @@ void acpi_init(void) {
 
 	if (cmdline_has_value("acpi", "debug")) {
 		kmesg("acpi", "debugging enabled by user");
-		lai_enable_tracing(LAI_TRACE_IO);
+		lai_enable_tracing(LAI_TRACE_IO | LAI_TRACE_OP);
 	}
 
 	lai_create_namespace();
