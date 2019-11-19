@@ -78,8 +78,8 @@ void lapic_enable(void) {
 void lapic_init(void) {
 	lapic_base = madt_get_lapic_base();
 
-	arch_mm_map_kernel(-1, (void *)lapic_base, (void *)lapic_base, 4,
-			ARCH_MM_FLAGS_READ | ARCH_MM_FLAGS_WRITE | ARCH_MM_FLAGS_NO_CACHE);
+	arch_mm_map_kernel((void *)lapic_base, (void *)lapic_base, 4,
+			ARCH_MM_FLAG_R | ARCH_MM_FLAG_W, ARCH_MM_CACHE_UC);
 
 	kmesg("lapic", "setting up the lapic");
 	lapic_nmi_setup();

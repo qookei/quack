@@ -49,12 +49,17 @@ bits 32
 
 	mov ecx, 0xC0000080
 	rdmsr
-	or eax, 0x00000101
+	or eax, 0x00000901
 	wrmsr
 
 	mov eax, cr0
 	or eax, 0x80000001
 	mov cr0, eax
+
+	mov ecx, 0x277
+	mov eax, 0x05010406
+	xor edx, edx
+	wrmsr
 
 	jmp 0x08:.long_mode
 .long_mode:

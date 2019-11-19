@@ -4,16 +4,18 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define VMM_FLAG_MASK 0xFFF
+#define VMM_FLAG_MASK (0xFFF | (1ull << 63))
 #define VMM_ADDR_MASK ~(VMM_FLAG_MASK)
 
 #define VMM_FLAG_PRESENT	(1<<0)
 #define VMM_FLAG_WRITE		(1<<1)
 #define VMM_FLAG_USER		(1<<2)
-#define VMM_FLAG_WT			(1<<3)
-#define VMM_FLAG_NO_CACHE	(1<<4)
+#define VMM_FLAG_PAT0		(1<<3)
+#define VMM_FLAG_PAT1		(1<<4)
+#define VMM_FLAG_PAT2		(1<<4)
 #define VMM_FLAG_DIRTY		(1<<5)
 #define VMM_FLAG_LARGE		(1<<7)
+#define VMM_FLAG_NX		(1ull<<63)
 
 typedef struct {
 	uint64_t ents[512];
@@ -50,7 +52,7 @@ void vmm_drop_context(void);
 void vmm_set_context(pt_t *);
 pt_t *vmm_get_current_context(void);
 
-int vmm_arch_to_vmm_flags(int);
+int vmm_arch_to_vmm_flags(int, int);
 
 void vmm_ctx_memcpy(pt_t *, void *, pt_t *, void *, size_t);
 

@@ -136,7 +136,7 @@ int arch_task_alloc_mem_region(arch_task_t *task, struct mem_region *region, int
 			return 0;
 		}
 		vmm_map_pages(task->vmm_ctx, (void *)ptr, phys, 1, 
-				vmm_arch_to_vmm_flags(flags));
+				vmm_arch_to_vmm_flags(flags, 0));
 	}
 
 	return 1;
@@ -144,7 +144,7 @@ int arch_task_alloc_mem_region(arch_task_t *task, struct mem_region *region, int
 
 int arch_task_copy_to_mem_region(arch_task_t *task, struct mem_region *region, void *src, size_t count) {
 	assert(count <= (region->end - region->start));
-	vmm_ctx_memcpy(task->vmm_ctx, (void *)region->start, arch_mm_get_ctx_kernel(-1), src, count);
+	vmm_ctx_memcpy(task->vmm_ctx, (void *)region->start, arch_mm_get_ctx_kernel(), src, count);
 	return 1;
 }
 

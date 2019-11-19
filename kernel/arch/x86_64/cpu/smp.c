@@ -38,6 +38,7 @@ static void smp_c_entry(uint64_t core_id, uint64_t apic_id) {
 	gdt_load_tss(GDT_TSS_SEL);
 	gdt_load_gs_base((uintptr_t)d);
 
+
 	idt_just_load();
 	lapic_init();
 
@@ -73,13 +74,13 @@ static uintptr_t prepare_data(int cpu, uint8_t lapic_id) {
 static int smp_init_single(uint32_t apic_id, uint32_t core_id) {
 	ptrdiff_t len = (uintptr_t)&_trampoline_end - (uintptr_t)&_trampoline_start;
 
-	arch_mm_map_kernel(-1, &_trampoline_start, &_trampoline_start,
+	arch_mm_map_kernel(&_trampoline_start, &_trampoline_start,
 			(len + PAGE_SIZE - 1) / PAGE_SIZE,
-			ARCH_MM_FLAGS_READ | ARCH_MM_FLAGS_WRITE);
+			ARCH_MM_FLAG_R | ARCH_MM_FLAG_W, ARCH_MM_CACHE_DEFAULT);
 
 	memcpy(&_trampoline_start, (void *)(KERNEL_SMP + VIRT_PHYS_BASE), len);
 
-	uintptr_t pml4 = (uintptr_t)arch_mm_get_ctx_kernel(-1);
+	uintptr_t pml4 = (uintptr_t)arch_mm_get_ctx_kernel();
 
 	assert(!(pml4 & 0xFFFFFFFF00000000));
 

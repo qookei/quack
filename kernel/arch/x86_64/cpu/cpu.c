@@ -57,6 +57,16 @@ int cpu_get_id(void) {
 	return id;
 }
 
+void cpu_set_msr(uint32_t msr, uint64_t val) {
+	asm volatile ("wrmsr" : : "a"((uint32_t)val), "d"((uint32_t)(val >> 32)), "c"(msr));
+}
+
+uint64_t cpu_get_msr(uint32_t msr) {
+	uint32_t hi, lo;
+	asm volatile ("rdmsr" : "=a"(lo), "=d"(hi) : "c"(msr));
+	return ((uint64_t)hi << 32) | (uint64_t)lo;
+}
+
 // -----
 
 void arch_cpu_dump_state(void *state) {

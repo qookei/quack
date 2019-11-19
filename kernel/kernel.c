@@ -70,7 +70,7 @@ void kernel_main(arch_boot_info_t *info) {
 	};
 
 	arch_task_alloc_mem_region(task, &stack,
-		ARCH_MM_FLAGS_READ | ARCH_MM_FLAGS_WRITE | ARCH_MM_FLAGS_USER);
+		ARCH_MM_FLAG_R | ARCH_MM_FLAG_W | ARCH_MM_FLAG_U);
 
 	arch_task_load_stack_ptr(task, 0x800000000000);
 

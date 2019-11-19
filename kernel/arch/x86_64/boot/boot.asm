@@ -117,7 +117,7 @@ _loader:
 
 	mov ecx, 0xC0000080
 	rdmsr
-	or eax, 0x00000101
+	or eax, 0x00000901
 	wrmsr
 
 	mov eax, cr0

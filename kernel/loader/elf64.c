@@ -43,13 +43,13 @@ arch_task_t *elf64_create_arch_task(void *file) {
 			.end = phdrs[i].p_vaddr + phdrs[i].p_memsz,
 		};
 
-		int flags = ARCH_MM_FLAGS_USER;
+		int flags = ARCH_MM_FLAG_U;
 		if (phdrs[i].p_flags & ELF_PHDR_FLAG_X)
-			flags |= ARCH_MM_FLAGS_EXECUTE;
+			flags |= ARCH_MM_FLAG_E;
 		if (phdrs[i].p_flags & ELF_PHDR_FLAG_R)
-			flags |= ARCH_MM_FLAGS_READ;
+			flags |= ARCH_MM_FLAG_R;
 		if (phdrs[i].p_flags & ELF_PHDR_FLAG_W)
-			flags |= ARCH_MM_FLAGS_WRITE;
+			flags |= ARCH_MM_FLAG_W;
 
 		arch_task_alloc_mem_region(task, &region, flags);
 		arch_task_copy_to_mem_region(task, &region, 

@@ -23,7 +23,7 @@ void *kmalloc(size_t bytes) {
 			spinlock_release(&mm_lock);
 			return NULL;
 		}
-		arch_mm_map_kernel(-1, (void *)top, p, 1, ARCH_MM_FLAGS_READ | ARCH_MM_FLAGS_WRITE);
+		arch_mm_map_kernel((void *)top, p, 1, ARCH_MM_FLAG_R | ARCH_MM_FLAG_W, ARCH_MM_CACHE_DEFAULT);
 		top += ARCH_MM_PAGE_SIZE;
 	}
 
@@ -70,8 +70,8 @@ void kfree(void *ptr) {
 
 	for (size_t i = 0; i < pages; i++) {
 		void *curr = (void *)((uintptr_t)start + i * ARCH_MM_PAGE_SIZE);
-		void *p = (void *)arch_mm_get_phys_kernel(-1, curr);
-		arch_mm_unmap_kernel(-1, curr, 1);
+		void *p = (void *)arch_mm_get_phys_kernel(curr);
+		arch_mm_unmap_kernel(curr, 1);
 		arch_mm_free_phys(p, 1);
 	}
 

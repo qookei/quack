@@ -36,7 +36,7 @@ void exit_interrupt(uint8_t irq, int restore_ctx);
 
 void dispatch_interrupt(irq_cpu_state_t *state) {
 	vmm_save_context();
-	vmm_set_context(arch_mm_get_ctx_kernel(-1));
+	vmm_set_context(arch_mm_get_ctx_kernel());
 
 	uint32_t irq = state->int_no;
 

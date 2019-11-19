@@ -34,16 +34,17 @@ void *vmm_offs_to_virt(pt_off_t offs) {
 	return (void *)addr;
 }
 
-// TODO: multicore?
 static pt_t *kernel_pml4;
 
 void vmm_init(void) {
+	cpu_set_msr(0x277, 0x0000000005010406);
+
 	kmesg("vmm", "started up!");
-	
+
 	kernel_pml4 = vmm_new_address_space();
 
 	kmesg("vmm", "done creating, setting!");
-	
+
 	vmm_set_context(kernel_pml4);
 
 	kmesg("vmm", "done setting up!");
@@ -74,13 +75,15 @@ static inline pt_t *vmm_get_or_null_ent(pt_t *tab, size_t off) {
 }
 
 int vmm_map_pages(pt_t *pml4, void *virt, void *phys, size_t count, int perms) {
+	int higher_perms = perms & (VMM_FLAG_WRITE | VMM_FLAG_USER);
+
 	while (count--) {
 		pt_off_t offs = vmm_virt_to_offs(virt);
 
 		pt_t *pml4_virt = (pt_t *)((uint64_t)pml4 + VIRT_PHYS_BASE);
-		pt_t *pdp_virt = vmm_get_or_alloc_ent(pml4_virt, offs.pml4_off, perms);
-		pt_t *pd_virt = vmm_get_or_alloc_ent(pdp_virt, offs.pdp_off, perms);
-		pt_t *pt_virt = vmm_get_or_alloc_ent(pd_virt, offs.pd_off, perms);
+		pt_t *pdp_virt = vmm_get_or_alloc_ent(pml4_virt, offs.pml4_off, higher_perms);
+		pt_t *pd_virt = vmm_get_or_alloc_ent(pdp_virt, offs.pdp_off, higher_perms);
+		pt_t *pt_virt = vmm_get_or_alloc_ent(pd_virt, offs.pd_off, higher_perms);
 		pt_virt->ents[offs.pt_off] = (uint64_t)phys | perms | VMM_FLAG_PRESENT;
 
 		virt = (void *)((uintptr_t)virt + 0x1000);
@@ -129,12 +132,14 @@ int vmm_update_perms(pt_t *pml4, void *virt, size_t count, int perms) {
 }
 
 int vmm_map_huge_pages(pt_t *pml4, void *virt, void *phys, size_t count, int perms) {
+	int higher_perms = perms & (VMM_FLAG_WRITE | VMM_FLAG_USER);
+
 	while (count--) {
 		pt_off_t offs = vmm_virt_to_offs(virt);
 
 		pt_t *pml4_virt = (pt_t *)((uint64_t)pml4 + VIRT_PHYS_BASE);
-		pt_t *pdp_virt = vmm_get_or_alloc_ent(pml4_virt, offs.pml4_off, perms);
-		pt_t *pd_virt = vmm_get_or_alloc_ent(pdp_virt, offs.pdp_off, perms);
+		pt_t *pdp_virt = vmm_get_or_alloc_ent(pml4_virt, offs.pml4_off, higher_perms);
+		pt_t *pd_virt = vmm_get_or_alloc_ent(pdp_virt, offs.pdp_off, higher_perms);
 		pd_virt->ents[offs.pd_off] = (uint64_t)phys | perms | VMM_FLAG_PRESENT | VMM_FLAG_LARGE;
 
 		virt = (void *)((uintptr_t)virt + 0x200000);
@@ -169,7 +174,7 @@ int vmm_update_huge_perms(pt_t *pml4, void *virt, size_t count, int perms) {
 		if (!pdp_virt) return 0;
 		pt_t *pd_virt = vmm_get_or_null_ent(pdp_virt, offs.pdp_off);
 		pd_virt->ents[offs.pd_off] = (pd_virt->ents[offs.pd_off] & VMM_ADDR_MASK) | perms | VMM_FLAG_PRESENT | VMM_FLAG_LARGE;
-	
+
 		virt = (void *)((uintptr_t)virt + 0x200000);
 	}
 
@@ -310,47 +315,54 @@ void vmm_ctx_memcpy(pt_t *dst_ctx, void *dst_addr, pt_t *src_ctx, void *src_addr
 	spinlock_release(&copy_lock);
 }
 
-int vmm_arch_to_vmm_flags(int flags) {
-	return ((flags & ARCH_MM_FLAGS_WRITE) ? VMM_FLAG_WRITE : 0)
-		| ((flags & ARCH_MM_FLAGS_USER) ? VMM_FLAG_USER : 0)
-		| ((flags & ARCH_MM_FLAGS_NO_CACHE) ?
-			(VMM_FLAG_NO_CACHE | VMM_FLAG_WT) : 0);
+int vmm_arch_to_vmm_flags(int flags, int cache) {
+	int arch_flags = 0;
 
-	// TODO: add EXECUTE permission bit support
+	if (flags & ARCH_MM_FLAG_W) arch_flags |= VMM_FLAG_WRITE;
+	if (flags & ARCH_MM_FLAG_U) arch_flags |= VMM_FLAG_USER;
+	if (!(flags & ARCH_MM_FLAG_E)) arch_flags |= VMM_FLAG_NX;
+
+	if (cache & (1 << 0)) arch_flags |= VMM_FLAG_PAT0;
+	if (cache & (1 << 1)) arch_flags |= VMM_FLAG_PAT1;
+	if (cache & (1 << 2)) arch_flags |= VMM_FLAG_PAT2;
+
+	return arch_flags;
 }
 
 // arch functions
 // TODO: add locking
 
-int arch_mm_map_kernel(int cpu, void *dst, void *src, size_t size, int flags) {
-	(void)cpu; // TODO: ??
-
-	return vmm_map_pages(kernel_pml4, dst, src, size, vmm_arch_to_vmm_flags(flags));
+int arch_mm_map_kernel(void *dst, void *src, size_t size, int flags, int cache) {
+	return vmm_map_pages(kernel_pml4, dst, src, size, vmm_arch_to_vmm_flags(flags, cache));
 }
 
-int arch_mm_unmap_kernel(int cpu, void *dst, size_t size) {
-	(void)cpu;
+int arch_mm_unmap_kernel(void *dst, size_t size) {
 	return vmm_unmap_pages(kernel_pml4, dst, size);
 }
 
-uintptr_t arch_mm_get_phys_kernel(int cpu, void *dst) {
-	(void)cpu;
+uintptr_t arch_mm_get_phys_kernel(void *dst) {
 	return vmm_get_entry(kernel_pml4, dst) & VMM_ADDR_MASK;
 }
 
-int arch_mm_get_flags_kernel(int cpu, void *dst) {
-	(void)cpu;
+int arch_mm_get_flags_kernel(void *dst) {
 	int arch_flags = vmm_get_entry(kernel_pml4, dst) & VMM_FLAG_MASK;
-	int flags = arch_flags ? (ARCH_MM_FLAGS_READ | ARCH_MM_FLAGS_EXECUTE) : 0;
-	if (arch_flags & VMM_FLAG_WRITE) flags |= ARCH_MM_FLAGS_WRITE;
-	if (arch_flags & VMM_FLAG_USER) flags |= ARCH_MM_FLAGS_USER;
-	if (arch_flags & VMM_FLAG_NO_CACHE) flags |= ARCH_MM_FLAGS_NO_CACHE;
-	if (arch_flags & VMM_FLAG_WT) flags |= ARCH_MM_FLAGS_NO_CACHE;
+	int flags = arch_flags ? ARCH_MM_FLAG_R : 0;
+	if (arch_flags & VMM_FLAG_WRITE) flags |= ARCH_MM_FLAG_W;
+	if (arch_flags & VMM_FLAG_USER) flags |= ARCH_MM_FLAG_U;
+	if (!(arch_flags & VMM_FLAG_NX)) flags |= ARCH_MM_FLAG_E;
 	return flags;
 }
 
-void *arch_mm_get_ctx_kernel(int cpu) {
-	(void)cpu;
+int arch_mm_get_cache_kernel(void *dst) {
+	int arch_flags = vmm_get_entry(kernel_pml4, dst) & VMM_FLAG_MASK;
+	int flags = 0;
+	if (arch_flags & VMM_FLAG_PAT0) flags |= (1 << 0);
+	if (arch_flags & VMM_FLAG_PAT1) flags |= (1 << 1);
+	if (arch_flags & VMM_FLAG_PAT2) flags |= (1 << 2);
+	return flags;
+}
+
+void *arch_mm_get_ctx_kernel(void) {
 	return kernel_pml4;
 }
 
