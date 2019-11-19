@@ -34,6 +34,14 @@ static const char *exc_names[] = {
 
 void exit_interrupt(uint8_t irq, int restore_ctx);
 
+#define CHECK_MCE_STATE
+#define IA32_MCG_STATUS 0x17A
+#define IA32_MCG_CAP 0x179
+#define IA32_MCi_CTL 0x400
+#define IA32_MCi_STATUS 0x401
+#define IA32_MCi_ADDR 0x402
+#define IA32_MCi_MISC 0x403
+
 void dispatch_interrupt(irq_cpu_state_t *state) {
 	vmm_save_context();
 	vmm_set_context(arch_mm_get_ctx_kernel());
@@ -58,6 +66,40 @@ void dispatch_interrupt(irq_cpu_state_t *state) {
 	if (irq == 0x31) {
 		success = 1;
 		timer_irq_sink(irq, state);
+	}
+
+	if (irq == 18) {
+		kmesg("irq", "machine check exception occured");
+		#ifdef CHECK_MCE_STATE
+		uint64_t mcg_status = cpu_get_msr(IA32_MCG_STATUS);
+		if (mcg_status & (1 << 0)) kmesg("mce", "restart IP valid");
+		if (mcg_status & (1 << 1)) kmesg("mce", "error IP valid");
+		if (mcg_status & (1 << 2)) kmesg("mce", "machine check in progress");
+		if (mcg_status & (1 << 3)) kmesg("mce", "local machine check exception signalled");
+
+		uint64_t mcg_ctl = cpu_get_msr(IA32_MCG_CAP);
+		uint8_t err_bank_count = mcg_ctl;
+		kmesg("mce", "%u error-reporting banks available", err_bank_count);
+
+		for (size_t i = 0; i < err_bank_count; i++) {
+			uint64_t mci_status = cpu_get_msr(IA32_MCi_STATUS + 4 * i);
+			if (mci_status & (1ull << 63)) kmesg("mce", "bank %lu: MCi_STATUS valid", i);
+			if (mci_status & (1ull << 62)) kmesg("mce", "bank %lu: error overflow", i);
+			if (mci_status & (1ull << 61)) kmesg("mce", "bank %lu: uncorrected error", i);
+			if (mci_status & (1ull << 60)) kmesg("mce", "bank %lu: error reporting enabled", i);
+			if (mci_status & (1ull << 59)) kmesg("mce", "bank %lu: MCi_MISC valid", i);
+			if (mci_status & (1ull << 58)) kmesg("mce", "bank %lu: MCi_ADDR valid", i);
+			if (mci_status & (1ull << 57)) kmesg("mce", "bank %lu: processor context corrupted", i);
+
+			if (mci_status & (1ull << 58)) {
+				uint64_t mci_addr = cpu_get_msr(IA32_MCi_ADDR + 4 * i);
+				kmesg("mce", "bank %lu: address that caused mce: %016lx", i, mci_addr);
+			}
+		}
+		#elif
+		kmesg("irq", "mce info parsing disabled");
+		#endif
+		panic(state, "halting due to MCE");
 	}
 
 	if (!success) {
