@@ -73,7 +73,7 @@ static void genfb_putch_internal(char c, int x, int y, uint32_t fg, uint32_t bg)
 		uint8_t byte = font[font_off + y];
 		size_t tmp_fb_off = fb_off;
 		for (int x = 0; x < char_width; x++) {
-			uint8_t mask = 1 << (8 - x);
+			uint8_t mask = 1 << (7 - x);
 			uint32_t col = fg;
 			if (!(byte & mask)) col = bg;
 			vid_back[tmp_fb_off] = vid_front[tmp_fb_off] = col;
