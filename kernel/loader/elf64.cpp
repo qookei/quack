@@ -5,7 +5,7 @@
 #include <arch/mm.h>
 
 int elf64_check(void *file) {
-	elf64_ehdr *ehdr = file;
+	elf64_ehdr *ehdr = (elf64_ehdr *)file;
 
 	if(strncmp((const char *)ehdr->e_ident, ELF_MAGIC, 4)) {
 		return 1;
@@ -26,7 +26,7 @@ int elf64_check(void *file) {
 }
 
 arch_task_t *elf64_create_arch_task(void *file) {
-	elf64_ehdr *ehdr = file;
+	elf64_ehdr *ehdr = (elf64_ehdr *)file;
 
 	arch_task_t *task = arch_task_create_new(NULL);
 

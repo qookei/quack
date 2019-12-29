@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 
+extern "C" {
 size_t strlen(const char *);
 
 int strcmp(const char *, const char *);
@@ -26,5 +27,6 @@ void *memcpy(void *, const void *, size_t);
 void *memmove(void *, const void *, size_t);
 
 void *memchr(void *, int, size_t);
+}
 
 #endif

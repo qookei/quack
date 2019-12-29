@@ -25,6 +25,12 @@
 
 #include <arch/info.h>
 
+
+uintptr_t syscall_invoke(uintptr_t *, uintptr_t *, uintptr_t *,
+			uintptr_t *, uintptr_t *, uintptr_t *, void *);
+
+void kernel_main(arch_boot_info_t *);
+
 int syscall_irq_handler(irq_cpu_state_t *state) {
 	state->rax = syscall_invoke(&state->rax, &state->rbx, &state->rcx,
 				&state->rdx, &state->rsi, &state->rdi,
@@ -34,7 +40,7 @@ int syscall_irq_handler(irq_cpu_state_t *state) {
 
 void arch_symtab_parse(multiboot_info_t *mboot);
 
-void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
+extern "C" void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 	vga_init();
 
 	if (magic != 0x2BADB002) {
@@ -54,13 +60,13 @@ void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 
 	vmm_init();
 
-	cmdline_init((void *)(VIRT_PHYS_BASE + mboot->cmdline));
+	cmdline_init((char *)(VIRT_PHYS_BASE + mboot->cmdline));
 
 	arch_video_mode_t *vid = NULL;
 	if (mboot->flags & MULTIBOOT_INFO_FRAMEBUFFER_INFO
 	&& mboot->framebuffer_type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB) {
 
-		vid = kcalloc(sizeof(arch_video_mode_t), 1);
+		vid = (arch_video_mode_t *)kcalloc(sizeof(arch_video_mode_t), 1);
 		vid->addr = mboot->framebuffer_addr;
 		vid->pitch = mboot->framebuffer_pitch;
 
@@ -99,7 +105,7 @@ void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
 
 	kmesg("kernel", "done initializing");
 
-	arch_boot_info_t *info = kcalloc(sizeof(arch_boot_info_t), 1);
+	arch_boot_info_t *info = (arch_boot_info_t *)kcalloc(sizeof(arch_boot_info_t), 1);
 
 	if (mboot->flags & MULTIBOOT_INFO_FRAMEBUFFER_INFO) {
 		if (mboot->framebuffer_type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB) {

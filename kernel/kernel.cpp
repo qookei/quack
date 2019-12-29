@@ -3,10 +3,9 @@
 #include <kmesg.h>
 #include <initrd.h>
 #include <arch/info.h>
-#include <devmgr.h>
-#include <kobj.h>
 #include <arch/task.h>
 #include <arch/mm.h>
+#include <arch/cpu.h>
 #include <panic.h>
 #include <loader/elf64.h>
 #include <proc/scheduler.h>
@@ -45,10 +44,6 @@ void kernel_main(arch_boot_info_t *info) {
 		kmesg("kernel", "\t\theight: %u", info->vid_mode->height);
 		kmesg("kernel", "\t\tbpp: %u", info->vid_mode->bpp);
 	}
-
-	devmgr_init();
-	arch_devmgr_fill_devices();
-	devmgr_dump_devices();
 
 	if (!(info->flags & ARCH_INFO_HAS_INITRAMFS))
 		panic(NULL, "missing initramfs");

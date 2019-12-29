@@ -52,7 +52,7 @@ static size_t n_devices = 0;
 
 static size_t add_device_to_list(void) {
 	n_devices++;
-	devices = krealloc(devices, n_devices * sizeof(pci_dev_t));
+	devices = (pci_dev_t *)krealloc(devices, n_devices * sizeof(pci_dev_t));
 	return n_devices - 1;
 }
 
@@ -197,7 +197,7 @@ static size_t n_pci_bus_cache;
 
 static pci_root_bus_t *pci_add_bus_to_cache() {
 	n_pci_bus_cache++;
-	pci_bus_cache = krealloc(pci_bus_cache, n_pci_bus_cache * sizeof(pci_root_bus_t));
+	pci_bus_cache = (pci_root_bus_t *)krealloc(pci_bus_cache, n_pci_bus_cache * sizeof(pci_root_bus_t));
 	return &pci_bus_cache[n_pci_bus_cache - 1];
 }
 

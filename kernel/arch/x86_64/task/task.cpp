@@ -20,7 +20,7 @@ struct arch_task_ {
 };
 
 arch_task_t *arch_task_create_new(void *mem_ctx) {
-	arch_task_t *task = kmalloc(sizeof(arch_task_t));
+	arch_task_t *task = (arch_task_t *)kmalloc(sizeof(arch_task_t));
 	memset(task, 0, sizeof(arch_task_t));
 	memset(task->io_bitmap, 0x00, 8192); // no port access
 
@@ -30,7 +30,7 @@ arch_task_t *arch_task_create_new(void *mem_ctx) {
 	task->state.cs = 0x13;
 	task->state.rip = 0; // loaded by arch_task_load_entry_point
 
-	task->vmm_ctx = mem_ctx ? mem_ctx : vmm_new_address_space();
+	task->vmm_ctx = mem_ctx ? (pt_t *)mem_ctx : vmm_new_address_space();
 
 	return task;
 }
@@ -55,7 +55,7 @@ void arch_task_switch_to(arch_task_t *task) {
 }
 
 int arch_task_save_irq_state(arch_task_t *task, void *irq_state) {
-	irq_cpu_state_t *s = irq_state;
+	irq_cpu_state_t *s = (irq_cpu_state_t *)irq_state;
 	task->state.r15 = s->r15;
 	task->state.r14 = s->r14;
 	task->state.r13 = s->r13;
@@ -144,7 +144,7 @@ int arch_task_alloc_mem_region(arch_task_t *task, struct mem_region *region, int
 
 int arch_task_copy_to_mem_region(arch_task_t *task, struct mem_region *region, void *src, size_t count) {
 	assert(count <= (region->end - region->start));
-	vmm_ctx_memcpy(task->vmm_ctx, (void *)region->start, arch_mm_get_ctx_kernel(), src, count);
+	vmm_ctx_memcpy(task->vmm_ctx, (void *)region->start, (pt_t *)arch_mm_get_ctx_kernel(), src, count);
 	return 1;
 }
 
@@ -157,6 +157,8 @@ int arch_task_free_mem_region(arch_task_t *task, struct mem_region *region) {
 	}
 	return 1;
 }
+
+extern "C" void internal_task_idle(uintptr_t);
 
 void arch_task_idle_cpu(void) {
 	uintptr_t stack_ptr = cpu_data_get(cpu_get_id())->stack_ptr;

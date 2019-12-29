@@ -26,6 +26,8 @@ typedef struct {
 void idt_init(void);
 void idt_just_load(void);
 
+extern "C" {
+
 /* meh */
 extern void isr0(void);
 extern void isr1(void);
@@ -283,6 +285,8 @@ extern void isr252(void);
 extern void isr253(void);
 extern void isr254(void);
 extern void isr255(void);
+
+}
 
 #endif
 

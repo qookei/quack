@@ -1,6 +1,7 @@
 #ifndef CTYPE_H
 #define CTYPE_H
 
+extern "C" {
 int isalnum(int);
 int isalpha(int);
 int isblank(int);
@@ -16,5 +17,6 @@ int isxdigit(int);
 
 int tolower(int);
 int toupper(int);
+}
 
 #endif

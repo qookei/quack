@@ -9,6 +9,6 @@ typedef struct {
 	uint64_t ss, rsp, rflags, cs, rip;
 } ctx_cpu_state_t;
 
-__attribute__((noreturn)) extern void ctx_switch(ctx_cpu_state_t *state, uintptr_t cr3);
+extern "C" __attribute__((noreturn)) void ctx_switch(ctx_cpu_state_t *state, uintptr_t cr3);
 
 #endif

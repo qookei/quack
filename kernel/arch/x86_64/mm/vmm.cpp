@@ -203,7 +203,7 @@ uintptr_t vmm_get_entry(pt_t *pml4, void *virt) {
 }
 
 pt_t *vmm_new_address_space(void) {
-	pt_t *new_pml4 = pmm_alloc(1);
+	pt_t *new_pml4 = (pt_t *)pmm_alloc(1);
 	memset((void *)((uintptr_t)new_pml4 + VIRT_PHYS_BASE), 0, 4096);
 
 	vmm_map_huge_pages(new_pml4, (void *)0xFFFFFFFF80000000, NULL, 64, 3);
@@ -372,7 +372,7 @@ int arch_mm_store_context(void) {
 }
 
 int arch_mm_switch_context(void *ctx) {
-	vmm_set_context(ctx);
+	vmm_set_context((pt_t *)ctx);
 	return 1;
 }
 

@@ -4,9 +4,9 @@
 #include <stddef.h>
 
 void arch_debug_write(char);
-__attribute__((weak))
+extern "C" __attribute__((weak))
 void arch_mem_fast_memcpy(void *dst, void *src, size_t count);
-__attribute__((weak))
+extern "C" __attribute__((weak))
 void arch_mem_fast_memset(void *dst, int val, size_t count);
 
 

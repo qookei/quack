@@ -6,7 +6,7 @@
 #include <util.h>
 #include <arch/cpu.h>
 #include <loader/elf64.h>
-#include <stdatomic.h>
+#include <atomic>
 #include <arch/mm.h>
 
 // thread and id allocation
@@ -34,7 +34,7 @@ static int32_t enlarge_table(void) {
 	if (!n_threads)
 		n_threads = DEFAULT_SIZE;
 
-	threads = krealloc(threads, sizeof(*threads) * n_threads);
+	threads = (struct thread **)krealloc(threads, sizeof(*threads) * n_threads);
 	memset(threads + old_count, 0, sizeof(*threads) * (old_count ? old_count : DEFAULT_SIZE));
 
 	return old_count;
@@ -79,14 +79,14 @@ struct sched_cpu_data {
 
 static struct sched_cpu_data *cpu_data;
 
-static _Atomic int ready = 0;
+static std::atomic<int> ready{0};
 
 void sched_init(int n_cpu) {
 	if (!n_cpu)
 		panic(NULL, "sched_init called with no processors");
 
 	n_cpus = n_cpu;
-	cpu_data = kmalloc(n_cpu * sizeof(struct sched_cpu_data));
+	cpu_data = (struct sched_cpu_data *)kmalloc(n_cpu * sizeof(struct sched_cpu_data));
 
 	for (int i = 0; i < n_cpus; i++)
 		cpu_data[i].current_thread = -1;
@@ -151,7 +151,7 @@ int32_t sched_start(void) {
 	if (i >= n_threads)
 		i = enlarge_table();
 
-	threads[i] = kcalloc(sizeof(struct thread), 1);
+	threads[i] = (struct thread *)kcalloc(sizeof(struct thread), 1);
 	threads[i]->running_on = -1;
 
 	spinlock_release(&threads_lock);

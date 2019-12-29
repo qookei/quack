@@ -7,9 +7,11 @@
 #include "ctype.h"
 #include "string.h"
 
+extern "C" {
 char* itoa(uint32_t n, char* s, int base);
 int atoi(const char *str);
 long atol(const char *str);
 long long atoll(const char *str);
+}
 
 #endif

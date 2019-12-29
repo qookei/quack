@@ -22,12 +22,12 @@ static madt_nmi_t *nmi_tab = NULL;
 
 #define APPEND_TAB_ENT(cnt, arr, ent, type) {			\
 		cnt++;						\
-		arr = krealloc(arr, cnt * sizeof(type));	\
+		arr = (type *)krealloc(arr, cnt * sizeof(type));\
 		memcpy(&arr[cnt - 1], ent, sizeof(type));	\
 	}
 
 void madt_init() {
-	madt = acpi_find_table("APIC", 0);
+	madt = (madt_t *)acpi_find_table("APIC", 0);
 	if (!madt) {
 		kmesg("acpi", "failed to find madt table");
 		return;
@@ -37,12 +37,12 @@ void madt_init() {
 	size_t off = 0, n_entries = madt->sdt.len - sizeof(madt_t);
 
 	while (off < n_entries) {
-		madt_ent_t *ent = (void *)((uintptr_t)madt->entries + off);
+		madt_ent_t *ent = (madt_ent_t *)((uintptr_t)madt->entries + off);
 		off += ent->len;
-		madt_lapic_t *lapic = (void *)ent->data;
-		madt_ioapic_t *ioapic = (void *)ent->data;
-		madt_iso_t *iso = (void *)ent->data;
-		madt_nmi_t *nmi = (void *)ent->data;
+		madt_lapic_t *lapic = (madt_lapic_t *)ent->data;
+		madt_ioapic_t *ioapic = (madt_ioapic_t *)ent->data;
+		madt_iso_t *iso = (madt_iso_t *)ent->data;
+		madt_nmi_t *nmi = (madt_nmi_t *)ent->data;
 
 		switch (ent->type) {
 			case TYPE_LAPIC:

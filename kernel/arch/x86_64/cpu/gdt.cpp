@@ -26,12 +26,12 @@ void *tss_create_new(void) {
 }
 
 void tss_update_stack(void *tss, uintptr_t stack, int ring) {
-	struct tss *t = tss;
+	struct tss *t = (struct tss *)tss;
 	t->rsp[ring] = stack;
 }
 
 void tss_update_io_bitmap(void *tss, void *bitmap) {
-	struct tss *t = tss;
+	struct tss *t = (struct tss *)tss;
 	t->io_bitmap_offset = (uintptr_t)&t->io_bitmap - (uintptr_t)tss;
 	memcpy(t->io_bitmap, bitmap, 8192);
 	t->io_bitmap[8192] = 0xFF;
@@ -75,7 +75,7 @@ void *gdt_create_new(void *tss) {
 
 	uintptr_t phys = (uintptr_t)pmm_alloc((sizeof(uint64_t) * SEGMENT_COUNT
 				+ PAGE_SIZE - 1) / PAGE_SIZE);
-	void *gdt = (void *)(phys + VIRT_PHYS_BASE);
+	uint32_t *gdt = (uint32_t *)(phys + VIRT_PHYS_BASE);
 
 	int i = 0;
 	create_null_seg(gdt, i++);

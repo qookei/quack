@@ -1,5 +1,7 @@
 #include "stdlib.h"
 
+extern "C" {
+
 int atoi(const char *str) {
 	int res = 0;
 	int sign = 1;
@@ -98,4 +100,6 @@ char* itoa(uint32_t n, char* s, int base) {
 	s[i] = '\0';
 	reverse(s);
 	return s;
+}
+
 }

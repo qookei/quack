@@ -41,7 +41,7 @@ static void parse_arg(char *str) {
 
 		if (*params != '\0') {
 			arg.value_count = param_count;
-			arg.values = kcalloc(param_count, sizeof (char *));
+			arg.values = (char **)kcalloc(param_count, sizeof (char *));
 			size_t idx = 0;
 
 			char *param = params;
@@ -51,7 +51,7 @@ static void parse_arg(char *str) {
 					comma = param + strlen(param);
 
 				size_t len = comma - param;
-				arg.values[idx] = kcalloc(len + 1, 1);
+				arg.values[idx] = (char *)kcalloc(len + 1, 1);
 				memcpy(arg.values[idx], param, len);
 
 				param = strchr(param, ',') + 1;
@@ -60,7 +60,7 @@ static void parse_arg(char *str) {
 		}
 	}
 
-	arg.key = kcalloc(strlen(name) + 1, 1);	
+	arg.key = (char *)kcalloc(strlen(name) + 1, 1);
 	strcpy(arg.key, name);
 
 	memcpy(&arg_list[arg_count], &arg, sizeof(arg));
@@ -71,7 +71,7 @@ void cmdline_init(char *cmdline) {
 	char *c = cmdline;
 	
 	size_t cmd_arg_count = count_chars(cmdline, ' ') + 1;
-	arg_list = kcalloc(cmd_arg_count, sizeof(cmd_arg_t));
+	arg_list = (cmd_arg_t *)kcalloc(cmd_arg_count, sizeof(cmd_arg_t));
 
 	while (cmd_arg_count--) {
 		if (!(*c))
@@ -84,7 +84,7 @@ void cmdline_init(char *cmdline) {
 		else
 			len = sep - c;
 
-		char *buf = kcalloc(len + 1, 1);
+		char *buf = (char *)kcalloc(len + 1, 1);
 		memcpy(buf, c, len);
 		parse_arg(buf);
 		kfree(buf);

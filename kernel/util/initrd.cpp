@@ -5,11 +5,11 @@
 #include <mm/heap.h>
 #include <stdint.h>
 
-static void *initrd_buf;
+static char *initrd_buf;
 static size_t initrd_size;
 
 void initrd_init(void *_initrd_buf, size_t _initrd_size) {
-	initrd_buf = _initrd_buf;
+	initrd_buf = (char *)_initrd_buf;
 	initrd_size = _initrd_size;
 }
 

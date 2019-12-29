@@ -1,6 +1,7 @@
-project('quack', 'c')
+project('quack', 'c', 'cpp', default_options: ['cpp_std=c++17'])
 
 c_args = [meson.get_cross_property('c_args'), '-Wall', '-Wextra', '-Wpedantic']
+cpp_args = ['-fno-rtti', '-fno-exceptions']
 link_args = meson.get_cross_property('link_args')
 
 arch_srcs = []
@@ -8,38 +9,35 @@ arch_inc_dirs = []
 arch_dependencies = []
 arch_linker_file = ''
 
-c_srcs = files(
-  'lib/vsnprintf.c',
-  'lib/kmesg.c',
-  'util/util.c',
-  'util/initrd.c',
-  'util/spinlock.c',
+cxx_srcs = files(
+  'lib/vsnprintf.cpp',
+  'lib/kmesg.cpp',
+  'util/util.cpp',
+  'util/initrd.cpp',
+  'util/spinlock.cpp',
 
-  'lib/ctype.c',
-  'lib/string.c',
-  'lib/stdlib.c',
+  'lib/ctype.cpp',
+  'lib/string.cpp',
+  'lib/stdlib.cpp',
 
-  'mm/heap.c',
+  'mm/heap.cpp',
 
-  'lib/panic.c',
-  'util/cmdline.c',
+  'lib/panic.cpp',
+  'util/cmdline.cpp',
 
-  'genfb/genfb.c',
+  'genfb/genfb.cpp',
 
-  'kobj.c',
-  'devmgr.c',
+  'proc/scheduler.cpp',
+  'loader/elf64.cpp',
 
-  'proc/scheduler.c',
-  'loader/elf64.c',
+  'generic_irq.cpp',
+  'syscall.cpp',
 
-  'generic_irq.c',
-  'syscall.c',
+  'ubsan.cpp',
 
-  'ubsan.c',
+  'symtab/symtab.cpp',
 
-  'symtab/symtab.c',
-
-  'kernel.c')
+  'kernel.cpp')
 
 inc_dirs = include_directories(
   '.',
@@ -51,10 +49,11 @@ subdir(arch_path)
 
 out = executable(
   'quack.elf',
-  c_srcs, arch_srcs,
+  cxx_srcs, arch_srcs,
   include_directories : [inc_dirs, arch_inc_dirs],
   dependencies: arch_dependencies,
-  c_args: ['-Wall', '-Wextra', c_args],
+  c_args: [c_args],
+  cpp_args: [cpp_args, c_args],
   link_args: ['-T', arch_linker_file, link_args, '-flto'],
   install: true,
   install_dir: '.'

@@ -9,6 +9,7 @@
 #include <io/pci.h>
 #include <panic.h>
 #include <util.h>
+#include <arch/cpu.h>
 
 void *laihost_malloc(size_t len) {
 	void *mem = kmalloc(len);

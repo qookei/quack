@@ -13,7 +13,7 @@ static struct symbol *syms;
 static size_t n_symbols;
 
 void symtab_init(size_t n_syms) {
-	syms = kcalloc(n_syms, sizeof(struct symbol));
+	syms = (struct symbol *)kcalloc(n_syms, sizeof(struct symbol));
 	n_symbols = n_syms;
 }
 
@@ -21,7 +21,7 @@ void symtab_define_symbol(size_t idx, char *name, uintptr_t base, size_t len) {
 	if (idx > n_symbols)
 		return;
 
-	syms[idx].name = kmalloc(strlen(name) + 1);
+	syms[idx].name = (char *)kmalloc(strlen(name) + 1);
 	strcpy(syms[idx].name, name);
 
 	syms[idx].base = base;

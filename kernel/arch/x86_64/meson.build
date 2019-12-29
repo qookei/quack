@@ -15,35 +15,34 @@ gen = generator(nasm,
 arch_srcs += gen.process(asm_sources)
 
 arch_srcs += files(
-  'arch_entry.c',
+  'arch_entry.cpp',
 
-  'cpu/cpu.c',
-  'cpu/lapic.c',
-  'cpu/ioapic.c',
-  'cpu/cpu_data.c',
-  'cpu/smp.c',
-  'cpu/lock.c',
-  'cpu/gdt.c',
+  'cpu/cpu.cpp',
+  'cpu/lapic.cpp',
+  'cpu/ioapic.cpp',
+  'cpu/cpu_data.cpp',
+  'cpu/smp.cpp',
+  'cpu/lock.cpp',
+  'cpu/gdt.cpp',
 
-  'io/port.c',
-  'io/debug.c',
-  'io/vga.c',
-  'io/pci.c',
-  'io/dev.c',
+  'io/port.cpp',
+  'io/debug.cpp',
+  'io/vga.cpp',
+  'io/pci.cpp',
 
-  'irq/idt.c',
-  'irq/isr.c',
-  'irq/pic/pic.c',
+  'irq/idt.cpp',
+  'irq/isr.cpp',
+  'irq/pic/pic.cpp',
 
-  'task/task.c',
+  'task/task.cpp',
 
-  'symtab.c',
+  'symtab.cpp',
 
-  'mm/pmm.c',
-  'mm/vmm.c',
-  'acpi/lai_host.c',
-  'acpi/acpi.c',
-  'acpi/madt.c')
+  'mm/pmm.cpp',
+  'mm/vmm.cpp',
+  'acpi/lai_host.cpp',
+  'acpi/acpi.cpp',
+  'acpi/madt.cpp')
 
 arch_inc_dirs += include_directories(
   '.')

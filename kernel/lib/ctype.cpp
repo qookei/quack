@@ -1,5 +1,7 @@
 #include "ctype.h"
 
+extern "C" {
+
 int isalnum(int ch) {
 	return isalpha(ch) || isdigit(ch);
 }
@@ -61,4 +63,6 @@ int toupper(int ch) {
 	if (islower(ch))
 		return ch ^ 0x20;
 	return ch;
+}
+
 }

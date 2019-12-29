@@ -21,11 +21,19 @@ static int disp_y;
 
 static int is_working = 0;
 
+#define USE_WHITE_BACKGROUND
+
+#ifdef USE_WHITE_BACKGROUND
+#define BG_BYTE_COLOR 0xF8
+#define FG_BYTE_COLOR 0x38
+#define BG_COLOR 0xF8F8F8F8
+#define FG_COLOR 0x38383838
+#else
 #define BG_BYTE_COLOR 0x00
 #define FG_BYTE_COLOR 0xA8
-
 #define BG_COLOR 0x00000000
 #define FG_COLOR 0xA8A8A8A8
+#endif
 
 void genfb_init(arch_video_mode_t *mode) {
 	if (!mode) {
@@ -44,7 +52,7 @@ void genfb_init(arch_video_mode_t *mode) {
 	kmesg("genfb", "initializing a %dx%d character screen", disp_w, disp_h);
 
 	size_t bytes = mode->height * mode->pitch;
-	vid_back = kmalloc(bytes);
+	vid_back = (uint32_t *)kmalloc(bytes);
 
 	if (!arch_mem_fast_memset)
 		memset(vid_back, BG_BYTE_COLOR, mode->height * mode->pitch);

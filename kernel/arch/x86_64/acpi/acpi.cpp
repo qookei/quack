@@ -8,6 +8,7 @@
 #include <lai/helpers/sci.h>
 #include <irq/isr.h>
 #include <cmdline.h>
+#include <cpu/ioapic.h>
 
 typedef struct {
 	char sig[8];
@@ -52,7 +53,7 @@ static void *acpi_find_rsdp(uintptr_t region_start, size_t region_len) {
 
 static uint16_t acpi_get_sci_vector(void) {
 	acpi_fadt_t *fadt;
-	if ((fadt = acpi_find_table("FACP", 0))) {
+	if ((fadt = (acpi_fadt_t *)acpi_find_table("FACP", 0))) {
 		return fadt->sci_irq;
 	}
 
@@ -121,7 +122,7 @@ void acpi_late_init(void) {
 }
 
 static void *acpi_find_dsdt(void) {
-	acpi_fadt_t *fadt = acpi_find_table("FACP", 0);
+	acpi_fadt_t *fadt = (acpi_fadt_t *)acpi_find_table("FACP", 0);
 	if (!fadt) return NULL;
 
 	uintptr_t dsdt = fadt->dsdt;

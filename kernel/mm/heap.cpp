@@ -46,15 +46,15 @@ void *kcalloc(size_t bytes, size_t elem) {
 }
 
 void *krealloc(void *old, size_t s) {
-	void *new = kmalloc(s);
+	void *newp = kmalloc(s);
 	if (old) {
 		spinlock_lock(&mm_lock);
 		uint64_t size = *(uint64_t *)((uintptr_t)old - 16);
 		spinlock_release(&mm_lock);
-		memcpy(new, old, size);
+		memcpy(newp, old, size);
 		kfree(old);
 	}
-	return new;
+	return newp;
 }
 
 void kfree(void *ptr) {

@@ -7,7 +7,6 @@
 #include <irq/isr.h>
 #include <io/port.h>
 #include <cpu/ioapic.h>
-#include <stdatomic.h>
 
 #define LVT_LINT0 0x350
 #define LVT_LINT1 0x360
@@ -88,7 +87,7 @@ void lapic_init(void) {
 
 static uint64_t lapic_bsp_speed_hz;
 
-static _Atomic uint64_t pit_ticks = 0;
+static volatile uint64_t pit_ticks = 0;
 static int __attribute__ ((noinline)) pit_irq(irq_cpu_state_t *s) {
 	(void)s;
 
@@ -140,7 +139,7 @@ void lapic_timer_set_frequency(uint64_t timer_freq, uint64_t desired_freq) {
 	kmesg("lapic-timer", "setting frequency to %luHz, period %lu", desired_freq, period);
 }
 
-_Atomic uint64_t lapic_bsp_ticks = 0;
+volatile uint64_t lapic_bsp_ticks = 0;
 
 static int lapic_timer_int(irq_cpu_state_t *s) {
 	lapic_bsp_ticks++;
@@ -161,7 +160,7 @@ void lapic_timer_init_bsp(void) {
 }
 
 void lapic_sleep_ms_bsp(uint64_t ms) {
-	_Atomic uint64_t end_tick = lapic_bsp_ticks + ms;
+	volatile uint64_t end_tick = lapic_bsp_ticks + ms;
 	while (end_tick > lapic_bsp_ticks);
 }
 

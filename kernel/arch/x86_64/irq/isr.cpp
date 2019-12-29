@@ -10,6 +10,7 @@
 #include <arch/cpu.h>
 
 #include <generic_irq.h>
+#include <cpu/lapic.h>
 
 irq_handler_t irq_handlers[IDT_ENTRIES];
 
@@ -42,9 +43,9 @@ void exit_interrupt(uint8_t irq, int restore_ctx);
 #define IA32_MCi_ADDR 0x402
 #define IA32_MCi_MISC 0x403
 
-void dispatch_interrupt(irq_cpu_state_t *state) {
+extern "C" void dispatch_interrupt(irq_cpu_state_t *state) {
 	vmm_save_context();
-	vmm_set_context(arch_mm_get_ctx_kernel());
+	vmm_set_context((pt_t *)arch_mm_get_ctx_kernel());
 
 	uint32_t irq = state->int_no;
 
