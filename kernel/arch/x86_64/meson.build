@@ -16,6 +16,7 @@ arch_srcs += gen.process(asm_sources)
 
 arch_srcs += files(
   'arch_entry.cpp',
+  'initarray.cpp',
 
   'cpu/cpu.cpp',
   'cpu/lapic.cpp',

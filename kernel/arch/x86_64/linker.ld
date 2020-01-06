@@ -26,6 +26,13 @@ SECTIONS {
 		_ebss = .;
 	}
 
+	.init_array : {
+		_init_array_begin = .;
+		KEEP(*(SORT(.init_array.*)))
+		KEEP(*(.init_array*))
+		_init_array_end = .;
+	}
+
 	_trampoline_start_virt = .;
 	. = 0x1000;
 

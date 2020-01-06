@@ -39,8 +39,10 @@ int syscall_irq_handler(irq_cpu_state_t *state) {
 }
 
 void arch_symtab_parse(multiboot_info_t *mboot);
+void initarray_run();
 
 extern "C" void arch_entry(multiboot_info_t *mboot, uint32_t magic) {
+	initarray_run();
 	vga_init();
 
 	if (magic != 0x2BADB002) {
