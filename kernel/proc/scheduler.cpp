@@ -6,7 +6,6 @@
 #include <util.h>
 #include <arch/cpu.h>
 #include <loader/elf64.h>
-#include <atomic>
 #include <arch/mm.h>
 
 // thread and id allocation
@@ -79,7 +78,7 @@ struct sched_cpu_data {
 
 static struct sched_cpu_data *cpu_data;
 
-static std::atomic<int> ready{0};
+static volatile int ready;
 
 void sched_init(int n_cpu) {
 	if (!n_cpu)
