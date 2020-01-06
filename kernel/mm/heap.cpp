@@ -77,3 +77,30 @@ void kfree(void *ptr) {
 
 	spinlock_release(&mm_lock);
 }
+
+void* operator new(size_t size){
+	return kmalloc(size);
+}
+
+void* operator new[](size_t size){
+	return kmalloc(size);
+}
+
+void operator delete(void *p){
+	kfree(p);
+}
+
+void operator delete[](void *p){
+	kfree(p);
+}
+
+void operator delete(void *p, long unsigned int size){
+	(void)(size);
+	kfree(p);
+}
+
+void operator delete[](void *p, long unsigned int size){
+	(void)(size);
+	kfree(p);
+}
+
