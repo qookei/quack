@@ -1,3 +1,9 @@
 [submodule "kernel/arch/x86_64/acpi/lai"]
 	path = kernel/subprojects/lai
 	url = https://github.com/qword-os/lai
+[submodule "kernel/subprojects/cxxshim"]
+	path = kernel/subprojects/cxxshim
+	url = https://github.com/managarm/cxxshim
+[submodule "kernel/subprojects/frigg"]
+	path = kernel/subprojects/frigg
+	url = https://github.com/managarm/frigg

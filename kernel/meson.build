@@ -1,7 +1,7 @@
 project('quack', 'c', 'cpp', default_options: ['cpp_std=c++17'])
 
-c_args = [meson.get_cross_property('c_args'), '-Wall', '-Wextra', '-Wpedantic']
-cpp_args = ['-fno-rtti', '-fno-exceptions']
+c_args = [meson.get_cross_property('c_args'), '-Wall', '-Wextra']
+cpp_args = ['-fno-rtti', '-fno-exceptions', '-fno-use-cxa-atexit']
 link_args = meson.get_cross_property('link_args')
 
 arch_srcs = []
@@ -47,11 +47,17 @@ inc_dirs = include_directories(
 arch_path = 'arch/@0@/'.format(host_machine.cpu())
 subdir(arch_path)
 
+frigg = subproject('frigg', default_options: ['frigg_no_install=true'])
+cxxshim = subproject('cxxshim')
+
+frigg_dep = frigg.get_variable('frigg_dep')
+cxxshim_dep = cxxshim.get_variable('cxxshim_dep')
+
 out = executable(
   'quack.elf',
   cxx_srcs, arch_srcs,
   include_directories : [inc_dirs, arch_inc_dirs],
-  dependencies: arch_dependencies,
+  dependencies: [arch_dependencies, frigg_dep, cxxshim_dep],
   c_args: [c_args],
   cpp_args: [cpp_args, c_args],
   link_args: ['-T', arch_linker_file, link_args, '-flto'],
