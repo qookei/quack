@@ -12,7 +12,7 @@
 #define VMM_FLAG_USER		(1<<2)
 #define VMM_FLAG_PAT0		(1<<3)
 #define VMM_FLAG_PAT1		(1<<4)
-#define VMM_FLAG_PAT2		(1<<4)
+#define VMM_FLAG_PAT2		(1<<7)
 #define VMM_FLAG_DIRTY		(1<<5)
 #define VMM_FLAG_LARGE		(1<<7)
 #define VMM_FLAG_NX		(1ull<<63)
