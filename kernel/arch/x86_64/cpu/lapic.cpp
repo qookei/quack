@@ -60,10 +60,10 @@ static void lapic_nmi_set(uint8_t vector, uint8_t lint, uint16_t flags) {
 }
 
 static void lapic_nmi_setup(void) {
-	madt_nmi_t *nmis = madt_get_nmis();
-	for (size_t i = 0; i < madt_get_nmi_count(); i++) {
-		lapic_nmi_set(0xE0 + i, nmis[i].lint, nmis[i].flags);
-	}
+	int i = 0;
+	madt_enumerate_nmis([&i] (madt_nmi &nmi) {
+		lapic_nmi_set(0xE0 + i++, nmi.lint, nmi.flags);
+	});
 }
 
 void lapic_eoi(void) {

@@ -3,6 +3,10 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <new>
+
+#include <frg/vector.hpp>
+#include <lib/frg_allocator.h>
 
 typedef struct {
 	char sig[4];
@@ -16,44 +20,44 @@ typedef struct {
 	uint32_t creator_rev;
 } sdt_t;
 
-typedef struct {
+struct __attribute__((packed)) madt_lapic {
 	uint8_t proc_id;
 	uint8_t apic_id;
 	uint32_t flags;
-} __attribute__((packed)) madt_lapic_t;
+};
 
-typedef struct {
+struct __attribute__((packed)) madt_ioapic {
 	uint8_t ioapic_id;
 	uint8_t reserved;
 	uint32_t ioapic_addr;
 	uint32_t gsi_base;
-} __attribute__((packed)) madt_ioapic_t;
+};
 
-typedef struct {
+struct __attribute__((packed)) madt_iso {
 	uint8_t bus;
 	uint8_t irq;
 	uint32_t gsi;
 	uint16_t flags;
-} __attribute__((packed)) madt_iso_t;
+};
 
-typedef struct {
+struct __attribute__((packed)) madt_nmi {
 	uint8_t proc_id;
 	uint16_t flags;
 	uint8_t lint;
-} __attribute__((packed)) madt_nmi_t;
+};
 
-typedef struct {
+struct __attribute__((packed)) madt_ent {
 	uint8_t type;
 	uint8_t len;
 	uint8_t data[];
-} __attribute__((packed)) madt_ent_t;
+};
 
-typedef struct {
+struct __attribute__((packed)) madt {
 	sdt_t sdt;
 	uint32_t lapic_addr;
 	uint32_t flags;
 	uint8_t entries[];
-} __attribute__((packed)) madt_t;
+};
 
 void acpi_init(void);
 void *acpi_find_table(const char *, size_t);
@@ -62,14 +66,33 @@ void madt_init(void);
 void acpi_late_init(void);
 uintptr_t madt_get_lapic_base(void);
 
-size_t madt_get_nmi_count(void);
-size_t madt_get_lapic_count(void);
-size_t madt_get_ioapic_count(void);
-size_t madt_get_iso_count(void);
+frg::vector<madt_lapic, frg_allocator> &madt_get_lapics();
+frg::vector<madt_nmi, frg_allocator> &madt_get_nmis();
+frg::vector<madt_iso, frg_allocator> &madt_get_isos();
+frg::vector<madt_ioapic, frg_allocator> &madt_get_ioapics();
 
-madt_nmi_t *madt_get_nmis(void);
-madt_lapic_t *madt_get_lapics(void);
-madt_ioapic_t *madt_get_ioapics(void);
-madt_iso_t *madt_get_isos(void);
+template<typename F>
+void madt_enumerate_lapic(F functor) {
+	for (auto &lapic : madt_get_lapics())
+		functor(lapic);
+}
+
+template<typename F>
+void madt_enumerate_nmis(F functor) {
+	for (auto &nmi : madt_get_nmis())
+		functor(nmi);
+}
+
+template<typename F>
+void madt_enumerate_isos(F functor) {
+	for (auto &iso : madt_get_isos())
+		functor(iso);
+}
+
+template<typename F>
+void madt_enumerate_ioapic(F functor) {
+	for (auto &ioapic : madt_get_ioapics())
+		functor(ioapic);
+}
 
 #endif

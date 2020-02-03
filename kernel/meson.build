@@ -1,7 +1,7 @@
 project('quack', 'c', 'cpp', default_options: ['cpp_std=c++17'])
 
 c_args = [meson.get_cross_property('c_args'), '-Wall', '-Wextra']
-cpp_args = ['-fno-rtti', '-fno-exceptions', '-fno-use-cxa-atexit']
+cpp_args = ['-fno-rtti', '-fno-exceptions', '-fno-use-cxa-atexit', '-DCXXSHIM_INTEGRATE_GCC']
 link_args = meson.get_cross_property('link_args')
 
 arch_srcs = []

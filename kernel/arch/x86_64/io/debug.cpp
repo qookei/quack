@@ -7,7 +7,7 @@
 
 static int debug_port_exists = -1;
 
-static int use_debug_port = 0;
+static int use_debug_port = 1;
 static int use_vga_con = 0;
 static int use_fb_con = 0;
 

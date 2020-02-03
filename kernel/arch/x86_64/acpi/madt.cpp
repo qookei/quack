@@ -8,57 +8,46 @@
 #define TYPE_ISO 2
 #define TYPE_NMI 4
 
-static madt_t* madt;
+static madt* _madt;
 
-static size_t nmi_count = 0;
-static size_t iso_count = 0;
-static size_t ioapic_count = 0;
-static size_t lapic_count = 0;
-
-static madt_lapic_t *lapic_tab = NULL;
-static madt_ioapic_t *ioapic_tab = NULL;
-static madt_iso_t *iso_tab = NULL;
-static madt_nmi_t *nmi_tab = NULL;
-
-#define APPEND_TAB_ENT(cnt, arr, ent, type) {			\
-		cnt++;						\
-		arr = (type *)krealloc(arr, cnt * sizeof(type));\
-		memcpy(&arr[cnt - 1], ent, sizeof(type));	\
-	}
+static frg::vector<madt_lapic, frg_allocator> madt_lapics{frg_allocator::get()};
+static frg::vector<madt_nmi, frg_allocator> madt_nmis{frg_allocator::get()};
+static frg::vector<madt_iso, frg_allocator> madt_isos{frg_allocator::get()};
+static frg::vector<madt_ioapic, frg_allocator> madt_ioapics{frg_allocator::get()};
 
 void madt_init() {
-	madt = (madt_t *)acpi_find_table("APIC", 0);
-	if (!madt) {
+	_madt = (madt *)acpi_find_table("APIC", 0);
+	if (!_madt) {
 		kmesg("acpi", "failed to find madt table");
 		return;
 	}
 
 	kmesg("acpi", "scanning madt");
-	size_t off = 0, n_entries = madt->sdt.len - sizeof(madt_t);
+	size_t off = 0, n_entries = _madt->sdt.len - sizeof(madt);
 
 	while (off < n_entries) {
-		madt_ent_t *ent = (madt_ent_t *)((uintptr_t)madt->entries + off);
+		madt_ent *ent = reinterpret_cast<madt_ent *>(reinterpret_cast<uintptr_t>(_madt->entries) + off);
 		off += ent->len;
-		madt_lapic_t *lapic = (madt_lapic_t *)ent->data;
-		madt_ioapic_t *ioapic = (madt_ioapic_t *)ent->data;
-		madt_iso_t *iso = (madt_iso_t *)ent->data;
-		madt_nmi_t *nmi = (madt_nmi_t *)ent->data;
+		madt_lapic *lapic = reinterpret_cast<madt_lapic *>(ent->data);
+		madt_ioapic *ioapic = reinterpret_cast<madt_ioapic *>(ent->data);
+		madt_iso *iso = reinterpret_cast<madt_iso *>(ent->data);
+		madt_nmi *nmi = reinterpret_cast<madt_nmi *>(ent->data);
 
 		switch (ent->type) {
 			case TYPE_LAPIC:
-				APPEND_TAB_ENT(lapic_count, lapic_tab, lapic, madt_lapic_t);
+				madt_lapics.push(*lapic);
 				kmesg("acpi", "lapic: %u for cpu %u(%s)", lapic->apic_id, lapic->proc_id, (lapic->flags & 1) ? "enabled" : "disabled");
 				break;
 			case TYPE_IOAPIC:
-				APPEND_TAB_ENT(ioapic_count, ioapic_tab, ioapic, madt_ioapic_t);
+				madt_ioapics.push(*ioapic);
 				kmesg("acpi", "ioapic: %u at %016x gsi %u", ioapic->ioapic_id, ioapic->ioapic_addr, ioapic->gsi_base);
 				break;
 			case TYPE_ISO:
-				APPEND_TAB_ENT(iso_count, iso_tab, iso, madt_iso_t);
+				madt_isos.push(*iso);
 				kmesg("acpi", "iso: bus %u irq %u maps to gsi %u flags %u", iso->bus, iso->irq, iso->gsi, iso->flags);
 				break;
 			case TYPE_NMI:
-				APPEND_TAB_ENT(nmi_count, nmi_tab, nmi, madt_nmi_t);
+				madt_nmis.push(*nmi);
 				kmesg("acpi", "nmi: processor %u flags %u lint %u", nmi->proc_id, nmi->flags, nmi->lint);
 				break;
 			default:
@@ -68,37 +57,21 @@ void madt_init() {
 }
 
 uintptr_t madt_get_lapic_base(void) {
-	return madt->lapic_addr;
+	return _madt->lapic_addr;
 }
 
-size_t madt_get_nmi_count(void) {
-	return nmi_count;
+frg::vector<madt_lapic, frg_allocator> &madt_get_lapics() {
+	return madt_lapics;
 }
 
-size_t madt_get_lapic_count(void) {
-	return lapic_count;
+frg::vector<madt_nmi, frg_allocator> &madt_get_nmis() {
+	return madt_nmis;
 }
 
-size_t madt_get_ioapic_count(void) {
-	return ioapic_count;
+frg::vector<madt_iso, frg_allocator> &madt_get_isos() {
+	return madt_isos;
 }
 
-size_t madt_get_iso_count(void) {
-	return iso_count;
-}
-
-madt_nmi_t *madt_get_nmis(void) {
-	return nmi_tab;
-}
-
-madt_lapic_t *madt_get_lapics(void) {
-	return lapic_tab;
-}
-
-madt_ioapic_t *madt_get_ioapics(void) {
-	return ioapic_tab;
-}
-
-madt_iso_t *madt_get_isos(void) {
-	return iso_tab;
+frg::vector<madt_ioapic, frg_allocator> &madt_get_ioapics() {
+	return madt_ioapics;
 }

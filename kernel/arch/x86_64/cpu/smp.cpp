@@ -139,19 +139,18 @@ void smp_init(void) {
 
 	kmesg("smp", "bsp's id is %d", cpu_get_id());
 
-	madt_lapic_t *l = madt_get_lapics();
-	for (size_t i = 0; i < madt_get_lapic_count(); i++) {
-		if (!(l[i].flags & 1))
-			continue;
+	madt_enumerate_lapic([&] (madt_lapic &l) {
+		if (!(l.flags & 1))
+			return;
 
-		if (!l[i].apic_id)
-			continue;
+		if (!l.apic_id)
+			return;
 
-		if (!smp_init_single(l[i].apic_id, smp_core_count + 1))
-			continue;
+		if (!smp_init_single(l.apic_id, smp_core_count + 1))
+			return;
 
 		smp_core_count++;
-	}
+	});
 
 	kmesg("smp", "init done, %u working cores found", smp_core_count);
 
