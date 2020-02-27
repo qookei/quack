@@ -21,6 +21,7 @@ cxx_srcs = files(
   'lib/stdlib.cpp',
 
   'mm/heap.cpp',
+  'mm/vm.cpp',
 
   'lib/panic.cpp',
   'util/cmdline.cpp',

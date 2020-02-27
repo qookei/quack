@@ -9,6 +9,7 @@
 #include <panic.h>
 #include <loader/elf64.h>
 #include <proc/scheduler.h>
+#include <mm/vm.h>
 
 // TODO: use elf64_xxx and elf32_xxx depending on arch
 static arch_task_t *load_elf_task(void *file) {
@@ -49,6 +50,44 @@ void kernel_main(arch_boot_info_t *info) {
 		panic(NULL, "missing initramfs");
 
 	// TODO: parse a config file to see what to load
+
+	// mm/vm.h test
+	address_space s;
+	s.create();
+
+	uintptr_t addr1 = s.allocate_eager(4, vm_perm::urwx);
+	kmesg("vm-test", "eagerly allocated 4 pages at 0x%016lx", addr1);
+
+	uintptr_t addr2 = s.allocate_lazy(4, vm_perm::urwx);
+	kmesg("vm-test", "lazily allocated 4 pages at 0x%016lx", addr2);
+
+	uintptr_t addr3 = s.map(0xB8000, 1, vm_perm::urwx);
+	kmesg("vm-test", "mapped 1 page from 0xB8000 to 0x%016lx", addr3);
+
+
+	uintptr_t addr4 = s.allocate_exact_eager(0xDEAD0000, 4, vm_perm::urwx);
+	kmesg("vm-test", "eagerly allocated 4 pages at 0x%016lx (specified explicitly)", addr4);
+
+	uintptr_t addr5 = s.allocate_exact_lazy(0xCAFE0000, 4, vm_perm::urwx);
+	kmesg("vm-test", "lazily allocated 4 pages at 0x%016lx (specified explicitly)", addr5);
+
+	uintptr_t addr6 = s.map_exact(0xF00F0000, 0xB8000, 1, vm_perm::urwx);
+	kmesg("vm-test", "mapped 1 page from 0xB8000 to 0x%016lx (specified explicitly)", addr6);
+
+	s.debug();
+
+	kmesg("vm-test", "destroying all regions");
+
+	s.destroy(addr1);
+	s.destroy(addr2);
+	s.destroy(addr3);
+	s.destroy(addr4);
+	s.destroy(addr5);
+	s.destroy(addr6);
+
+	s.debug();
+
+	kmesg("vm-test", "everything seems to have worked");
 
 	void *startup_file;
 

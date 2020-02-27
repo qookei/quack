@@ -340,6 +340,14 @@ int arch_mm_unmap_kernel(void *dst, size_t size) {
 	return vmm_unmap_pages(kernel_pml4, dst, size);
 }
 
+int arch_mm_map(void *ctx, void *dst, void *src, size_t size, int flags, int cache) {
+	return vmm_map_pages((pt_t *)ctx, dst, src, size, vmm_arch_to_vmm_flags(flags, cache));
+}
+
+int arch_mm_unmap(void *ctx, void *dst, size_t size) {
+	return vmm_unmap_pages((pt_t *)ctx, dst, size);
+}
+
 uintptr_t arch_mm_get_phys_kernel(void *dst) {
 	return vmm_get_entry(kernel_pml4, dst) & VMM_ADDR_MASK;
 }
@@ -399,4 +407,8 @@ int arch_mm_update_context_single(int cpu, void *dst) {
 	(void)cpu; // TODO: handle this
 	vmm_update_mapping(dst);
 	return 1;
+}
+
+void *arch_mm_create_context(void) {
+	return vmm_new_address_space();
 }

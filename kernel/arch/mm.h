@@ -26,6 +26,9 @@
 
 int arch_mm_map_kernel(void *dst, void *src, size_t size, int flags, int cache);
 int arch_mm_unmap_kernel(void *dst, size_t size);
+int arch_mm_map(void *ctx, void *dst, void *src, size_t size, int flags, int cache);
+int arch_mm_unmap(void *ctx, void *dst, size_t size);
+
 uintptr_t arch_mm_get_phys_kernel(void *dst);
 int arch_mm_get_flags_kernel(void *dst);
 int arch_mm_get_cache_kernel(void *dst);
@@ -39,6 +42,7 @@ int arch_mm_store_context(void);
 int arch_mm_switch_context(void *ctx);
 int arch_mm_restore_context(void);
 int arch_mm_drop_context(void);
+void *arch_mm_create_context(void);
 
 // -1 for this CPU
 // -2 for all CPUs
