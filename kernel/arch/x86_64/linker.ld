@@ -6,24 +6,17 @@ KERNEL_SMP = 0x0000000000400000;
 KERNEL_VMA = 0xFFFFFFFF80000000;
 
 SECTIONS {
-	. = KERNEL_LMA + KERNEL_VMA;
+	PROVIDE (__executable_start = KERNEL_VMA + KERNEL_LMA);
+	. = KERNEL_VMA + KERNEL_LMA + SIZEOF_HEADERS;
 
 	.text : AT(ADDR(.text) - KERNEL_VMA) {
 		*(.multiboot)
 		*(.text)
-		_rodata = .;
-		*(.rodata*)
+		*(.rodata)
 	}
 
 	.data ALIGN (0x1000) : AT(ADDR(.data) - KERNEL_VMA) {
 		*(.data)
-	}
-
-	.bss : AT(ADDR(.bss) - KERNEL_VMA) {
-		_sbss = .;
-		*(COMMON)
-		*(.bss)
-		_ebss = .;
 	}
 
 	.init_array : {
@@ -31,6 +24,11 @@ SECTIONS {
 		KEEP(*(SORT(.init_array.*)))
 		KEEP(*(.init_array*))
 		_init_array_end = .;
+	}
+
+	.bss : AT(ADDR(.bss) - KERNEL_VMA) {
+		*(COMMON)
+		*(.bss)
 	}
 
 	_trampoline_start_virt = .;

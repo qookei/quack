@@ -10,6 +10,11 @@
 
 #include <util/spinlock.h>
 
+#include <loader/elf_common.h>
+#include <loader/elf64.h>
+
+#include <util.h>
+
 pt_off_t vmm_virt_to_offs(void *virt) {
 	uintptr_t addr = (uintptr_t)virt;
 
@@ -74,8 +79,8 @@ static inline pt_t *vmm_get_or_null_ent(pt_t *tab, size_t off) {
 	return (pt_t *)(ent_addr + VIRT_PHYS_BASE);
 }
 
-int vmm_map_pages(pt_t *pml4, void *virt, void *phys, size_t count, int perms) {
-	int higher_perms = perms & (VMM_FLAG_WRITE | VMM_FLAG_USER);
+int vmm_map_pages(pt_t *pml4, void *virt, void *phys, size_t count, unsigned long perms) {
+	int higher_perms = VMM_FLAG_WRITE | VMM_FLAG_USER;
 
 	while (count--) {
 		pt_off_t offs = vmm_virt_to_offs(virt);
@@ -105,14 +110,14 @@ int vmm_unmap_pages(pt_t *pml4, void *virt, size_t count) {
 		pt_t *pt_virt = vmm_get_or_null_ent(pd_virt, offs.pd_off);
 		if (!pt_virt) return 0;
 		pt_virt->ents[offs.pt_off] = 0;
-	
+
 		virt = (void *)((uintptr_t)virt + 0x1000);
 	}
 
 	return 1;
 }
 
-int vmm_update_perms(pt_t *pml4, void *virt, size_t count, int perms) {
+int vmm_update_perms(pt_t *pml4, void *virt, size_t count, unsigned long perms) {
 	while (count--) {
 		pt_off_t offs = vmm_virt_to_offs(virt);
 
@@ -124,15 +129,15 @@ int vmm_update_perms(pt_t *pml4, void *virt, size_t count, int perms) {
 		pt_t *pt_virt = vmm_get_or_null_ent(pd_virt, offs.pd_off);
 		if (!pt_virt) return 0;
 		pt_virt->ents[offs.pt_off] = (pt_virt->ents[offs.pt_off] & VMM_ADDR_MASK) | perms | VMM_FLAG_PRESENT;
-	
+
 		virt = (void *)((uintptr_t)virt + 0x1000);
 	}
 
 	return 0;
 }
 
-int vmm_map_huge_pages(pt_t *pml4, void *virt, void *phys, size_t count, int perms) {
-	int higher_perms = perms & (VMM_FLAG_WRITE | VMM_FLAG_USER);
+int vmm_map_huge_pages(pt_t *pml4, void *virt, void *phys, size_t count, unsigned long perms) {
+	int higher_perms = VMM_FLAG_WRITE | VMM_FLAG_USER;
 
 	while (count--) {
 		pt_off_t offs = vmm_virt_to_offs(virt);
@@ -158,14 +163,14 @@ int vmm_unmap_huge_pages(pt_t *pml4, void *virt, size_t count) {
 		if (!pdp_virt) return 0;
 		pt_t *pd_virt = vmm_get_or_null_ent(pdp_virt, offs.pdp_off);
 		pd_virt->ents[offs.pd_off] = 0;
-	
+
 		virt = (void *)((uintptr_t)virt + 0x200000);
 	}
 
 	return 1;
 }
 
-int vmm_update_huge_perms(pt_t *pml4, void *virt, size_t count, int perms) {
+int vmm_update_huge_perms(pt_t *pml4, void *virt, size_t count, unsigned long perms) {
 	while (count--) {
 		pt_off_t offs = vmm_virt_to_offs(virt);
 
@@ -202,12 +207,56 @@ uintptr_t vmm_get_entry(pt_t *pml4, void *virt) {
 	return pt_virt->ents[offs.pt_off];
 }
 
+extern void *__ehdr_start;
+
 pt_t *vmm_new_address_space(void) {
 	pt_t *new_pml4 = (pt_t *)pmm_alloc(1);
 	memset((void *)((uintptr_t)new_pml4 + VIRT_PHYS_BASE), 0, 4096);
 
-	vmm_map_huge_pages(new_pml4, (void *)0xFFFFFFFF80000000, NULL, 64, 3);
+	if (kernel_pml4) {
+		memcpy(
+			(void *)((uintptr_t)new_pml4 + 2048 + VIRT_PHYS_BASE),
+			(void *)((uintptr_t)kernel_pml4 + 2048 + VIRT_PHYS_BASE),
+			2048);
+		return new_pml4;
+	}
+
 	vmm_map_huge_pages(new_pml4, (void *)0xFFFF800000000000, NULL, 512 * 4, 3);
+
+	elf64_ehdr *ehdr = (elf64_ehdr *)(&__ehdr_start);
+
+	if (!ehdr) {
+		vmm_map_huge_pages(new_pml4, (void *)0xFFFFFFFF80000000, NULL, 64, 3);
+		return new_pml4;
+	}
+
+	elf64_phdr *phdrs = (elf64_phdr *)((uintptr_t)ehdr + ehdr->e_phoff);
+
+	for (size_t i = 0; i < ehdr->e_phnum; i++) {
+		if (phdrs[i].p_type != ELF_PHDR_TYPE_LOAD)
+			continue;
+
+		// discard the LOAD segment that contains SMP code
+		if (phdrs[i].p_vaddr < 0xFFFFFFFF80000000ULL)
+			continue;
+
+		unsigned long flags = VMM_FLAG_NX | VMM_FLAG_PRESENT;
+
+		if (phdrs[i].p_flags & ELF_PHDR_FLAG_X) {
+			flags &= ~VMM_FLAG_NX;
+		}
+
+		if (phdrs[i].p_flags & ELF_PHDR_FLAG_W) {
+			flags |= VMM_FLAG_WRITE;
+		}
+
+		size_t n_pages = (phdrs[i].p_memsz + 0xFFF) / 0x1000;
+
+		vmm_map_pages(new_pml4,
+			(void *)phdrs[i].p_vaddr,
+			(void *)phdrs[i].p_paddr,
+			n_pages, flags);
+	}
 
 	return new_pml4;
 }

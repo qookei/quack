@@ -121,7 +121,7 @@ _loader:
 	wrmsr
 
 	mov eax, cr0
-	or eax, 0x80000001
+	or eax, 0x80010001
 	mov cr0, eax
 
 	jmp 0x08:higher_half_entry_lower

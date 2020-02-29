@@ -53,7 +53,7 @@ bits 32
 	wrmsr
 
 	mov eax, cr0
-	or eax, 0x80000001
+	or eax, 0x80010001
 	mov cr0, eax
 
 	mov ecx, 0x277
