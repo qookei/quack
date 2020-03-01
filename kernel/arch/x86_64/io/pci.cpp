@@ -14,7 +14,7 @@
 
 #include <cmdline.h>
 
-#include <lib/unique.h>
+#include <frg/unique.hpp>
 
 uint8_t pci_read_byte(uint32_t bus, uint32_t slot, uint32_t func, uint16_t offset) {
 	outd(0xCF8, (bus << 16) | (slot << 11) | (func << 8) | (offset & 0xFFFF) | 0x80000000);
@@ -73,8 +73,8 @@ void pci_write_dword(uint32_t bus, uint32_t slot, uint32_t func, pci_reg reg, ui
 	pci_write_dword(bus, slot, func, (uint16_t)reg, value);
 }
 
-static frg::vector<unique_ptr<pci_dev>, frg_allocator> devices{frg_allocator::get()};
-static frg::vector<unique_ptr<pci_bus>, frg_allocator> pci_buses{frg_allocator::get()};
+static frg::vector<frg::unique_ptr<pci_dev, frg_allocator>, frg_allocator> devices{frg_allocator::get()};
+static frg::vector<frg::unique_ptr<pci_bus, frg_allocator>, frg_allocator> pci_buses{frg_allocator::get()};
 
 pci_dev::pci_dev(uint8_t bus, uint8_t slot, uint8_t func)
 :_parent{nullptr}, _bus{bus}, _slot{slot}, _func{func} {
@@ -267,7 +267,6 @@ pci_bus *pci_dev::parent() {
 
 pci_bus::pci_bus(uint8_t bus, pci_dev *dev)
 : _parent{nullptr}, _device{dev}, _children{frg_allocator::get()}, _bus{bus} {
-	kmesg("pci", "bruh, bus = %02x", bus);
 }
 
 void pci_bus::set_acpi_node(lai_nsnode_t *node) {
@@ -314,10 +313,9 @@ bool pci_bus::has_prt() const {
 }
 
 void pci_bus::enumerate(lai_state_t *state) {
-	kmesg("pci", "bus %02x enumerate", _bus);
 	for (uint8_t slot = 0; slot < 32; slot++) {
 		for (uint8_t func = 0; func < 8; func++) {
-			auto d = std::move(make_unique<pci_dev>(_bus, slot, func));
+			auto d = frg::make_unique<pci_dev>(frg_allocator::get(), _bus, slot, func);
 
 			if (!d->exists())
 				continue;
@@ -326,7 +324,7 @@ void pci_bus::enumerate(lai_state_t *state) {
 			d->attach_to(this);
 
 			if (d->base_class() == 0x06 && d->sub_class() == 0x04) {
-				auto bridge = std::move(make_unique<pci_bus>(d->sec_bus(), d.get()));
+				auto bridge = frg::make_unique<pci_bus>(frg_allocator::get(), d->sec_bus(), d.get());
 				bridge->attach_to(this);
 				bridge->find_node(state);
 				bridge->enumerate(state);
@@ -384,7 +382,7 @@ static void pci_find_root_buses(lai_state_t *state) {
 			lai_obj_get_integer(&bus_number, &bbn_result);
 		}
 
-		auto bus = std::move(make_unique<pci_bus>(bbn_result));
+		auto bus = frg::make_unique<pci_bus>(frg_allocator::get(), static_cast<uint8_t>(bbn_result));
 		bus->set_acpi_node(node);
 
 		pci_buses.push_back(std::move(bus));
