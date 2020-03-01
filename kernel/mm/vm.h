@@ -12,6 +12,8 @@
 
 #include <atomic>
 
+#include <arch/mm.h>
+
 struct backing_page {
 	uintptr_t _ptr;
 
@@ -27,33 +29,6 @@ enum class vm_fault_result {
 	not_mapped
 };
 
-// TODO: move into arch/mm.h
-namespace vm_perm {
-	constexpr inline int read = 1;
-	constexpr inline int write = 2;
-	constexpr inline int execute = 4;
-	constexpr inline int user = 8;
-
-	constexpr inline int ro = read;
-	constexpr inline int rw = read | write;
-	constexpr inline int rx = read | execute;
-	constexpr inline int rwx = read | write | execute;
-
-	constexpr inline int uro = user | read;
-	constexpr inline int urw = user | read | write;
-	constexpr inline int urx = user | read | execute;
-	constexpr inline int urwx = user | read | write | execute;
-}
-
-// TODO: move into arch/mm.h
-namespace vm_cache_mode {
-	constexpr inline int wb = 0;
-	constexpr inline int wt = 1;
-	constexpr inline int wc = 2;
-	constexpr inline int wp = 3;
-	constexpr inline int uc = 4;
-}
-
 struct memory_mapping {
 	memory_mapping(uintptr_t base, size_t size);
 	~memory_mapping();
@@ -64,6 +39,7 @@ struct memory_mapping {
 	void deallocate();
 
 	vm_fault_result fault_hit(uintptr_t address);
+	bool touch(uintptr_t address);
 
 	uintptr_t _base;
 	size_t _size;
@@ -102,13 +78,13 @@ struct address_space {
 	void map_region(memory_mapping *region);
 	void unmap_region(memory_mapping *region);
 
-	uintptr_t allocate_eager(size_t size, int perms, int cache = vm_cache_mode::wb);
-	uintptr_t allocate_lazy(size_t size, int perms, int cache = vm_cache_mode::wb);
-	uintptr_t map(uintptr_t address, size_t size, int perms, int cache = vm_cache_mode::wb);
+	uintptr_t allocate_eager(size_t size, int perms, int cache = vm_cache::wb);
+	uintptr_t allocate_lazy(size_t size, int perms, int cache = vm_cache::wb);
+	uintptr_t map(uintptr_t address, size_t size, int perms, int cache = vm_cache::wb);
 
-	uintptr_t allocate_exact_eager(uintptr_t base, size_t size, int perms, int cache = vm_cache_mode::wb);
-	uintptr_t allocate_exact_lazy(uintptr_t base, size_t size, int perms, int cache = vm_cache_mode::wb);
-	uintptr_t map_exact(uintptr_t base, uintptr_t address, size_t size, int perms, int cache = vm_cache_mode::wb);
+	uintptr_t allocate_exact_eager(uintptr_t base, size_t size, int perms, int cache = vm_cache::wb);
+	uintptr_t allocate_exact_lazy(uintptr_t base, size_t size, int perms, int cache = vm_cache::wb);
+	uintptr_t map_exact(uintptr_t base, uintptr_t address, size_t size, int perms, int cache = vm_cache::wb);
 
 	void destroy(memory_mapping *region);
 	void destroy(uintptr_t address);
@@ -116,6 +92,7 @@ struct address_space {
 	memory_mapping *region_for_address(uintptr_t address);
 
 	bool fault_hit(uintptr_t address);
+	void touch(uintptr_t address);
 
 	void debug();
 

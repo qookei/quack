@@ -51,7 +51,7 @@ void memory_mapping::map_to(uintptr_t address, int perms, int cache) {
 		page._exists = true;
 		page._allocated = false;
 		page._ptr = address;
-		address += ARCH_MM_PAGE_SIZE;
+		address += vm_page_size;
 	}
 }
 
@@ -77,23 +77,19 @@ void memory_mapping::deallocate() {
 }
 
 vm_fault_result memory_mapping::fault_hit(uintptr_t address) {
-	if (address < _base || address > (_base + _size * ARCH_MM_PAGE_SIZE))
+	if (address < _base || address > (_base + _size * vm_page_size))
 		panic(NULL, "memory_mapping::fault_hit(0x%lx) called outside of mapping (0x%lx-0x%lx)",
-			address, _base, _base + _size * ARCH_MM_PAGE_SIZE);
+			address, _base, _base + _size * vm_page_size);
 
-	uintptr_t idx = (address - _base) / ARCH_MM_PAGE_SIZE;
+	uintptr_t idx = (address - _base) / vm_page_size;
 	auto &page = _backing_pages[idx];
 
 	if (page._allocated && !page._exists) {
 		// hit overcommited page
-		uintptr_t ptr = (uintptr_t)arch_mm_alloc_phys(1);
-		if (!ptr) {
+		if (touch(address))
+			return vm_fault_result::remap_valid;
+		else
 			return vm_fault_result::ignore;
-		}
-
-		page._exists = true;
-		page._ptr = ptr;
-		return vm_fault_result::remap_valid;
 	} else if (page._exists) {
 		// invalid access
 		return vm_fault_result::invalid_access;
@@ -105,16 +101,37 @@ vm_fault_result memory_mapping::fault_hit(uintptr_t address) {
 	return vm_fault_result::invalid;
 }
 
-address_space::address_space() {}
+bool memory_mapping::touch(uintptr_t address) {
+	if (address < _base || address > (_base + _size * vm_page_size))
+		panic(NULL, "memory_mapping::touch(0x%lx) called outside of mapping (0x%lx-0x%lx)",
+			address, _base, _base + _size * vm_page_size);
 
-// TODO: move to arch/mm.h
-#define MEMORY_BASE 0x1000LLU
-#define MEMORY_END 0x800000000000LLU
+	uintptr_t idx = (address - _base) / vm_page_size;
+	auto &page = _backing_pages[idx];
+
+	if (!page._exists) {
+		assert (page._allocated);
+		uintptr_t ptr = (uintptr_t)arch_mm_alloc_phys(1);
+		if (!ptr) {
+			return false;
+		}
+
+		page._exists = true;
+		page._ptr = ptr;
+		return true;
+	}
+
+	return false;
+}
+
+
+address_space::address_space() {}
 
 void address_space::create() {
 	_vmm_ctx = arch_mm_create_context();
 
-	memory_hole *hole = new memory_hole{MEMORY_BASE, (MEMORY_END - MEMORY_BASE) / ARCH_MM_PAGE_SIZE, {}};
+	memory_hole *hole = new memory_hole{ vm_user_base,
+		(vm_user_end - vm_user_base) / vm_page_size, {}};
 
 	_memory_holes.push_back(hole);
 }
@@ -148,7 +165,7 @@ memory_mapping *address_space::bind_hole(memory_hole *hole, size_t size) {
 
 		return mapping;
 	} else {
-		hole->_base += size * ARCH_MM_PAGE_SIZE;
+		hole->_base += size * vm_page_size;
 		hole->_size -= size;
 
 		memory_mapping *mapping = new memory_mapping{base, size};
@@ -174,8 +191,8 @@ memory_mapping *address_space::bind_exact(uintptr_t base, size_t size) {
 	memory_hole *target_hole = nullptr;
 	for (auto hole : _memory_holes) {
 		if (hole->_base <= base
-				&& (hole->_base + hole->_size * ARCH_MM_PAGE_SIZE)
-				>= (base + size * ARCH_MM_PAGE_SIZE)) {
+				&& (hole->_base + hole->_size * vm_page_size)
+				>= (base + size * vm_page_size)) {
 			target_hole = hole;
 			break;
 		}
@@ -192,17 +209,17 @@ memory_mapping *address_space::bind_exact(uintptr_t base, size_t size) {
 		delete target_hole;
 	} else if (base == target_hole->_base) {
 		// leading
-		target_hole->_base += size * ARCH_MM_PAGE_SIZE;
+		target_hole->_base += size * vm_page_size;
 		target_hole->_size -= size;
-	} else if (base + size * ARCH_MM_PAGE_SIZE == target_hole->_base + target_hole->_size * ARCH_MM_PAGE_SIZE) {
+	} else if (base + size * vm_page_size == target_hole->_base + target_hole->_size * vm_page_size) {
 		// trailing
 		target_hole->_size -= size;
 	} else {
 		// in the middle
 		size_t old_base = target_hole->_base;
-		memory_hole *new_hole = new memory_hole{target_hole->_base, (base - target_hole->_base) / ARCH_MM_PAGE_SIZE, {}};
-		target_hole->_base = base + size * ARCH_MM_PAGE_SIZE;
-		target_hole->_size = target_hole->_size - size - (base - old_base) / ARCH_MM_PAGE_SIZE;
+		memory_hole *new_hole = new memory_hole{target_hole->_base, (base - target_hole->_base) / vm_page_size, {}};
+		target_hole->_base = base + size * vm_page_size;
+		target_hole->_size = target_hole->_size - size - (base - old_base) / vm_page_size;
 		_memory_holes.insert(target_hole, new_hole);
 	}
 
@@ -237,7 +254,7 @@ void address_space::map_region(memory_mapping *region) {
 	for (size_t i = 0; i < region->_size; i++) {
 		if (region->_backing_pages[i]._exists) {
 			arch_mm_map(_vmm_ctx,
-				(void *)(region->_base + i * ARCH_MM_PAGE_SIZE),
+				(void *)(region->_base + i * vm_page_size),
 				(void *)region->_backing_pages[i]._ptr, 1,
 				region->_perms, region->_cache_mode);
 		}
@@ -252,7 +269,7 @@ void address_space::unmap_region(memory_mapping *region) {
 	for (size_t i = 0; i < region->_size; i++) {
 		if (region->_backing_pages[i]._exists) {
 			arch_mm_unmap(_vmm_ctx,
-				(void *)(region->_base + i * ARCH_MM_PAGE_SIZE), 1);
+				(void *)(region->_base + i * vm_page_size), 1);
 		}
 	}
 
@@ -350,7 +367,7 @@ void address_space::destroy(uintptr_t address) {
 memory_mapping *address_space::region_for_address(uintptr_t address) {
 	for (auto region : _mapped_regions) {
 		if (region->_base >= address &&
-				address <= (region->_base + region->_size * ARCH_MM_PAGE_SIZE))
+				address <= (region->_base + region->_size * vm_page_size))
 			return region;
 	}
 
@@ -381,14 +398,23 @@ bool address_space::fault_hit(uintptr_t address) {
 	return false;
 }
 
+void address_space::touch(uintptr_t address) {
+	auto region = region_for_address(address);
+
+	if (!region)
+		return;
+
+	region->touch(address);
+}
+
 memory_hole *address_space::find_pre_hole(memory_hole *in) {
 	memory_hole *candidate = *_memory_holes.begin();
 	size_t n_candidates = 0;
 
 	for (auto hole : _memory_holes) {
 		if ((hole->_base >= candidate->_base)
-				&& (hole->_base + hole->_size * ARCH_MM_PAGE_SIZE <
-					in->_base + in->_size * ARCH_MM_PAGE_SIZE)
+				&& (hole->_base + hole->_size * vm_page_size <
+					in->_base + in->_size * vm_page_size)
 				&& (hole != in)) {
 			n_candidates++;
 			candidate = hole;
@@ -404,8 +430,8 @@ memory_mapping *address_space::find_pre_mapping(memory_mapping *in) {
 
 	for (auto region : _mapped_regions) {
 		if ((region->_base >= candidate->_base)
-				&& (region->_base + region->_size * ARCH_MM_PAGE_SIZE <
-					in->_base + in->_size * ARCH_MM_PAGE_SIZE)
+				&& (region->_base + region->_size * vm_page_size <
+					in->_base + in->_size * vm_page_size)
 				&& (region != in)) {
 			n_candidates++;
 			candidate = region;
@@ -417,7 +443,7 @@ memory_mapping *address_space::find_pre_mapping(memory_mapping *in) {
 
 template <typename T>
 ptrdiff_t distance_between(T a, T b) {
-	return (a->_base + a->_size * ARCH_MM_PAGE_SIZE) - b->_base;
+	return (a->_base + a->_size * vm_page_size) - b->_base;
 }
 
 memory_hole *address_space::find_succ_hole(memory_hole *in) {
@@ -467,7 +493,7 @@ memory_mapping *address_space::find_succ_mapping(memory_mapping *in) {
 void address_space::merge_holes() {
 //	kmesg("vm", "holes before merge:");
 //	for (auto hole : _memory_holes) {
-//		kmesg("vm", "\t%016lx-%016lx", hole->_base, hole->_base + hole->_size * ARCH_MM_PAGE_SIZE);
+//		kmesg("vm", "\t%016lx-%016lx", hole->_base, hole->_base + hole->_size * vm_page_size);
 //	}
 
 	for (auto hole : _memory_holes) {
@@ -494,7 +520,7 @@ void address_space::merge_holes() {
 
 //	kmesg("vm", "holes after merge:");
 //	for (auto hole : _memory_holes) {
-//		kmesg("vm", "\t%016lx-%016lx", hole->_base, hole->_base + hole->_size * ARCH_MM_PAGE_SIZE);
+//		kmesg("vm", "\t%016lx-%016lx", hole->_base, hole->_base + hole->_size * vm_page_size);
 //	}
 }
 
@@ -502,12 +528,12 @@ void address_space::debug() {
 	kmesg("vm", "-------- this = %016p --------", this);
 	kmesg("vm", "mapped regions:");
 	for (auto region : _mapped_regions) {
-		kmesg("vm", "\t%016lx-%016lx", region->_base, region->_base + region->_size * ARCH_MM_PAGE_SIZE);
+		kmesg("vm", "\t%016lx-%016lx", region->_base, region->_base + region->_size * vm_page_size);
 	}
 
 	kmesg("vm", "memory holes:");
 	for (auto hole : _memory_holes) {
-		kmesg("vm", "\t%016lx-%016lx", hole->_base, hole->_base + hole->_size * ARCH_MM_PAGE_SIZE);
+		kmesg("vm", "\t%016lx-%016lx", hole->_base, hole->_base + hole->_size * vm_page_size);
 	}
 	kmesg("vm", "-----------------------------------------");
 }

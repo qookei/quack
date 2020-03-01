@@ -76,7 +76,7 @@ static int smp_init_single(uint32_t apic_id, uint32_t core_id) {
 
 	arch_mm_map_kernel(&_trampoline_start, &_trampoline_start,
 			(len + PAGE_SIZE - 1) / PAGE_SIZE,
-			ARCH_MM_FLAG_R | ARCH_MM_FLAG_W, ARCH_MM_CACHE_DEFAULT);
+			vm_perm::rw, vm_cache::def);
 
 	memcpy(&_trampoline_start, (void *)(KERNEL_SMP + VIRT_PHYS_BASE), len);
 

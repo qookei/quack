@@ -6,7 +6,7 @@
 
 static spinlock_t mm_lock = {0};
 
-static uintptr_t top = ARCH_MM_HEAP_BASE;
+static uintptr_t top = vm_heap_base;
 
 void *kmalloc(size_t bytes) {
 	spinlock_lock(&mm_lock);
@@ -14,7 +14,7 @@ void *kmalloc(size_t bytes) {
 	bytes = ((bytes + 7) / 8) * 8; // round up to nearest multiple of 8
 
 	bytes += 16; // 8 bytes for size, another 8 for amount of pages
-	size_t pages = (bytes + ARCH_MM_PAGE_SIZE - 1) / ARCH_MM_PAGE_SIZE + 1;
+	size_t pages = (bytes + vm_page_size - 1) / vm_page_size + 1;
 	void *out = (void *)top;
 
 	for (size_t i = 0; i < pages; i++) {
@@ -23,13 +23,13 @@ void *kmalloc(size_t bytes) {
 			spinlock_release(&mm_lock);
 			return NULL;
 		}
-		arch_mm_map_kernel((void *)top, p, 1, ARCH_MM_FLAG_R | ARCH_MM_FLAG_W, ARCH_MM_CACHE_DEFAULT);
-		top += ARCH_MM_PAGE_SIZE;
+		arch_mm_map_kernel((void *)top, p, 1, vm_perm::rw, vm_cache::def);
+		top += vm_page_size;
 	}
 
-	top += ARCH_MM_PAGE_SIZE;
+	top += vm_page_size;
 
-	out = (void *)((uintptr_t)out + (pages * ARCH_MM_PAGE_SIZE - bytes));
+	out = (void *)((uintptr_t)out + (pages * vm_page_size - bytes));
 
 	((uint64_t *)out)[0] = bytes - 16;
 	((uint64_t *)out)[1] = pages;
@@ -61,15 +61,15 @@ void kfree(void *ptr) {
 	spinlock_lock(&mm_lock);
 	size_t size = *(uint64_t *)((uintptr_t)ptr - 16);
 	size_t req_pages = *(uint64_t *)((uintptr_t)ptr - 8);
-	void *start = (void *)((uintptr_t)ptr & (~(ARCH_MM_PAGE_SIZE - 1))); // this assumes page size is a multiple of 16
+	void *start = (void *)((uintptr_t)ptr & (~(vm_page_size - 1))); // this assumes page size is a multiple of 16
 
 	size += 16; // 8 bytes for size, another 8 for amount of pages
-	size_t pages = (size + ARCH_MM_PAGE_SIZE - 1) / ARCH_MM_PAGE_SIZE + 1;
+	size_t pages = (size + vm_page_size - 1) / vm_page_size + 1;
 
 	assert(req_pages == pages);
 
 	for (size_t i = 0; i < pages; i++) {
-		void *curr = (void *)((uintptr_t)start + i * ARCH_MM_PAGE_SIZE);
+		void *curr = (void *)((uintptr_t)start + i * vm_page_size);
 		void *p = (void *)arch_mm_get_phys_kernel(curr);
 		arch_mm_unmap_kernel(curr, 1);
 		arch_mm_free_phys(p, 1);

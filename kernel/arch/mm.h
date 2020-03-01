@@ -4,25 +4,41 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define ARCH_MM_FLAG_R		0x01 /* page is readable */
-#define ARCH_MM_FLAG_W		0x02 /* page is writable */
-#define ARCH_MM_FLAG_E		0x04 /* page is executable */
-#define ARCH_MM_FLAG_U		0x08 /* page is accessible in user mode */
-
-#define ARCH_MM_CACHE_WB	0 /* write-back */
-#define ARCH_MM_CACHE_WT	1 /* write-through */
-#define ARCH_MM_CACHE_WC	2 /* write-combining */
-#define ARCH_MM_CACHE_WP	3 /* write-protect */
-#define ARCH_MM_CACHE_UC	4 /* uncacheable */
-#define ARCH_MM_CACHE_DEFAULT ARCH_MM_CACHE_WB
-
 #if ARCH == i386 || ARCH == x86_64
-#define ARCH_MM_PAGE_SIZE 0x1000
+constexpr inline size_t vm_page_size = 0x1000;
+constexpr inline uintptr_t vm_user_base = 0x1000;
 #endif
 
 #if ARCH == x86_64
-#define ARCH_MM_HEAP_BASE 0x200000000
+constexpr inline size_t vm_heap_base = 0x200000000;
+constexpr inline uintptr_t vm_user_end = 0x800000000000;
 #endif
+
+namespace vm_perm {
+	constexpr inline int read = 1;
+	constexpr inline int write = 2;
+	constexpr inline int execute = 4;
+	constexpr inline int user = 8;
+
+	constexpr inline int ro = read;
+	constexpr inline int rw = read | write;
+	constexpr inline int rx = read | execute;
+	constexpr inline int rwx = read | write | execute;
+
+	constexpr inline int uro = user | read;
+	constexpr inline int urw = user | read | write;
+	constexpr inline int urx = user | read | execute;
+	constexpr inline int urwx = user | read | write | execute;
+}
+
+namespace vm_cache {
+	constexpr inline int wb = 0;
+	constexpr inline int wt = 1;
+	constexpr inline int wc = 2;
+	constexpr inline int wp = 3;
+	constexpr inline int uc = 4;
+	constexpr inline int def = wb;
+}
 
 int arch_mm_map_kernel(void *dst, void *src, size_t size, int flags, int cache);
 int arch_mm_unmap_kernel(void *dst, size_t size);

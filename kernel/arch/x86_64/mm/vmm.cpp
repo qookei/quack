@@ -367,9 +367,9 @@ void vmm_ctx_memcpy(pt_t *dst_ctx, void *dst_addr, pt_t *src_ctx, void *src_addr
 int vmm_arch_to_vmm_flags(int flags, int cache) {
 	int arch_flags = 0;
 
-	if (flags & ARCH_MM_FLAG_W) arch_flags |= VMM_FLAG_WRITE;
-	if (flags & ARCH_MM_FLAG_U) arch_flags |= VMM_FLAG_USER;
-	if (!(flags & ARCH_MM_FLAG_E)) arch_flags |= VMM_FLAG_NX;
+	if (flags & vm_perm::write) arch_flags |= VMM_FLAG_WRITE;
+	if (flags & vm_perm::user) arch_flags |= VMM_FLAG_USER;
+	if (!(flags & vm_perm::execute)) arch_flags |= VMM_FLAG_NX;
 
 	if (cache & (1 << 0)) arch_flags |= VMM_FLAG_PAT0;
 	if (cache & (1 << 1)) arch_flags |= VMM_FLAG_PAT1;
@@ -403,10 +403,10 @@ uintptr_t arch_mm_get_phys_kernel(void *dst) {
 
 int arch_mm_get_flags_kernel(void *dst) {
 	int arch_flags = vmm_get_entry(kernel_pml4, dst) & VMM_FLAG_MASK;
-	int flags = arch_flags ? ARCH_MM_FLAG_R : 0;
-	if (arch_flags & VMM_FLAG_WRITE) flags |= ARCH_MM_FLAG_W;
-	if (arch_flags & VMM_FLAG_USER) flags |= ARCH_MM_FLAG_U;
-	if (!(arch_flags & VMM_FLAG_NX)) flags |= ARCH_MM_FLAG_E;
+	int flags = arch_flags ? vm_perm::read : 0;
+	if (arch_flags & VMM_FLAG_WRITE) flags |= vm_perm::write;
+	if (arch_flags & VMM_FLAG_USER) flags |= vm_perm::user;
+	if (!(arch_flags & VMM_FLAG_NX)) flags |= vm_perm::execute;
 	return flags;
 }
 

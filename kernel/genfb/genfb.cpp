@@ -59,9 +59,9 @@ void genfb_init(arch_video_mode_t *mode) {
 	else
 		arch_mem_fast_memset(vid_back, BG_BYTE_COLOR, mode->height * mode->pitch);
 
-	size_t pages = (bytes + ARCH_MM_PAGE_SIZE - 1) / ARCH_MM_PAGE_SIZE;
+	size_t pages = (bytes + vm_page_size - 1) / vm_page_size;
 	arch_mm_map_kernel((void *)mode->addr, (void *)mode->addr, 
-				pages, ARCH_MM_FLAG_W, ARCH_MM_CACHE_WC);
+				pages, vm_perm::write, vm_cache::wc);
 	vid_front = (uint32_t *)mode->addr;
 
 	if (!arch_mem_fast_memset)
