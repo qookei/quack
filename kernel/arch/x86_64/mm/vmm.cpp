@@ -15,6 +15,8 @@
 
 #include <util.h>
 
+#include <mm/vm.h>
+
 pt_off_t vmm_virt_to_offs(void *virt) {
 	uintptr_t addr = (uintptr_t)virt;
 
@@ -56,8 +58,8 @@ void vmm_init(void) {
 }
 
 static inline pt_t *vmm_get_or_alloc_ent(pt_t *tab, size_t off, int flags) {
-	uint64_t ent_addr = tab->ents[off] & VMM_ADDR_MASK;
-	if (!ent_addr) {
+	uint64_t ent_addr = tab->ents[off];
+	if (!(ent_addr & VMM_FLAG_PRESENT)) {
 		ent_addr = tab->ents[off] = (uint64_t)pmm_alloc(1);
 		if (!ent_addr) {
 			kmesg("vmm", "failed to allocate a page for a table");
@@ -67,16 +69,16 @@ static inline pt_t *vmm_get_or_alloc_ent(pt_t *tab, size_t off, int flags) {
 		memset((void *)(ent_addr + VIRT_PHYS_BASE), 0, 4096);
 	}
 
-	return (pt_t *)(ent_addr + VIRT_PHYS_BASE);
+	return (pt_t *)((ent_addr & VMM_ADDR_MASK) + VIRT_PHYS_BASE);
 }
 
 static inline pt_t *vmm_get_or_null_ent(pt_t *tab, size_t off) {
-	uint64_t ent_addr = tab->ents[off] & VMM_ADDR_MASK;
-	if (!ent_addr) {
+	uint64_t ent_addr = tab->ents[off];
+	if (!(ent_addr & VMM_FLAG_PRESENT)) {
 		return NULL;
 	}
 
-	return (pt_t *)(ent_addr + VIRT_PHYS_BASE);
+	return (pt_t *)((ent_addr & VMM_ADDR_MASK) + VIRT_PHYS_BASE);
 }
 
 int vmm_map_pages(pt_t *pml4, void *virt, void *phys, size_t count, unsigned long perms) {
@@ -259,9 +261,6 @@ pt_t *vmm_new_address_space(void) {
 	}
 
 	return new_pml4;
-}
-
-pt_t *vmm_clone_address_space(pt_t *addr) {
 }
 
 pt_t **get_ctx_ptr(void) {
@@ -460,4 +459,77 @@ int arch_mm_update_context_single(int cpu, void *dst) {
 
 void *arch_mm_create_context(void) {
 	return vmm_new_address_space();
+}
+
+void arch_mm_destroy_context(void *ctx) {
+	pt_t *pml4_virt = (pt_t *)((uint64_t)ctx + VIRT_PHYS_BASE);
+
+	for (int i = 0; i < 256; i++) {
+		pt_t *pdp_virt = vmm_get_or_null_ent(pml4_virt, i);
+		if (!pdp_virt) continue;
+
+		for (int j = 0; j < 512; j++) {
+			pt_t *pd_virt = vmm_get_or_null_ent(pdp_virt, j);
+			if (!pd_virt) continue;
+
+			for (int k = 0; k < 512; k++) {
+				if (pd_virt->ents[k] & VMM_FLAG_LARGE)
+					continue;
+				if (pd_virt->ents[k] & VMM_FLAG_PRESENT)
+					continue;
+
+				pmm_free((void *)(pd_virt->ents[k] & VMM_ADDR_MASK), 1);
+			}
+
+			pmm_free((void *)(pdp_virt->ents[j] & VMM_ADDR_MASK), 1);
+		}
+
+		pmm_free((void *)(pml4_virt->ents[i] & VMM_ADDR_MASK), 1);
+	}
+
+	pmm_free(ctx, 1);
+}
+
+void arch_mm_mapping_load(memory_mapping *mapping, ptrdiff_t offset, void *data, size_t size) {
+	spinlock_lock(&copy_lock);
+
+	uintptr_t virt = 0x700000000000;
+	for (size_t i = 0; i < mapping->_size; i++, virt += 0x1000) {
+		uintptr_t phys = mapping->_backing_pages[i]._ptr;
+
+		vmm_map_pages(kernel_pml4, (void *)virt, (void *)phys,
+					1, VMM_FLAG_WRITE);
+	}
+
+	memcpy((void *)(0x700000000000 + offset), data, size);
+
+	virt = 0x700000000000;
+	for (size_t i = 0; i < mapping->_size; i++, virt += 0x1000) {
+		vmm_unmap_pages(kernel_pml4, (void *)virt, 1);
+		vmm_update_mapping((void *)virt);
+	}
+
+	spinlock_release(&copy_lock);
+}
+
+void arch_mm_mapping_store(memory_mapping *mapping, ptrdiff_t offset, void *data, size_t size) {
+	spinlock_lock(&copy_lock);
+
+	uintptr_t virt = 0x700000000000;
+	for (size_t i = 0; i < mapping->_size; i++, virt += 0x1000) {
+		uintptr_t phys = mapping->_backing_pages[i]._ptr;
+
+		vmm_map_pages(kernel_pml4, (void *)virt, (void *)phys,
+					1, VMM_FLAG_WRITE);
+	}
+
+	memcpy(data, (void *)(0x700000000000 + offset), size);
+
+	virt = 0x700000000000;
+	for (size_t i = 0; i < mapping->_size; i++, virt += 0x1000) {
+		vmm_unmap_pages(kernel_pml4, (void *)virt, 1);
+		vmm_update_mapping((void *)virt);
+	}
+
+	spinlock_release(&copy_lock);
 }

@@ -42,9 +42,6 @@ uintptr_t vmm_get_entry(pt_t *, void *);
 // creates an address space with the kernel and physical memory mappings
 pt_t *vmm_new_address_space(void);
 
-// does not clone addresses above 0xFFFF800000000000
-pt_t *vmm_clone_address_space(pt_t *);
-
 void vmm_save_context(void);
 pt_t *vmm_get_saved_context(void);
 void vmm_restore_context(void);

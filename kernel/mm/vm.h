@@ -39,7 +39,9 @@ struct memory_mapping {
 	void deallocate();
 
 	vm_fault_result fault_hit(uintptr_t address);
-	bool touch(uintptr_t address);
+	bool touch(size_t idx);
+
+	void load(ptrdiff_t offset, void *data, size_t size);
 
 	uintptr_t _base;
 	size_t _size;
@@ -61,14 +63,9 @@ struct memory_hole {
 	frg::default_list_hook<memory_hole> _list_node;
 };
 
-// TODO: implement {load,store}_foreign to perform transactions across address spaces
-// TODO: test this properly
-// TODO: implement destruction
-
 struct address_space {
 	address_space();
-
-	void create();
+	~address_space();
 
 	memory_hole *find_free_hole(size_t size);
 	memory_mapping *bind_hole(memory_hole *hole, size_t size);
@@ -96,6 +93,7 @@ struct address_space {
 
 	void debug();
 
+	void *vmm_ctx();
 private:
 	frg::intrusive_list<
 		memory_mapping,

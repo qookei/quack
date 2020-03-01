@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include "elf_common.h"
-#include <arch/task.h>
+#include <proc/scheduler.h>
 
 typedef struct {
 	uint8_t e_ident[16];
@@ -33,7 +33,6 @@ typedef struct {
 	uint64_t p_align;
 } elf64_phdr;
 
-int elf64_check(void *file);
-arch_task_t *elf64_create_arch_task(void *file);
+bool elf64_load(void *file, thread &t);
 
 #endif

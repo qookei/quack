@@ -86,7 +86,7 @@ vm_fault_result memory_mapping::fault_hit(uintptr_t address) {
 
 	if (page._allocated && !page._exists) {
 		// hit overcommited page
-		if (touch(address))
+		if (touch(idx))
 			return vm_fault_result::remap_valid;
 		else
 			return vm_fault_result::ignore;
@@ -101,12 +101,7 @@ vm_fault_result memory_mapping::fault_hit(uintptr_t address) {
 	return vm_fault_result::invalid;
 }
 
-bool memory_mapping::touch(uintptr_t address) {
-	if (address < _base || address > (_base + _size * vm_page_size))
-		panic(NULL, "memory_mapping::touch(0x%lx) called outside of mapping (0x%lx-0x%lx)",
-			address, _base, _base + _size * vm_page_size);
-
-	uintptr_t idx = (address - _base) / vm_page_size;
+bool memory_mapping::touch(size_t idx) {
 	auto &page = _backing_pages[idx];
 
 	if (!page._exists) {
@@ -124,16 +119,60 @@ bool memory_mapping::touch(uintptr_t address) {
 	return false;
 }
 
+void memory_mapping::load(ptrdiff_t offset, void *data, size_t size) {
+	assert(offset >= 0);
 
-address_space::address_space() {}
+	size_t pages = (size + vm_page_size - 1) / vm_page_size;
+	size_t start = offset / vm_page_size;
 
-void address_space::create() {
+	if (((offset + size + vm_page_size - 1) / vm_page_size) > _size)
+		return;
+
+	for (size_t i = start; i < start + pages; i++) {
+		touch(i);
+	}
+
+	arch_mm_mapping_load(this, offset, data, size);
+}
+
+void memory_mapping::store(ptrdiff_t offset, void *data, size_t size) {
+	assert(offset >= 0);
+
+	size_t pages = (size + vm_page_size - 1) / vm_page_size;
+	size_t start = offset / vm_page_size;
+
+	if (((offset + size + vm_page_size - 1) / vm_page_size) > _size)
+		return;
+
+	for (size_t i = start; i < start + pages; i++) {
+		touch(i);
+	}
+
+	arch_mm_mapping_store(this, offset, data, size);
+}
+
+address_space::address_space() {
 	_vmm_ctx = arch_mm_create_context();
 
 	memory_hole *hole = new memory_hole{ vm_user_base,
 		(vm_user_end - vm_user_base) / vm_page_size, {}};
 
 	_memory_holes.push_back(hole);
+}
+
+address_space::~address_space() {
+	arch_mm_destroy_context(_vmm_ctx);
+
+	for (auto hole : _memory_holes) {
+		_memory_holes.erase(hole);
+		delete hole;
+	}
+
+	for (auto region : _mapped_regions) {
+		_mapped_regions.erase(region);
+		delete region;
+	}
+
 }
 
 memory_hole *address_space::find_free_hole(size_t size) {
@@ -404,7 +443,7 @@ void address_space::touch(uintptr_t address) {
 	if (!region)
 		return;
 
-	region->touch(address);
+	region->touch((address - region->_base )/ vm_page_size);
 }
 
 memory_hole *address_space::find_pre_hole(memory_hole *in) {
@@ -536,4 +575,8 @@ void address_space::debug() {
 		kmesg("vm", "\t%016lx-%016lx", hole->_base, hole->_base + hole->_size * vm_page_size);
 	}
 	kmesg("vm", "-----------------------------------------");
+}
+
+void *address_space::vmm_ctx() {
+	return _vmm_ctx;
 }

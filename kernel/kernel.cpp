@@ -10,15 +10,7 @@
 #include <loader/elf64.h>
 #include <proc/scheduler.h>
 #include <mm/vm.h>
-
-// TODO: use elf64_xxx and elf32_xxx depending on arch
-static arch_task_t *load_elf_task(void *file) {
-	int err;
-	if ((err = elf64_check(file)))
-		panic(NULL, "not a valid elf file: %d", err);
-
-	return elf64_create_arch_task(file);
-}
+#include <util.h>
 
 void kernel_main(arch_boot_info_t *info) {
 	kmesg("kernel", "reached arch independent stage");
@@ -51,44 +43,6 @@ void kernel_main(arch_boot_info_t *info) {
 
 	// TODO: parse a config file to see what to load
 
-	// mm/vm.h test
-	address_space s;
-	s.create();
-
-	uintptr_t addr1 = s.allocate_eager(4, vm_perm::urwx);
-	kmesg("vm-test", "eagerly allocated 4 pages at 0x%016lx", addr1);
-
-	uintptr_t addr2 = s.allocate_lazy(4, vm_perm::urwx);
-	kmesg("vm-test", "lazily allocated 4 pages at 0x%016lx", addr2);
-
-	uintptr_t addr3 = s.map(0xB8000, 1, vm_perm::urwx);
-	kmesg("vm-test", "mapped 1 page from 0xB8000 to 0x%016lx", addr3);
-
-
-	uintptr_t addr4 = s.allocate_exact_eager(0xDEAD0000, 4, vm_perm::urwx);
-	kmesg("vm-test", "eagerly allocated 4 pages at 0x%016lx (specified explicitly)", addr4);
-
-	uintptr_t addr5 = s.allocate_exact_lazy(0xCAFE0000, 4, vm_perm::urwx);
-	kmesg("vm-test", "lazily allocated 4 pages at 0x%016lx (specified explicitly)", addr5);
-
-	uintptr_t addr6 = s.map_exact(0xF00F0000, 0xB8000, 1, vm_perm::urwx);
-	kmesg("vm-test", "mapped 1 page from 0xB8000 to 0x%016lx (specified explicitly)", addr6);
-
-	s.debug();
-
-	kmesg("vm-test", "destroying all regions");
-
-	s.destroy(addr1);
-	s.destroy(addr2);
-	s.destroy(addr3);
-	s.destroy(addr4);
-	s.destroy(addr5);
-	s.destroy(addr6);
-
-	s.debug();
-
-	kmesg("vm-test", "everything seems to have worked");
-
 	void *startup_file;
 
 	if (!initrd_read_file("startup", &startup_file))
@@ -96,22 +50,18 @@ void kernel_main(arch_boot_info_t *info) {
 
 	sched_init(arch_cpu_get_count());
 
-	arch_task_t *task = load_elf_task(startup_file);
+	auto t = frg::make_unique<thread>(
+		frg_allocator::get(),
+		std::move(frg::make_unique<arch_task>(frg_allocator::get())),
+		std::move(frg::make_unique<address_space>(frg_allocator::get()))
+	);
 
-	struct mem_region stack = {
-		.start = 0x7fffffffc000,
-		.end   = 0x800000000000
-	};
+	t->_task->vmm_ctx() = t->_addr_space->vmm_ctx();
+	t->_task->sp() = t->_addr_space->allocate_eager(4, vm_perm::urw) + 0x4000;
+	assert(elf64_load(startup_file, *t));
 
-	arch_task_alloc_mem_region(task, &stack, vm_perm::urw);
-
-	arch_task_load_stack_ptr(task, 0x800000000000);
-
-	int32_t id = sched_start_from_task(task);
-
-	id = sched_start_from_task(task);
-
-	sched_set_state(id, THREAD_RUNNING);
+	uint64_t id = sched_add(std::move(t));
+	sched_run(id);
 
 	asm volatile ("sti");
 	while(1);

@@ -54,11 +54,17 @@ int arch_mm_free_phys(void *mem, size_t blocks);
 
 void *arch_mm_get_ctx_kernel(void);
 
+struct memory_mapping;
+
+void arch_mm_mapping_load(memory_mapping *mapping, ptrdiff_t offset, void *data, size_t size);
+void arch_mm_mapping_store(memory_mapping *mapping, ptrdiff_t offset, void *data, size_t size);
+
 int arch_mm_store_context(void);
 int arch_mm_switch_context(void *ctx);
 int arch_mm_restore_context(void);
 int arch_mm_drop_context(void);
 void *arch_mm_create_context(void);
+void arch_mm_destroy_context(void *ctx);
 
 // -1 for this CPU
 // -2 for all CPUs

@@ -8,200 +8,184 @@
 #include <loader/elf64.h>
 #include <arch/mm.h>
 
-// thread and id allocation
+#include <frg/hash_map.hpp>
+#include <frg/vector.hpp>
+
+#include <atomic>
+
+thread::thread(frg::unique_ptr<arch_task, frg_allocator> &&task,
+		frg::unique_ptr<address_space, frg_allocator> &&addr_space)
+: _task{std::move(task)}, _addr_space{std::move(addr_space)},
+_id{0}, _state{state::stopped}, _running_on{-1}, _list_node{} {}
 
 static spinlock_t threads_lock;
-static struct thread **threads;
-static int32_t n_threads;
 
-// returned id may not be valid now, but may be valid after calling enlarge_table
-static int32_t find_free_id(void) {
-	int32_t i = 0;
+static frg::hash_map<
+	uint64_t,
+	thread *,
+	frg::hash<uint64_t>,
+	frg_allocator
+> threads{frg::hash<uint64_t>{}, frg_allocator::get()};
 
-	while (i < n_threads && threads[i])
-		i++;
+static frg::intrusive_list<
+	thread,
+	frg::locate_member<
+		thread,
+		frg::default_list_hook<thread>,
+		&thread::_list_node
+	>
+> schedule;
 
-	return i;
+static std::atomic<uint64_t> next_id;
+
+static uint64_t allocate_id() {
+	return next_id++;
 }
 
-#define DEFAULT_SIZE 16
+static frg::optional<uint64_t> get_next_thread_to_run(void) {
+	static size_t idx = 0;
+	size_t traversed = 0;
 
-static int32_t enlarge_table(void) {
-	size_t old_count = n_threads;
-	n_threads *= 2;
+	while (traversed < 2) {
+		size_t i = 0;
+		for (auto thread : schedule) {
+			if (i < idx) {
+				i++;
+				continue;
+			}
 
-	if (!n_threads)
-		n_threads = DEFAULT_SIZE;
+			if (thread->_running_on == -1) {
+				idx = i;
+				return thread->_id;
+			}
 
-	threads = (struct thread **)krealloc(threads, sizeof(*threads) * n_threads);
-	memset(threads + old_count, 0, sizeof(*threads) * (old_count ? old_count : DEFAULT_SIZE));
+			i++;
+		}
 
-	return old_count;
-}
-
-static int32_t picker_idx = 0;
-
-static int32_t get_next_thread_to_run(void) {
-	int32_t picked_idx = -1;
-
-	// this is to make sure we dont get stuck in
-	// an infinite loop on an empty run list
-	int32_t traversed = 0;
-
-	while (picked_idx == -1) {
-		if (!threads)
-			break;
-
-		if (threads[picker_idx] // exists?
-				&& threads[picker_idx]->state == THREAD_RUNNING // is running?
-				&& threads[picker_idx]->running_on == -1) // is not already scheduled
-			picked_idx = picker_idx;
-
-		if (++picker_idx >= n_threads)
-			picker_idx = 0; // loop around
-
+		idx = 0;
 		traversed++;
-		if (traversed > n_threads)
-			break;
 	}
 
-	return picked_idx;
+	return frg::null_opt;
 }
-
-// main scheduler code
-
-static int n_cpus;
 
 struct sched_cpu_data {
-	int32_t current_thread;
+	uint64_t current_thread;
+	bool running;
 };
 
-static struct sched_cpu_data *cpu_data;
+static frg::vector<sched_cpu_data, frg_allocator> sched_procs{frg_allocator::get()};
 
-static volatile int ready;
+static std::atomic_bool ready;
 
-void sched_init(int n_cpu) {
-	if (!n_cpu)
+void sched_init(int n_cpus) {
+	if (!n_cpus)
 		panic(NULL, "sched_init called with no processors");
 
-	n_cpus = n_cpu;
-	cpu_data = (struct sched_cpu_data *)kmalloc(n_cpu * sizeof(struct sched_cpu_data));
-
 	for (int i = 0; i < n_cpus; i++)
-		cpu_data[i].current_thread = -1;
+		sched_procs.push_back({0, false});
 
-	ready = 1;
+	ready = true;
 }
 
-int sched_ready(void) {
+bool sched_ready(void) {
 	return ready;
 }
 
 void sched_resched(uint8_t irq, void *irq_state, int resched) {
 	int cpu = arch_cpu_get_this_id();
-	assert(cpu < n_cpus);
 
-	struct sched_cpu_data *data = &cpu_data[cpu];
-	int32_t thread_id = data->current_thread;
+	sched_cpu_data &data = sched_procs[cpu];
 
 	spinlock_lock(&threads_lock);
 
-	if (thread_id != -1 && !resched) {
-		arch_task_save_irq_state(threads[thread_id]->task, irq_state);
-		threads[thread_id]->running_on = -1;
+	if (data.running && !resched) {
+		threads[data.current_thread]->_task->load_irq_state(irq_state);
+		threads[data.current_thread]->_running_on = -1;
 	}
 
-	int32_t next_thread = get_next_thread_to_run();
-	data->current_thread = next_thread;
+	auto next_thread = get_next_thread_to_run();
 
-	// nothing to run, idle
-	if (next_thread == -1) {
-		spinlock_release(&threads_lock);
-
-		// TODO: wrap this in an arch function
-		arch_mm_drop_context();
-		arch_cpu_ack_interrupt(irq);
-
-		arch_task_idle_cpu();
-	}
-
-	threads[next_thread]->running_on = cpu;
-
-	// running the same process
-	if (next_thread == thread_id) {
+	if (next_thread && data.running && *next_thread == data.current_thread) {
+		data.running = true;
+		threads[*next_thread]->_running_on = cpu;
 		spinlock_release(&threads_lock);
 		return;
 	}
-
-	spinlock_release(&threads_lock);
 
 	// TODO: wrap this in an arch function
 	arch_mm_drop_context();
 	arch_cpu_ack_interrupt(irq);
 
-	arch_task_switch_to(threads[next_thread]->task);
+	if (next_thread) {
+		data.running = true;
+		data.current_thread = *next_thread;
+		threads[*next_thread]->_running_on = cpu;
+
+		spinlock_release(&threads_lock);
+		threads[*next_thread]->_task->enter();
+	} else {
+		data.running = false;
+		spinlock_release(&threads_lock);
+		arch_task_idle_cpu();
+	}
 }
 
-int32_t sched_start(void) {
+uint64_t sched_add(frg::unique_ptr<thread, frg_allocator> thread) {
+	assert(thread->_state == state::stopped);
+
+	uint64_t id = allocate_id();
+
 	spinlock_lock(&threads_lock);
-
-	int32_t i = find_free_id();
-
-	if (i >= n_threads)
-		i = enlarge_table();
-
-	threads[i] = (struct thread *)kcalloc(sizeof(struct thread), 1);
-	threads[i]->running_on = -1;
-
+	threads[id] = thread.release();
 	spinlock_release(&threads_lock);
-	return i;
+
+	return id;
 }
 
-int32_t sched_start_from_task(arch_task_t *task) {
-	int32_t i = sched_start();
+void sched_remove(uint64_t id) {
 	spinlock_lock(&threads_lock);
+	for (auto thread : schedule) {
+		if (thread->_id == id) {
+			schedule.erase(thread);
+			break;
+		}
+	}
 
-	threads[i]->task = task;
-
-	spinlock_release(&threads_lock);
-	return i;
-}
-
-int32_t sched_clone(int32_t id) {
-	(void)id;
-	assert(!"TODO: implement sched_clone()");
-	__builtin_unreachable();
-}
-
-void sched_destroy(int32_t id) {
-	if(id == -1)
-		return;
-
-	spinlock_lock(&threads_lock);
-
-	arch_task_destroy(threads[id]->task);
-	kfree(threads[id]);
-	threads[id] = NULL;
+	auto item = threads.remove(id);
+	if (item)
+		delete *item;
 
 	spinlock_release(&threads_lock);
 }
 
-int32_t sched_start_from_elf(void *file) {
-	// TODO: use arch-agnostic functions (elf_xxx instead of elf64_xxx) 
-
-	if (elf64_check(file))
-		return -1;
-
-	return sched_start_from_task(elf64_create_arch_task(file));
-}
-
-void sched_set_state(int32_t id, int state) {
-	if(id == -1)
-		return;
-
+void sched_run(uint64_t id) {
 	spinlock_lock(&threads_lock);
 
-	threads[id]->state = state;
+	schedule.push_back(threads[id]);
 
+	spinlock_release(&threads_lock);
+}
+
+void sched_stop(uint64_t id) {
+	spinlock_lock(&threads_lock);
+
+	for (auto thread : schedule) {
+		if (thread->_id == id) {
+			schedule.erase(thread);
+			break;
+		}
+	}
+
+	threads[id]->_state = state::stopped;
+
+	spinlock_release(&threads_lock);
+}
+
+void sched_block(uint64_t id, state reason) {
+	sched_stop(id);
+
+	spinlock_lock(&threads_lock);
+	threads[id]->_state = reason;
 	spinlock_release(&threads_lock);
 }

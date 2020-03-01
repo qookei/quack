@@ -1,34 +1,36 @@
 #include "elf64.h"
-#include <kmesg.h>
 #include <string.h>
-#include <arch/task.h>
-#include <arch/mm.h>
 
-int elf64_check(void *file) {
-	elf64_ehdr *ehdr = (elf64_ehdr *)file;
-
+static bool elf64_check(elf64_ehdr *ehdr) {
 	if(strncmp((const char *)ehdr->e_ident, ELF_MAGIC, 4)) {
-		return 1;
+		return false;
 	}
+
 	if(ehdr->e_ident[ELF_IDENT_CLASS] != ELF_CLASS_64) {
-		return 2;
+		return false;
 	}
+
 	if(ehdr->e_ident[ELF_IDENT_DATA] != ELF_DATA_LSB) {
-		return 3;
+		return false;
 	}
+
 	if(ehdr->e_version != ELF_VER_CURRENT){
-		return 4;
+		return false;
 	}
+
 	if(ehdr->e_type != ELF_TYPE_EXEC) {
-		return 5;
+		return false;
 	}
-	return 0;
+
+	return true;
 }
 
-arch_task_t *elf64_create_arch_task(void *file) {
+bool elf64_load(void *file, thread &t) {
 	elf64_ehdr *ehdr = (elf64_ehdr *)file;
 
-	arch_task_t *task = arch_task_create_new(NULL);
+	if (!elf64_check(ehdr))
+		return false;
+
 
 	elf64_phdr *phdrs = (elf64_phdr *)((uintptr_t)file + ehdr->e_phoff);
 
@@ -36,12 +38,6 @@ arch_task_t *elf64_create_arch_task(void *file) {
 		if(phdrs[i].p_type != ELF_PHDR_TYPE_LOAD) {
 			continue;
 		}
-
-		struct mem_region region = {
-			.dest = 0,
-			.start = phdrs[i].p_vaddr,
-			.end = phdrs[i].p_vaddr + phdrs[i].p_memsz,
-		};
 
 		int flags = vm_perm::user;
 		if (phdrs[i].p_flags & ELF_PHDR_FLAG_X)
@@ -51,13 +47,14 @@ arch_task_t *elf64_create_arch_task(void *file) {
 		if (phdrs[i].p_flags & ELF_PHDR_FLAG_W)
 			flags |= vm_perm::write;
 
-		arch_task_alloc_mem_region(task, &region, flags);
-		arch_task_copy_to_mem_region(task, &region, 
-			(void *)((uintptr_t)file + phdrs[i].p_offset),
-			phdrs[i].p_filesz);
+		size_t n_pages = (phdrs[i].p_memsz + vm_page_size - 1) / vm_page_size;
+
+		t._addr_space->allocate_exact_eager(phdrs[i].p_vaddr, n_pages, flags);
+		auto region = t._addr_space->region_for_address(phdrs[i].p_vaddr);
+		region->load(0, (void *)((uintptr_t)file + phdrs[i].p_offset), phdrs[i].p_filesz);
 	}
 
-	arch_task_load_entry_point(task, ehdr->e_entry);
+	t._task->ip() = ehdr->e_entry;
 
-	return task;
+	return true;
 }

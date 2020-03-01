@@ -1,32 +1,51 @@
 #ifndef SCHEDULER_H
 #define SCHEDULER_H
 
+#include <new>
+#include <lib/frg_allocator.h>
+#include <frg/unique.hpp>
 #include <arch/task.h>
+#include <mm/vm.h>
 
 #define THREAD_STOPPED			(0 << 0)
 #define THREAD_RUNNING			(1 << 0)
 #define THREAD_BLOCKED_IPC		(1 << 1)
 #define THREAD_BLOCKED_IRQ		(1 << 2)
 
-struct thread {
-	arch_task_t *task;
-	int state;
-	int running_on;
+enum class state {
+	stopped,
+	running,
+	blocked_ipc,
+	blocked_irq,
 };
 
-void sched_init(int n_cpu);
-int sched_ready(void);
+struct thread {
+	thread(frg::unique_ptr<arch_task, frg_allocator> &&task,
+		frg::unique_ptr<address_space, frg_allocator> &&addr_space);
+
+	frg::unique_ptr<arch_task, frg_allocator> _task;
+	frg::unique_ptr<address_space, frg_allocator> _addr_space;
+
+	uintptr_t _id;
+	state _state;
+	int _running_on;
+
+	frg::default_list_hook<thread> _list_node;
+};
+
+void sched_init(int n_cpus);
+bool sched_ready(void);
 
 void sched_resched(uint8_t irq, void *irq_state, int resched);
 
-int32_t sched_start(void);
-int32_t sched_start_from_task(arch_task_t *task);
-int32_t sched_clone(int32_t id);
+uint64_t sched_add(frg::unique_ptr<thread, frg_allocator> thread);
+void sched_remove(uint64_t id);
 
-void sched_destroy(int32_t id);
+void sched_run(uint64_t id);
+void sched_stop(uint64_t id);
+void sched_block(uint64_t id, state reason);
 
-int32_t sched_start_from_elf(void *file);
+thread &sched_get(uint64_t id);
 
-void sched_set_state(int32_t id, int state);
 
 #endif

@@ -8,9 +8,13 @@ struct frg_allocator {
 		return kmalloc(s);
 	}
 
-	void free(void *p) {
+	void deallocate(void *p, size_t) {
 		if(p)
 			kfree(p);
+	}
+
+	void free(void *p) {
+		deallocate(p, 0);
 	}
 
 	static frg_allocator &get() {
