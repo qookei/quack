@@ -110,9 +110,14 @@ extern "C" void dispatch_interrupt(irq_cpu_state_t *state) {
 				panic(state, "unhandled exception %s (%u) error %02x", exc_names[irq], irq, state->err);
 			} else {
 				// user mode
-				kmesg("irq", "user mode panic!");
-				kmesg("irq", "how did we get here at this point!");
-				panic(state, "unhandled exception %s (%u) error %02x", exc_names[irq], irq, state->err);
+				if (irq == 0x0E) {
+					uintptr_t cr2;
+					asm volatile ("mov %%cr2, %0" : "=r"(cr2));
+					page_fault_sink(cr2, state);
+				} else {
+					kmesg("irq", "user mode panic!");
+					panic(state, "unhandled exception %s (%u) error %02x", exc_names[irq], irq, state->err);
+				}
 			}
 		}
 	}

@@ -189,3 +189,14 @@ void sched_block(uint64_t id, state reason) {
 	threads[id]->_state = reason;
 	spinlock_release(&threads_lock);
 }
+
+void sched_page_fault(uintptr_t address, void *irq_state) {
+	int cpu = arch_cpu_get_this_id();
+	sched_cpu_data &data = sched_procs[cpu];
+
+	assert(data.running);
+
+	auto thread = threads[data.current_thread];
+	if (!thread->_addr_space->fault_hit(address))
+		panic(irq_state, "TODO: handle killing the thread on fault");
+}

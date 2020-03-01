@@ -57,7 +57,7 @@ void kernel_main(arch_boot_info_t *info) {
 	);
 
 	t->_task->vmm_ctx() = t->_addr_space->vmm_ctx();
-	t->_task->sp() = t->_addr_space->allocate_eager(4, vm_perm::urw) + 0x4000;
+	t->_task->sp() = t->_addr_space->allocate_lazy(4, vm_perm::urw) + 0x4000;
 	assert(elf64_load(startup_file, *t));
 
 	uint64_t id = sched_add(std::move(t));

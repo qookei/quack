@@ -41,7 +41,8 @@ struct memory_mapping {
 	vm_fault_result fault_hit(uintptr_t address);
 	bool touch(size_t idx);
 
-	void load(ptrdiff_t offset, void *data, size_t size);
+	bool load(ptrdiff_t offset, void *data, size_t size);
+	bool store(ptrdiff_t offset, void *data, size_t size);
 
 	uintptr_t _base;
 	size_t _size;
@@ -90,6 +91,9 @@ struct address_space {
 
 	bool fault_hit(uintptr_t address);
 	void touch(uintptr_t address);
+
+	void load(uintptr_t address, void *data, size_t size);
+	void store(uintptr_t address, void *data, size_t size);
 
 	void debug();
 

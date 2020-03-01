@@ -119,36 +119,44 @@ bool memory_mapping::touch(size_t idx) {
 	return false;
 }
 
-void memory_mapping::load(ptrdiff_t offset, void *data, size_t size) {
+bool memory_mapping::load(ptrdiff_t offset, void *data, size_t size) {
 	assert(offset >= 0);
 
 	size_t pages = (size + vm_page_size - 1) / vm_page_size;
 	size_t start = offset / vm_page_size;
 
 	if (((offset + size + vm_page_size - 1) / vm_page_size) > _size)
-		return;
+		return false;
+
+	bool touched = false;
 
 	for (size_t i = start; i < start + pages; i++) {
-		touch(i);
+		touched = touched || touch(i);
 	}
 
 	arch_mm_mapping_load(this, offset, data, size);
+
+	return touched;
 }
 
-void memory_mapping::store(ptrdiff_t offset, void *data, size_t size) {
+bool memory_mapping::store(ptrdiff_t offset, void *data, size_t size) {
 	assert(offset >= 0);
 
 	size_t pages = (size + vm_page_size - 1) / vm_page_size;
 	size_t start = offset / vm_page_size;
 
 	if (((offset + size + vm_page_size - 1) / vm_page_size) > _size)
-		return;
+		return false;
+
+	bool touched = false;
 
 	for (size_t i = start; i < start + pages; i++) {
-		touch(i);
+		touched = touched || touch(i);
 	}
 
 	arch_mm_mapping_store(this, offset, data, size);
+
+	return touched;
 }
 
 address_space::address_space() {
@@ -405,7 +413,7 @@ void address_space::destroy(uintptr_t address) {
 
 memory_mapping *address_space::region_for_address(uintptr_t address) {
 	for (auto region : _mapped_regions) {
-		if (region->_base >= address &&
+		if (address >= region->_base &&
 				address <= (region->_base + region->_size * vm_page_size))
 			return region;
 	}
@@ -418,6 +426,8 @@ bool address_space::fault_hit(uintptr_t address) {
 
 	if (!region)
 		return false;
+
+	kmesg("vm", "fault in region %p, address %lx", region, address);
 
 	auto result = region->fault_hit(address);
 
@@ -561,6 +571,28 @@ void address_space::merge_holes() {
 //	for (auto hole : _memory_holes) {
 //		kmesg("vm", "\t%016lx-%016lx", hole->_base, hole->_base + hole->_size * vm_page_size);
 //	}
+}
+
+void address_space::load(uintptr_t address, void *data, size_t size) {
+	auto region = region_for_address(address);
+
+	if (!region)
+		return;
+
+	if (region->load(address - region->_base, data, size)) {
+		map_region(region);
+	}
+}
+
+void address_space::store(uintptr_t address, void *data, size_t size) {
+	auto region = region_for_address(address);
+
+	if (!region)
+		return;
+
+	if (region->store(address - region->_base, data, size)) {
+		map_region(region);
+	}
 }
 
 void address_space::debug() {

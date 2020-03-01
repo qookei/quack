@@ -47,5 +47,6 @@ void sched_block(uint64_t id, state reason);
 
 thread &sched_get(uint64_t id);
 
+void sched_page_fault(uintptr_t addr, void *irq_state);
 
 #endif
