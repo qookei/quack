@@ -56,8 +56,11 @@ void kernel_main(arch_boot_info_t *info) {
 		std::move(frg::make_unique<address_space>(frg_allocator::get()))
 	);
 
+	constexpr size_t stack_size = 8 * 1024 * 1024;
+	constexpr size_t stack_pages = stack_size / vm_page_size;
+
 	t->_task->vmm_ctx() = t->_addr_space->vmm_ctx();
-	t->_task->sp() = t->_addr_space->allocate(4, vm_perm::urw) + 0x4000;
+	t->_task->sp() = t->_addr_space->allocate(stack_pages, vm_perm::urw) + stack_size;
 	assert(elf64_load(startup_file, *t));
 
 	uint64_t id = sched_add(std::move(t));

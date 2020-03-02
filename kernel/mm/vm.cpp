@@ -182,12 +182,17 @@ address_space::~address_space() {
 }
 
 memory_hole *address_space::find_free_hole(size_t size) {
+	memory_hole *candidate = nullptr;
+	uintptr_t best_base = 0;
+
 	for (auto hole : _memory_holes) {
-		if (hole->_size >= size)
-			return hole;
+		if (hole->_size >= size && hole->_base >= best_base) {
+			best_base = hole->_base;
+			candidate = hole;
+		}
 	}
 
-	return nullptr;
+	return candidate;
 }
 
 memory_mapping *address_space::bind_hole(memory_hole *hole, size_t size) {
@@ -210,10 +215,9 @@ memory_mapping *address_space::bind_hole(memory_hole *hole, size_t size) {
 
 		return mapping;
 	} else {
-		hole->_base += size * vm_page_size;
 		hole->_size -= size;
 
-		memory_mapping *mapping = new memory_mapping{base, size};
+		memory_mapping *mapping = new memory_mapping{base + hole->_size * vm_page_size, size};
 		memory_mapping *succ = find_succ_mapping(mapping);
 
 		if (succ) {
