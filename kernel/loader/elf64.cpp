@@ -49,7 +49,7 @@ bool elf64_load(void *file, thread &t) {
 
 		size_t n_pages = (phdrs[i].p_memsz + vm_page_size - 1) / vm_page_size;
 
-		t._addr_space->allocate_exact_lazy(phdrs[i].p_vaddr, n_pages, flags);
+		t._addr_space->allocate_exact(phdrs[i].p_vaddr, n_pages, flags);
 		t._addr_space->load(phdrs[i].p_vaddr,
 			(void *)((uintptr_t)file + phdrs[i].p_offset),
 			phdrs[i].p_filesz);

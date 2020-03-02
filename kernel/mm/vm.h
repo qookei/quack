@@ -33,13 +33,13 @@ struct memory_mapping {
 	memory_mapping(uintptr_t base, size_t size);
 	~memory_mapping();
 
-	void allocate_eager(int perms, int cache);
-	void allocate_lazy(int perms, int cache);
+	void allocate(int perms, int cache);
 	void map_to(uintptr_t address, int perms, int cache);
 	void deallocate();
 
 	vm_fault_result fault_hit(uintptr_t address);
 	bool touch(size_t idx);
+	bool touch_all();
 
 	bool load(ptrdiff_t offset, void *data, size_t size);
 	bool store(ptrdiff_t offset, void *data, size_t size);
@@ -76,12 +76,10 @@ struct address_space {
 	void map_region(memory_mapping *region);
 	void unmap_region(memory_mapping *region);
 
-	uintptr_t allocate_eager(size_t size, int perms, int cache = vm_cache::wb);
-	uintptr_t allocate_lazy(size_t size, int perms, int cache = vm_cache::wb);
+	uintptr_t allocate(size_t size, int perms, int cache = vm_cache::wb);
 	uintptr_t map(uintptr_t address, size_t size, int perms, int cache = vm_cache::wb);
 
-	uintptr_t allocate_exact_eager(uintptr_t base, size_t size, int perms, int cache = vm_cache::wb);
-	uintptr_t allocate_exact_lazy(uintptr_t base, size_t size, int perms, int cache = vm_cache::wb);
+	uintptr_t allocate_exact(uintptr_t base, size_t size, int perms, int cache = vm_cache::wb);
 	uintptr_t map_exact(uintptr_t base, uintptr_t address, size_t size, int perms, int cache = vm_cache::wb);
 
 	void destroy(memory_mapping *region);
@@ -91,6 +89,7 @@ struct address_space {
 
 	bool fault_hit(uintptr_t address);
 	void touch(uintptr_t address);
+	void touch_all(uintptr_t address);
 
 	void load(uintptr_t address, void *data, size_t size);
 	void store(uintptr_t address, void *data, size_t size);

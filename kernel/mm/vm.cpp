@@ -20,19 +20,7 @@ memory_mapping::~memory_mapping() {
 	}
 }
 
-void memory_mapping::allocate_eager(int perms, int cache) {
-	_perms = perms;
-	_cache_mode = cache;
-
-	for (auto &page : _backing_pages) {
-		assert(!page._exists && !page._allocated);
-		page._ptr = (uintptr_t)arch_mm_alloc_phys(1);
-		page._exists = true;
-		page._allocated = true;
-	}
-}
-
-void memory_mapping::allocate_lazy(int perms, int cache) {
+void memory_mapping::allocate(int perms, int cache) {
 	_perms = perms;
 	_cache_mode = cache;
 
@@ -117,6 +105,16 @@ bool memory_mapping::touch(size_t idx) {
 	}
 
 	return false;
+}
+
+bool memory_mapping::touch_all() {
+	bool touched = false;
+
+	for (size_t i = 0; i < _size; i++) {
+		touched = touched || touch(i);
+	}
+
+	return touched;
 }
 
 bool memory_mapping::load(ptrdiff_t offset, void *data, size_t size) {
@@ -453,41 +451,18 @@ void address_space::touch(uintptr_t address) {
 	if (!region)
 		return;
 
-	region->touch((address - region->_base )/ vm_page_size);
+	if (region->touch((address - region->_base )/ vm_page_size))
+		map_region(region);
 }
 
-memory_hole *address_space::find_pre_hole(memory_hole *in) {
-	memory_hole *candidate = *_memory_holes.begin();
-	size_t n_candidates = 0;
+void address_space::touch_all() {
+	auto region = region_for_address(address);
 
-	for (auto hole : _memory_holes) {
-		if ((hole->_base >= candidate->_base)
-				&& (hole->_base + hole->_size * vm_page_size <
-					in->_base + in->_size * vm_page_size)
-				&& (hole != in)) {
-			n_candidates++;
-			candidate = hole;
-		}
-	}
+	if (!region)
+		return;
 
-	return n_candidates ? candidate : nullptr;
-}
-
-memory_mapping *address_space::find_pre_mapping(memory_mapping *in) {
-	memory_mapping *candidate = *_mapped_regions.begin();
-	size_t n_candidates = 0;
-
-	for (auto region : _mapped_regions) {
-		if ((region->_base >= candidate->_base)
-				&& (region->_base + region->_size * vm_page_size <
-					in->_base + in->_size * vm_page_size)
-				&& (region != in)) {
-			n_candidates++;
-			candidate = region;
-		}
-	}
-
-	return n_candidates ? candidate : nullptr;
+	if (region->touch_all())
+		map_region(region);
 }
 
 template <typename T>
@@ -539,40 +514,6 @@ memory_mapping *address_space::find_succ_mapping(memory_mapping *in) {
 	return has_candidate ? candidate : nullptr;
 }
 
-void address_space::merge_holes() {
-//	kmesg("vm", "holes before merge:");
-//	for (auto hole : _memory_holes) {
-//		kmesg("vm", "\t%016lx-%016lx", hole->_base, hole->_base + hole->_size * vm_page_size);
-//	}
-
-	for (auto hole : _memory_holes) {
-		auto prev = hole->_list_node.previous,
-			next = hole->_list_node.next;
-
-		if (prev && !distance_between(prev, hole)) {
-			/* merge */
-			hole->_size += prev->_size;
-			hole->_base = prev->_base;
-
-			_memory_holes.erase(prev);
-			delete prev;
-		}
-
-		if (next && !distance_between(hole, next)) {
-			/* merge */
-			hole->_size += next->_size;
-
-			_memory_holes.erase(next);
-			delete next;
-		}
-	}
-
-//	kmesg("vm", "holes after merge:");
-//	for (auto hole : _memory_holes) {
-//		kmesg("vm", "\t%016lx-%016lx", hole->_base, hole->_base + hole->_size * vm_page_size);
-//	}
-}
-
 void address_space::load(uintptr_t address, void *data, size_t size) {
 	auto region = region_for_address(address);
 
@@ -595,20 +536,30 @@ void address_space::store(uintptr_t address, void *data, size_t size) {
 	}
 }
 
-void address_space::debug() {
-	kmesg("vm", "-------- this = %016p --------", this);
-	kmesg("vm", "mapped regions:");
-	for (auto region : _mapped_regions) {
-		kmesg("vm", "\t%016lx-%016lx", region->_base, region->_base + region->_size * vm_page_size);
-	}
-
-	kmesg("vm", "memory holes:");
-	for (auto hole : _memory_holes) {
-		kmesg("vm", "\t%016lx-%016lx", hole->_base, hole->_base + hole->_size * vm_page_size);
-	}
-	kmesg("vm", "-----------------------------------------");
-}
-
 void *address_space::vmm_ctx() {
 	return _vmm_ctx;
+}
+
+void address_space::merge_holes() {
+	for (auto hole : _memory_holes) {
+		auto prev = hole->_list_node.previous,
+			next = hole->_list_node.next;
+
+		if (prev && !distance_between(prev, hole)) {
+			/* merge */
+			hole->_size += prev->_size;
+			hole->_base = prev->_base;
+
+			_memory_holes.erase(prev);
+			delete prev;
+		}
+
+		if (next && !distance_between(hole, next)) {
+			/* merge */
+			hole->_size += next->_size;
+
+			_memory_holes.erase(next);
+			delete next;
+		}
+	}
 }
