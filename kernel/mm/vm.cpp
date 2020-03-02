@@ -321,7 +321,7 @@ void address_space::unmap_region(memory_mapping *region) {
 	region->_mapped = false;
 }
 
-uintptr_t address_space::allocate_eager(size_t size, int perms, int cache) {
+uintptr_t address_space::allocate(size_t size, int perms, int cache) {
 	auto hole = find_free_hole(size);
 	if (!hole)
 		return 0;
@@ -330,22 +330,7 @@ uintptr_t address_space::allocate_eager(size_t size, int perms, int cache) {
 	if (!mem)
 		return 0;
 
-	mem->allocate_eager(perms, cache);
-	map_region(mem);
-
-	return mem->_base;
-}
-
-uintptr_t address_space::allocate_lazy(size_t size, int perms, int cache) {
-	auto hole = find_free_hole(size);
-	if (!hole)
-		return 0;
-
-	auto mem = bind_hole(hole, size);
-	if (!mem)
-		return 0;
-
-	mem->allocate_lazy(perms, cache);
+	mem->allocate(perms, cache);
 	map_region(mem);
 
 	return mem->_base;
@@ -366,29 +351,18 @@ uintptr_t address_space::map(uintptr_t address, size_t size, int perms, int cach
 	return mem->_base;
 }
 
-uintptr_t address_space::allocate_exact_eager(uintptr_t base, size_t size, int perms, int cache) {
+uintptr_t address_space::allocate_at(uintptr_t base, size_t size, int perms, int cache) {
 	auto mem = bind_exact(base, size);
 	if (!mem)
 		return 0;
 
-	mem->allocate_eager(perms, cache);
+	mem->allocate(perms, cache);
 	map_region(mem);
 
 	return mem->_base;
 }
 
-uintptr_t address_space::allocate_exact_lazy(uintptr_t base, size_t size, int perms, int cache) {
-	auto mem = bind_exact(base, size);
-	if (!mem)
-		return 0;
-
-	mem->allocate_lazy(perms, cache);
-	map_region(mem);
-
-	return mem->_base;
-}
-
-uintptr_t address_space::map_exact(uintptr_t base, uintptr_t address, size_t size, int perms, int cache) {
+uintptr_t address_space::map_at(uintptr_t base, uintptr_t address, size_t size, int perms, int cache) {
 	auto mem = bind_exact(base, size);
 	if (!mem)
 		return 0;
@@ -455,7 +429,7 @@ void address_space::touch(uintptr_t address) {
 		map_region(region);
 }
 
-void address_space::touch_all() {
+void address_space::touch_all(uintptr_t address) {
 	auto region = region_for_address(address);
 
 	if (!region)

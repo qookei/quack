@@ -79,8 +79,8 @@ struct address_space {
 	uintptr_t allocate(size_t size, int perms, int cache = vm_cache::wb);
 	uintptr_t map(uintptr_t address, size_t size, int perms, int cache = vm_cache::wb);
 
-	uintptr_t allocate_exact(uintptr_t base, size_t size, int perms, int cache = vm_cache::wb);
-	uintptr_t map_exact(uintptr_t base, uintptr_t address, size_t size, int perms, int cache = vm_cache::wb);
+	uintptr_t allocate_at(uintptr_t base, size_t size, int perms, int cache = vm_cache::wb);
+	uintptr_t map_at(uintptr_t base, uintptr_t address, size_t size, int perms, int cache = vm_cache::wb);
 
 	void destroy(memory_mapping *region);
 	void destroy(uintptr_t address);
