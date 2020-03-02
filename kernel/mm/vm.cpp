@@ -7,9 +7,7 @@
 memory_mapping::memory_mapping(uintptr_t base, size_t size)
 :_base{base}, _size{size}, _backing_pages(frg_allocator::get()), _list_node{},
 _perms{0}, _cache_mode{0}, _mapped{false} {
-	for (size_t i = 0; i < _size; i++) {
-		_backing_pages.push_back({0, false, false});
-	}
+	_backing_pages.resize(_size);
 }
 
 memory_mapping::~memory_mapping() {
@@ -118,19 +116,7 @@ bool memory_mapping::touch_all() {
 }
 
 bool memory_mapping::load(ptrdiff_t offset, void *data, size_t size) {
-	assert(offset >= 0);
-
-	size_t pages = (size + vm_page_size - 1) / vm_page_size;
-	size_t start = offset / vm_page_size;
-
-	if (((offset + size + vm_page_size - 1) / vm_page_size) > _size)
-		return false;
-
-	bool touched = false;
-
-	for (size_t i = start; i < start + pages; i++) {
-		touched = touched || touch(i);
-	}
+	bool touched = ensure_load_store(offset, size);
 
 	arch_mm_mapping_load(this, offset, data, size);
 
@@ -138,6 +124,14 @@ bool memory_mapping::load(ptrdiff_t offset, void *data, size_t size) {
 }
 
 bool memory_mapping::store(ptrdiff_t offset, void *data, size_t size) {
+	bool touched = ensure_load_store(offset, size);
+
+	arch_mm_mapping_store(this, offset, data, size);
+
+	return touched;
+}
+
+bool memory_mapping::ensure_load_store(ptrdiff_t offset, size_t size) {
 	assert(offset >= 0);
 
 	size_t pages = (size + vm_page_size - 1) / vm_page_size;
@@ -151,8 +145,6 @@ bool memory_mapping::store(ptrdiff_t offset, void *data, size_t size) {
 	for (size_t i = start; i < start + pages; i++) {
 		touched = touched || touch(i);
 	}
-
-	arch_mm_mapping_store(this, offset, data, size);
 
 	return touched;
 }
@@ -169,16 +161,26 @@ address_space::address_space() {
 address_space::~address_space() {
 	arch_mm_destroy_context(_vmm_ctx);
 
+	frg::vector<memory_hole *, frg_allocator> holes{frg_allocator::get()};
+	frg::vector<memory_mapping *, frg_allocator> mappings{frg_allocator::get()};
+
 	for (auto hole : _memory_holes) {
+		holes.push_back(hole);
+	}
+
+	for (auto hole : holes) {
 		_memory_holes.erase(hole);
 		delete hole;
 	}
 
 	for (auto region : _mapped_regions) {
+		mappings.push_back(region);
+	}
+
+	for (auto region : mappings) {
 		_mapped_regions.erase(region);
 		delete region;
 	}
-
 }
 
 memory_hole *address_space::find_free_hole(size_t size) {
@@ -205,28 +207,36 @@ memory_mapping *address_space::bind_hole(memory_hole *hole, size_t size) {
 		delete hole;
 
 		memory_mapping *mapping = new memory_mapping{base, size};
-		memory_mapping *succ = find_succ_mapping(mapping);
-
-		if (succ) {
-			_mapped_regions.insert(succ, mapping);
-		} else {
-			_mapped_regions.push_back(mapping);
-		}
+		put(mapping);
 
 		return mapping;
 	} else {
 		hole->_size -= size;
 
 		memory_mapping *mapping = new memory_mapping{base + hole->_size * vm_page_size, size};
-		memory_mapping *succ = find_succ_mapping(mapping);
-
-		if (succ) {
-			_mapped_regions.insert(succ, mapping);
-		} else {
-			_mapped_regions.push_back(mapping);
-		}
+		put(mapping);
 
 		return mapping;
+	}
+}
+
+void address_space::put(memory_mapping *mapping) {
+	memory_mapping *succ = find_succ_mapping(mapping);
+
+	if (succ) {
+		_mapped_regions.insert(succ, mapping);
+	} else {
+		_mapped_regions.push_back(mapping);
+	}
+}
+
+void address_space::put(memory_hole *hole) {
+	memory_hole *succ = find_succ_hole(hole);
+
+	if (succ) {
+		_memory_holes.insert(succ, hole);
+	} else {
+		_memory_holes.push_front(hole);
 	}
 }
 
@@ -273,26 +283,14 @@ memory_mapping *address_space::bind_exact(uintptr_t base, size_t size) {
 	}
 
 	memory_mapping *mapping = new memory_mapping{base, size};
-	memory_mapping *succ = find_succ_mapping(mapping);
-
-	if (succ) {
-		_mapped_regions.insert(succ, mapping);
-	} else {
-		_mapped_regions.push_back(mapping);
-	}
+	put(mapping);
 
 	return mapping;
 }
 
 void address_space::unbind_region(memory_mapping *region) {
 	memory_hole *hole = new memory_hole{region->_base, region->_size, {}};
-	memory_hole *succ = find_succ_hole(hole);
-
-	if (succ) {
-		_memory_holes.insert(succ, hole);
-	} else {
-		_memory_holes.push_front(hole);
-	}
+	put(hole);
 
 	_mapped_regions.erase(region);
 
@@ -449,47 +447,37 @@ ptrdiff_t distance_between(T a, T b) {
 }
 
 memory_hole *address_space::find_succ_hole(memory_hole *in) {
-	memory_hole *candidate = *_memory_holes.begin();
-	bool has_candidate = false;
+	memory_hole *candidate = nullptr;
 	ptrdiff_t best_distance = 0;
 
 	for (auto region : _memory_holes) {
 		if (region->_base < in->_base)
 			continue;
 
-		if (!has_candidate) {
-			has_candidate = true;
-			candidate = region;
-			best_distance = distance_between(region, in);
-		} else if (ptrdiff_t d = distance_between(region, in); d < best_distance) {
+		if (ptrdiff_t d = distance_between(region, in); d < best_distance) {
 			candidate = region;
 			best_distance = d;
 		}
 	}
 
-	return has_candidate ? candidate : nullptr;
+	return candidate;
 }
 
 memory_mapping *address_space::find_succ_mapping(memory_mapping *in) {
-	memory_mapping *candidate = *_mapped_regions.begin();
-	bool has_candidate = false;
+	memory_mapping *candidate = nullptr;
 	ptrdiff_t best_distance = 0;
 
 	for (auto region : _mapped_regions) {
 		if (region->_base < in->_base)
 			continue;
 
-		if (!has_candidate) {
-			has_candidate = true;
-			candidate = region;
-			best_distance = distance_between(region, in);
-		} else if (ptrdiff_t d = distance_between(region, in); d < best_distance) {
+		if (ptrdiff_t d = distance_between(region, in); d < best_distance) {
 			candidate = region;
 			best_distance = d;
 		}
 	}
 
-	return has_candidate ? candidate : nullptr;
+	return candidate;
 }
 
 void address_space::load(uintptr_t address, void *data, size_t size) {

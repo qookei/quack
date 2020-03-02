@@ -33,6 +33,29 @@ struct memory_mapping {
 	memory_mapping(uintptr_t base, size_t size);
 	~memory_mapping();
 
+	memory_mapping(const memory_mapping &) = delete;
+	memory_mapping &operator=(const memory_mapping &) = delete;
+
+	friend void swap(memory_mapping &a, memory_mapping &b) {
+		using std::swap;
+		swap(a._backing_pages, b._backing_pages);
+		swap(a._base, b._base);
+		swap(a._size, b._size);
+		swap(a._mapped, b._mapped);
+		swap(a._perms, b._perms);
+		swap(a._cache_mode, b._cache_mode);
+		swap(a._list_node, b._list_node);
+	}
+
+	memory_mapping(memory_mapping &&other) {
+		swap(*this, other);
+	}
+
+	memory_mapping &operator=(memory_mapping &&other) {
+		swap(*this, other);
+		return *this;
+	}
+
 	void allocate(int perms, int cache);
 	void map_to(uintptr_t address, int perms, int cache);
 	void deallocate();
@@ -55,6 +78,9 @@ struct memory_mapping {
 	int _cache_mode;
 
 	bool _mapped;
+
+private:
+	bool ensure_load_store(ptrdiff_t offset, size_t size);
 };
 
 struct memory_hole {
@@ -68,6 +94,24 @@ struct address_space {
 	address_space();
 	~address_space();
 
+	friend void swap(address_space &a, address_space &b) {
+		using std::swap;
+		swap(a._mapped_regions, b._mapped_regions);
+		swap(a._memory_holes, b._memory_holes);
+		swap(a._vmm_ctx, b._vmm_ctx);
+	}
+
+	address_space(const address_space &) = delete;
+	address_space &operator=(const address_space &) = delete;
+
+	address_space(address_space &&other) {
+		swap(*this, other);
+	}
+
+	address_space &operator=(address_space &&other) {
+		swap(*this, other);
+		return *this;
+	}
 	memory_hole *find_free_hole(size_t size);
 	memory_mapping *bind_hole(memory_hole *hole, size_t size);
 	memory_mapping *bind_exact(uintptr_t base, size_t size);
@@ -121,6 +165,9 @@ private:
 
 	memory_hole *find_succ_hole(memory_hole *in);
 	memory_mapping *find_succ_mapping(memory_mapping *in);
+
+	void put(memory_mapping *mapping);
+	void put(memory_hole *hole);
 
 	void merge_holes();
 
