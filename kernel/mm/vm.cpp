@@ -63,7 +63,7 @@ void memory_mapping::deallocate() {
 }
 
 vm_fault_result memory_mapping::fault_hit(uintptr_t address) {
-	if (address < _base || address > (_base + _size * vm_page_size))
+	if (address < _base || address >= (_base + _size * vm_page_size))
 		panic(NULL, "memory_mapping::fault_hit(0x%lx) called outside of mapping (0x%lx-0x%lx)",
 			address, _base, _base + _size * vm_page_size);
 
@@ -109,7 +109,8 @@ bool memory_mapping::touch_all() {
 	bool touched = false;
 
 	for (size_t i = 0; i < _size; i++) {
-		touched = touched || touch(i);
+		bool touched_i = touch(i);
+		touched = touched || touched_i;
 	}
 
 	return touched;
@@ -143,7 +144,8 @@ bool memory_mapping::ensure_load_store(ptrdiff_t offset, size_t size) {
 	bool touched = false;
 
 	for (size_t i = start; i < start + pages; i++) {
-		touched = touched || touch(i);
+		bool touched_i = touch(i);
+		touched = touched || touched_i;
 	}
 
 	return touched;
