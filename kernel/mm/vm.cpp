@@ -450,7 +450,7 @@ ptrdiff_t distance_between(T a, T b) {
 
 memory_hole *address_space::find_succ_hole(memory_hole *in) {
 	memory_hole *candidate = nullptr;
-	ptrdiff_t best_distance = 0;
+	ptrdiff_t best_distance = PTRDIFF_MAX;
 
 	for (auto region : _memory_holes) {
 		if (region->_base < in->_base)
@@ -467,7 +467,7 @@ memory_hole *address_space::find_succ_hole(memory_hole *in) {
 
 memory_mapping *address_space::find_succ_mapping(memory_mapping *in) {
 	memory_mapping *candidate = nullptr;
-	ptrdiff_t best_distance = 0;
+	ptrdiff_t best_distance = PTRDIFF_MAX;
 
 	for (auto region : _mapped_regions) {
 		if (region->_base < in->_base)
