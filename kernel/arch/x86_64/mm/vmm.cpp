@@ -8,7 +8,8 @@
 #include <cpu/cpu.h>
 #include <cpu/cpu_data.h>
 
-#include <util/spinlock.h>
+#include <spinlock.h>
+#include <frg/mutex.hpp>
 
 #include <loader/elf_common.h>
 #include <loader/elf64.h>
@@ -308,7 +309,7 @@ void vmm_update_mapping(void *ptr) {
 	asm volatile ("invlpg (%0)" : : "r"(ptr) : "memory");
 }
 
-spinlock_t copy_lock;
+static spinlock copy_lock;
 
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 
@@ -320,7 +321,7 @@ void vmm_ctx_memcpy(pt_t *dst_ctx, void *dst_addr, pt_t *src_ctx, void *src_addr
 
 	// max amount of data you can copy is 8TB if aligned to a page
 
-	spinlock_lock(&copy_lock);
+	frg::unique_lock guard{copy_lock};
 
 	uintptr_t src_virt = 0x780000000000;
 	uintptr_t dst_virt = 0x700000000000;
@@ -359,8 +360,6 @@ void vmm_ctx_memcpy(pt_t *dst_ctx, void *dst_addr, pt_t *src_ctx, void *src_addr
 		vmm_update_mapping((void *)dst_virt);
 		vmm_update_mapping((void *)src_virt);
 	}
-
-	spinlock_release(&copy_lock);
 }
 
 int vmm_arch_to_vmm_flags(int flags, int cache) {
@@ -491,7 +490,7 @@ void arch_mm_destroy_context(void *ctx) {
 }
 
 void arch_mm_mapping_load(memory_mapping *mapping, ptrdiff_t offset, void *data, size_t size) {
-	spinlock_lock(&copy_lock);
+	frg::unique_lock guard{copy_lock};
 
 	uintptr_t virt = 0x700000000000;
 	for (size_t i = 0; i < mapping->_size; i++, virt += 0x1000) {
@@ -508,12 +507,10 @@ void arch_mm_mapping_load(memory_mapping *mapping, ptrdiff_t offset, void *data,
 		vmm_unmap_pages(kernel_pml4, (void *)virt, 1);
 		vmm_update_mapping((void *)virt);
 	}
-
-	spinlock_release(&copy_lock);
 }
 
 void arch_mm_mapping_store(memory_mapping *mapping, ptrdiff_t offset, void *data, size_t size) {
-	spinlock_lock(&copy_lock);
+	frg::unique_lock guard{copy_lock};
 
 	uintptr_t virt = 0x700000000000;
 	for (size_t i = 0; i < mapping->_size; i++, virt += 0x1000) {
@@ -530,6 +527,4 @@ void arch_mm_mapping_store(memory_mapping *mapping, ptrdiff_t offset, void *data
 		vmm_unmap_pages(kernel_pml4, (void *)virt, 1);
 		vmm_update_mapping((void *)virt);
 	}
-
-	spinlock_release(&copy_lock);
 }

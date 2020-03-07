@@ -2,14 +2,15 @@
 #include <arch/mm.h>
 #include <mm/heap.h>
 #include <spinlock.h>
+#include <frg/mutex.hpp>
 #include <util.h>
 
-static spinlock_t mm_lock = {0};
+static spinlock mm_lock;
 
 static uintptr_t top = vm_heap_base;
 
 void *kmalloc(size_t bytes) {
-	spinlock_lock(&mm_lock);
+	frg::unique_lock guard{mm_lock};
 
 	bytes = ((bytes + 7) / 8) * 8; // round up to nearest multiple of 8
 
@@ -20,7 +21,6 @@ void *kmalloc(size_t bytes) {
 	for (size_t i = 0; i < pages; i++) {
 		void *p = arch_mm_alloc_phys(1);
 		if (!p) {
-			spinlock_release(&mm_lock);
 			return NULL;
 		}
 		arch_mm_map_kernel((void *)top, p, 1, vm_perm::rw, vm_cache::def);
@@ -34,8 +34,6 @@ void *kmalloc(size_t bytes) {
 	((uint64_t *)out)[0] = bytes - 16;
 	((uint64_t *)out)[1] = pages;
 
-	spinlock_release(&mm_lock);
-
 	return (void *)((uintptr_t)out + 16);
 }
 
@@ -48,9 +46,9 @@ void *kcalloc(size_t bytes, size_t elem) {
 void *krealloc(void *old, size_t s) {
 	void *newp = kmalloc(s);
 	if (old) {
-		spinlock_lock(&mm_lock);
+		frg::unique_lock guard{mm_lock};
 		uint64_t size = *(uint64_t *)((uintptr_t)old - 16);
-		spinlock_release(&mm_lock);
+		guard.unlock();
 		memcpy(newp, old, size);
 		kfree(old);
 	}
@@ -58,7 +56,7 @@ void *krealloc(void *old, size_t s) {
 }
 
 void kfree(void *ptr) {
-	spinlock_lock(&mm_lock);
+	frg::unique_lock guard{mm_lock};
 	size_t size = *(uint64_t *)((uintptr_t)ptr - 16);
 	size_t req_pages = *(uint64_t *)((uintptr_t)ptr - 8);
 	void *start = (void *)((uintptr_t)ptr & (~(vm_page_size - 1))); // this assumes page size is a multiple of 16
@@ -74,8 +72,6 @@ void kfree(void *ptr) {
 		arch_mm_unmap_kernel(curr, 1);
 		arch_mm_free_phys(p, 1);
 	}
-
-	spinlock_release(&mm_lock);
 }
 
 void* operator new(size_t size){

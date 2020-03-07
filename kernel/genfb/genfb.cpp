@@ -5,6 +5,7 @@
 #include <mm/heap.h>
 #include <string.h>
 #include <spinlock.h>
+#include <frg/mutex.hpp>
 #include <arch/io.h>
 
 #include "font.h"
@@ -114,13 +115,13 @@ static void genfb_scroll_up(void) {
 		arch_mem_fast_memcpy(vid_front, vid_back, mode_info->height * mode_info->pitch);
 }
 
-static spinlock_t lock = {0};
+static spinlock genfb_lock;
 
 void genfb_putch(char c) {
+	frg::unique_lock guard{genfb_lock};
+
 	if (!is_working)
 		return;
-
-	spinlock_lock(&lock);
 
 	if (c == '\n') {
 		disp_x = 0;
@@ -130,7 +131,6 @@ void genfb_putch(char c) {
 			disp_y = disp_h - 1;
 		}
 
-		spinlock_release(&lock);
 		return;
 	}
 
@@ -153,6 +153,5 @@ scroll_screen:
 		}
 	}
 
-	spinlock_release(&lock);
 	return;
 }

@@ -2,11 +2,12 @@
 #include <vsnprintf.h>
 #include <arch/io.h>
 #include <spinlock.h>
+#include <frg/mutex.hpp>
 
-static spinlock_t lock;
+static spinlock kmesg_lock;
 
 void kmesg(const char *src, const char *fmt, ...) {
-	spinlock_lock(&lock);
+	frg::unique_lock guard{kmesg_lock};
 
 	char fmt_buf[1024 + 16];
 	va_list va;
@@ -20,6 +21,4 @@ void kmesg(const char *src, const char *fmt, ...) {
 	char *out = out_buf;
 	while(*out)
 		arch_debug_write(*out++);
-
-	spinlock_release(&lock);
 }

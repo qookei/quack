@@ -23,7 +23,6 @@ arch_srcs += files(
   'cpu/ioapic.cpp',
   'cpu/cpu_data.cpp',
   'cpu/smp.cpp',
-  'cpu/lock.cpp',
   'cpu/gdt.cpp',
 
   'io/port.cpp',

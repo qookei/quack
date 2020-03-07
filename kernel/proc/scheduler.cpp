@@ -1,5 +1,6 @@
 #include "scheduler.h"
 #include <spinlock.h>
+#include <frg/mutex.hpp>
 #include <mm/heap.h>
 #include <string.h>
 #include <panic.h>
@@ -18,7 +19,7 @@ thread::thread(frg::unique_ptr<arch_task, frg_allocator> &&task,
 : _task{std::move(task)}, _addr_space{std::move(addr_space)},
 _id{0}, _state{state::stopped}, _running_on{-1}, _list_node{} {}
 
-static spinlock_t threads_lock;
+static spinlock threads_lock;
 
 static frg::hash_map<
 	uint64_t,
@@ -97,7 +98,7 @@ void sched_resched(uint8_t irq, void *irq_state, int resched) {
 
 	sched_cpu_data &data = sched_procs[cpu];
 
-	spinlock_lock(&threads_lock);
+	threads_lock.lock();
 
 	if (data.running && !resched) {
 		threads[data.current_thread]->_task->load_irq_state(irq_state);
@@ -109,7 +110,7 @@ void sched_resched(uint8_t irq, void *irq_state, int resched) {
 	if (next_thread && data.running && *next_thread == data.current_thread) {
 		data.running = true;
 		threads[*next_thread]->_running_on = cpu;
-		spinlock_release(&threads_lock);
+		threads_lock.unlock();
 		return;
 	}
 
@@ -122,29 +123,28 @@ void sched_resched(uint8_t irq, void *irq_state, int resched) {
 		data.current_thread = *next_thread;
 		threads[*next_thread]->_running_on = cpu;
 
-		spinlock_release(&threads_lock);
+		threads_lock.unlock();
 		threads[*next_thread]->_task->enter();
 	} else {
 		data.running = false;
-		spinlock_release(&threads_lock);
+		threads_lock.unlock();
 		arch_task_idle_cpu();
 	}
 }
 
 uint64_t sched_add(frg::unique_ptr<thread, frg_allocator> thread) {
+	frg::unique_lock guard{threads_lock};
 	assert(thread->_state == state::stopped);
 
 	uint64_t id = allocate_id();
 
-	spinlock_lock(&threads_lock);
 	threads[id] = thread.release();
-	spinlock_release(&threads_lock);
 
 	return id;
 }
 
 void sched_remove(uint64_t id) {
-	spinlock_lock(&threads_lock);
+	frg::unique_lock guard{threads_lock};
 	for (auto thread : schedule) {
 		if (thread->_id == id) {
 			schedule.erase(thread);
@@ -155,20 +155,20 @@ void sched_remove(uint64_t id) {
 	auto item = threads.remove(id);
 	if (item)
 		delete *item;
-
-	spinlock_release(&threads_lock);
 }
 
 void sched_run(uint64_t id) {
-	spinlock_lock(&threads_lock);
+	frg::unique_lock guard{threads_lock};
 
 	schedule.push_back(threads[id]);
-
-	spinlock_release(&threads_lock);
 }
 
 void sched_stop(uint64_t id) {
-	spinlock_lock(&threads_lock);
+	sched_block(id, state::stopped);
+}
+
+void sched_block(uint64_t id, state reason) {
+	frg::unique_lock guard{threads_lock};
 
 	for (auto thread : schedule) {
 		if (thread->_id == id) {
@@ -177,17 +177,9 @@ void sched_stop(uint64_t id) {
 		}
 	}
 
-	threads[id]->_state = state::stopped;
-
-	spinlock_release(&threads_lock);
-}
-
-void sched_block(uint64_t id, state reason) {
 	sched_stop(id);
 
-	spinlock_lock(&threads_lock);
 	threads[id]->_state = reason;
-	spinlock_release(&threads_lock);
 }
 
 void sched_page_fault(uintptr_t address, void *irq_state) {
