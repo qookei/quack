@@ -6,6 +6,7 @@
 #include <string.h>
 #include <lai/core.h>
 #include <lai/helpers/sci.h>
+#include <lai/helpers/pm.h>
 #include <irq/isr.h>
 #include <cmdline.h>
 #include <cpu/ioapic.h>
@@ -92,9 +93,19 @@ void acpi_init(void) {
 
 	rsdt = (rsdt_t *)((uintptr_t)rsdt_ptr + VIRT_PHYS_BASE);
 
-	if (cmdline_has_value("acpi", "debug")) {
+	int trace_mode = 0;
+
+	if (cmdline_has_value("acpi", "debug_io")) {
+		trace_mode |= LAI_TRACE_IO;
+	}
+
+	if (cmdline_has_value("acpi", "debug_op")) {
+		trace_mode |= LAI_TRACE_OP;
+	}
+
+	if (trace_mode) {
 		kmesg("acpi", "debugging enabled by user");
-		lai_enable_tracing(LAI_TRACE_IO | LAI_TRACE_OP);
+		lai_enable_tracing(trace_mode);
 	}
 
 	lai_create_namespace();
