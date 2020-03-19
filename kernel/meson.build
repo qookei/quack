@@ -43,6 +43,9 @@ cxx_srcs = files(
 
   'symtab/symtab.cpp',
 
+  'object/group.cpp',
+  'object/ipc_queue.cpp',
+
   'kernel.cpp')
 
 inc_dirs = include_directories(
