@@ -6,6 +6,6 @@
 
 #define assert(x) {if(!(x)) __assert_failure(STR(x), __FILE__, __LINE__, __func__);}
 
-void __assert_failure(const char *, const char *, int, const char *); 
+[[noreturn]] void __assert_failure(const char *, const char *, int, const char *); 
 
 #endif
