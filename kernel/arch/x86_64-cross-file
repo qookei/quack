@@ -6,7 +6,6 @@ strip		= 'x86_64-quack-kernel-strip'
 
 [properties]
 c_args		= [
-			'-ffreestanding',
 			'-fno-omit-frame-pointer',
 			'-mno-sse',
 			'-mno-sse2',
@@ -18,8 +17,6 @@ c_args		= [
 		]
 
 link_args	= [
-			'-ffreestanding',
-			'-nostdlib',
 			'-z', 'max-page-size=0x1000',
 			'-mcmodel=kernel',
 			'-fno-omit-frame-pointer'
