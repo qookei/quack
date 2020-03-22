@@ -55,7 +55,7 @@ static void smp_c_entry(uint64_t core_id, uint64_t apic_id) {
 
 static uintptr_t alloc_stack(void) {
 	uintptr_t ptr = (uintptr_t)pmm_alloc(STACK_SIZE / PAGE_SIZE);
-	return ptr + VIRT_PHYS_BASE;
+	return ptr + VIRT_PHYS_BASE + STACK_SIZE;
 }
 
 static uintptr_t prepare_data(int cpu, uint8_t lapic_id) {
