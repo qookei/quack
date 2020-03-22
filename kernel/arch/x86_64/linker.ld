@@ -11,12 +11,12 @@ SECTIONS {
 
 	.text : AT(ADDR(.text) - KERNEL_VMA) {
 		*(.multiboot)
-		*(.text)
-		*(.rodata)
+		*(.text*)
+		*(.rodata*)
 	}
 
 	.data ALIGN (0x1000) : AT(ADDR(.data) - KERNEL_VMA) {
-		*(.data)
+		*(.data*)
 	}
 
 	.init_array : {
@@ -28,7 +28,7 @@ SECTIONS {
 
 	.bss : AT(ADDR(.bss) - KERNEL_VMA) {
 		*(COMMON)
-		*(.bss)
+		*(.bss*)
 	}
 
 	_trampoline_start_virt = .;
