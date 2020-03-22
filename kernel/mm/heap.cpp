@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <arch/mm.h>
+#include <arch/cpu.h>
 #include <mm/heap.h>
 #include <spinlock.h>
 #include <frg/mutex.hpp>
@@ -15,11 +16,12 @@ void *kmalloc(size_t bytes) {
 	bytes = ((bytes + 7) / 8) * 8; // round up to nearest multiple of 8
 
 	bytes += 16; // 8 bytes for size, another 8 for amount of pages
-	size_t pages = (bytes + vm_page_size - 1) / vm_page_size + 1;
+	size_t pages = (bytes + vm_page_size - 1) / vm_page_size;
 	void *out = (void *)top;
 
 	for (size_t i = 0; i < pages; i++) {
 		void *p = arch_mm_alloc_phys(1);
+
 		if (!p) {
 			return NULL;
 		}
@@ -62,7 +64,7 @@ void kfree(void *ptr) {
 	void *start = (void *)((uintptr_t)ptr & (~(vm_page_size - 1))); // this assumes page size is a multiple of 16
 
 	size += 16; // 8 bytes for size, another 8 for amount of pages
-	size_t pages = (size + vm_page_size - 1) / vm_page_size + 1;
+	size_t pages = (size + vm_page_size - 1) / vm_page_size;
 
 	assert(req_pages == pages);
 
