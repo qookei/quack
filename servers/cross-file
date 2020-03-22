@@ -3,6 +3,7 @@ c		= 'x86_64-quack-kernel-gcc'
 cpp		= 'x86_64-quack-kernel-g++'
 as		= 'x86_64-quack-kernel-as'
 strip		= 'x86_64-quack-kernel-strip'
+pkgconfig	= 'pkg-config'
 
 [properties]
 c_args		= [
@@ -20,7 +21,7 @@ link_args	= [
 		]
 
 [host_machine]
-system		= 'none'
+system		= 'quack'
 cpu_family	= 'x86_64'
 cpu		= 'x86_64'
 endian		= 'little'

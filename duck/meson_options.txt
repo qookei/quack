@@ -1,0 +1,3 @@
+option('in_kernel', type : 'boolean', value : false)
+option('do_headers', type : 'boolean', value : false)
+option('do_sources', type : 'boolean', value : false)

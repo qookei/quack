@@ -1,1 +1,1 @@
-executable('startup', 'startup.cc', install: true)
+executable('startup', 'startup.cc', dependencies: [duck_dep], install: true)
