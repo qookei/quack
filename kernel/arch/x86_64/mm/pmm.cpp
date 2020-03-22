@@ -129,9 +129,12 @@ void *pmm_alloc_ex(size_t count, size_t alignment, uintptr_t upper) {
 		pmm_bit_write(idx, 1, count);
 		if (pmm_total_pages)
 			pmm_free_pages -= count;
+
+		memset((void *)(idx * PAGE_SIZE + VIRT_PHYS_BASE), 0, PAGE_SIZE);
+
 		return (void *)(idx * PAGE_SIZE);
 	}
-	
+
 	return NULL;
 
 }
