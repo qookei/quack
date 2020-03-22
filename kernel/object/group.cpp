@@ -7,11 +7,8 @@ _members{frg::hash<uint64_t>{}, frg_allocator::get()}, _next_id{0}, _lock{} {
 }
 
 object_group::~object_group() {
-	for (auto curr = _objects.begin(); curr != _objects.end();) {
-		auto t = curr;
-		++curr;
-
-		delete t->get<1>();
+	for (auto [_, ptr] : _objects) {
+		delete ptr;
 	}
 }
 
@@ -23,7 +20,6 @@ handle_t object_group::add_object(base_object *obj) {
 	_next_id.fetch_add(1);
 
 	_objects[h] = obj;
-	kmesg("group", "obj=%p", obj);
 	obj->set_parent(this);
 
 	if (!_dont_lock)

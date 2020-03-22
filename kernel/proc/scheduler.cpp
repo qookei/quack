@@ -17,7 +17,8 @@
 thread::thread(frg::unique_ptr<arch_task, frg_allocator> &&task,
 		frg::unique_ptr<address_space, frg_allocator> &&addr_space)
 : _task{std::move(task)}, _addr_space{std::move(addr_space)},
-_id{0}, _state{state::stopped}, _running_on{-1}, _list_node{} {}
+_id{0}, _state{state::stopped}, _running_on{-1}, _access_lock{},
+_list_node{}, _identity{64, 0, frg_allocator::get()} {}
 
 static spinlock threads_lock;
 
@@ -191,4 +192,22 @@ void sched_page_fault(uintptr_t address, void *irq_state) {
 	auto thread = threads[data.current_thread];
 	if (!thread->_addr_space->fault_hit(address))
 		panic(irq_state, "TODO: handle killing the thread on fault");
+}
+
+thread_access_guard sched_get(uint64_t id) {
+	auto thread = threads[id];
+	assert(thread);
+
+	thread->_access_lock.lock();
+
+	return thread_access_guard{thread};
+}
+
+thread_access_guard sched_this() {
+	int cpu = arch_cpu_get_this_id();
+	sched_cpu_data &data = sched_procs[cpu];
+
+	assert(data.running);
+
+	return sched_get(data.current_thread);
 }

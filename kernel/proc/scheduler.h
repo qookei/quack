@@ -4,8 +4,10 @@
 #include <new>
 #include <lib/frg_allocator.h>
 #include <frg/unique.hpp>
+#include <frg/string.hpp>
 #include <arch/task.h>
 #include <mm/vm.h>
+#include <spinlock.h>
 
 #define THREAD_STOPPED			(0 << 0)
 #define THREAD_RUNNING			(1 << 0)
@@ -30,7 +32,34 @@ struct thread {
 	state _state;
 	int _running_on;
 
+	spinlock _access_lock;
+
 	frg::default_list_hook<thread> _list_node;
+
+	frg::string<frg_allocator> _identity;
+};
+
+struct thread_access_guard {
+	thread_access_guard(thread *t)
+	:_thread{t} {}
+
+	~thread_access_guard() {
+		_thread->_access_lock.unlock();
+	}
+
+	thread *get() {
+		return _thread;
+	}
+
+	thread &operator*() {
+		return *_thread;
+	}
+
+	thread *operator->() {
+		return _thread;
+	}
+private:
+	thread *_thread;
 };
 
 void sched_init(int n_cpus);
@@ -45,7 +74,8 @@ void sched_run(uint64_t id);
 void sched_stop(uint64_t id);
 void sched_block(uint64_t id, state reason);
 
-thread &sched_get(uint64_t id);
+thread_access_guard sched_get(uint64_t id);
+thread_access_guard sched_this();
 
 void sched_page_fault(uintptr_t addr, void *irq_state);
 
